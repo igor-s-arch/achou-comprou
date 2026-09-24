@@ -1,0 +1,9 @@
+ACHOU, COMPROU — BACKEND ONLINE v0.20
+
+Projeto Supabase conectado: achou-comprou
+Região: São Paulo (sa-east-1)
+
+O aplicativo usa somente a URL pública e a chave publishable do Supabase no navegador.
+RLS protege os dados por usuário/loja. Imagens são enviadas ao Storage em pastas vinculadas ao usuário autenticado.
+
+A recuperação de senha já possui fluxo completo dentro do app. Para funcionar após a publicação, o endereço público do aplicativo deve estar autorizado nos Redirect URLs do Supabase Auth.
