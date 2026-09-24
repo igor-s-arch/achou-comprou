@@ -1,0 +1,293 @@
+const app = document.getElementById('app');
+
+const state = {
+  favorites: new Set(['Tênis Infantil']),
+  storePlan: 'gratis',
+  stores: [
+    { name: 'Maranhão Calçados', cat: 'Moda e Calçados', dist: '0,8 km', rating: '4,9', status: 'aprovada', plan: 'premium_banner' },
+    { name: 'Bella Store', cat: 'Moda Feminina', dist: '1,1 km', rating: '4,8', status: 'aguardando', plan: 'gratis' },
+    { name: 'Tech Cell', cat: 'Celulares', dist: '1,3 km', rating: '4,7', status: 'aprovada', plan: 'premium' },
+    { name: 'Casa & Cia', cat: 'Utilidades', dist: '1,4 km', rating: '4,6', status: 'aprovada', plan: 'gratis' }
+  ]
+};
+
+const data = {
+  offers: [
+    { type: 'shoe', name: 'Tênis Infantil', price: 'R$ 79,90', old: 'R$ 99,90', discount: '-20%', store: 'Maranhão Calçados', dist: '0,8 km' },
+    { type: 'appliance', name: 'Air Fryer 4,2L', price: 'R$ 339,90', old: 'R$ 399,90', discount: '-15%', store: 'Eletro Center', dist: '1,2 km' },
+    { type: 'pizza', name: 'Pizza Grande', price: 'R$ 29,90', old: 'R$ 39,90', discount: '-25%', store: 'Pizzaria do Cheff', dist: '1,5 km' }
+  ],
+  shops: ['Maranhão Calçados', 'Bella Store', 'Tech Cell', 'Casa & Cia', 'Pizzaria do Cheff']
+};
+
+const icons = {
+  home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9 20v-6h6v6"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+  heart: '<path d="M20.8 5.7a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.3a5.4 5.4 0 1 0-7.6 7.6L12 22l8.8-8.7a5.4 5.4 0 0 0 0-7.6Z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  pin: '<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+  sliders: '<path d="M4 6h10M18 6h2M10 12h10M4 12h2M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/>',
+  shirt: '<path d="M8 4 4 6l2 5 2-1v10h8V10l2 1 2-5-4-2c-.8 1.4-2.2 2-4 2S8.8 5.4 8 4Z"/>',
+  food: '<path d="M7 3v7M4 3v4a3 3 0 0 0 6 0V3M7 10v11M16 3v18M16 3c3 2 3 7 0 9"/>',
+  beauty: '<path d="M9 3h6v5H9zM8 8h8l1 13H7L8 8Z"/><path d="M10 3V1h4v2"/>',
+  health: '<path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/><path d="M12 10v5M9.5 12.5h5"/>',
+  phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/>',
+  car: '<path d="m5 11 2-5h10l2 5"/><path d="M4 11h16v7H4z"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>',
+  tools: '<path d="m14 6 4-4 4 4-4 4"/><path d="m2 22 9-9"/><path d="M4 4l16 16"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  store: '<path d="M4 10h16v11H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M8 21v-6h8v6"/>',
+  bag: '<path d="M5 8h14l-1 13H6L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  star: '<path d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.1l6.2-.9L12 2.5Z"/>',
+  flame: '<path d="M12 22c4 0 7-3 7-7 0-3-1.5-5.7-4.5-8.5.2 2-1 3.3-2.3 4.2.1-3.1-1.8-5.6-4.2-8.2.2 4-3 6.2-3 10.5 0 5 3 9 7 9Z"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1A1.7 1.7 0 0 0 4.3 7l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 1Z"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  package: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>',
+  card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+  check: '<path d="m5 12 4 4L19 6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4A8 8 0 1 1 21 12Z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  arrowLeft: '<path d="m15 18-6-6 6-6"/>',
+  share: '<circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/>'
+};
+
+function icon(name, cls = 'ui-icon') {
+  return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.grid}</svg>`;
+}
+
+function productVisual(type, compact = false) {
+  const map = {
+    shoe: `<svg viewBox="0 0 160 100" aria-hidden="true"><path d="M17 65c24 5 42-4 59-30l20 16c9 8 21 13 35 16 8 2 12 7 12 14 0 6-6 10-14 10H35c-14 0-22-6-22-15 0-4 1-8 4-11Z" fill="#111"/><path d="M38 82h93" stroke="#f4c400" stroke-width="6" stroke-linecap="round"/><path d="M69 45 83 58M78 39l14 14" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`,
+    appliance: `<svg viewBox="0 0 120 120" aria-hidden="true"><rect x="26" y="14" width="68" height="92" rx="20" fill="#151515"/><circle cx="60" cy="40" r="9" fill="#f4c400"/><rect x="38" y="58" width="44" height="34" rx="10" fill="#2b2b2b"/><path d="M48 69h24" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`,
+    pizza: `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="44" fill="#f0b44c"/><circle cx="60" cy="60" r="35" fill="#d93d2d"/><circle cx="45" cy="42" r="6" fill="#77271f"/><circle cx="73" cy="46" r="6" fill="#77271f"/><circle cx="78" cy="73" r="6" fill="#77271f"/><circle cx="46" cy="76" r="6" fill="#77271f"/><path d="M60 25v70M25 60h70M35 35l50 50M85 35 35 85" stroke="#f6d26a" stroke-width="3"/></svg>`,
+    shirt: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M42 24 22 34l9 22 11-5v48h36V51l11 5 9-22-20-10c-5 8-11 12-18 12S47 32 42 24Z" fill="#202020"/><path d="M48 29c3 6 7 9 12 9s9-3 12-9" fill="none" stroke="#f4c400" stroke-width="4"/></svg>`,
+    bag: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M28 42h64l-5 57H33l-5-57Z" fill="#202020"/><path d="M45 43V35a15 15 0 0 1 30 0v8" fill="none" stroke="#f4c400" stroke-width="5"/></svg>`
+  };
+  return `<div class="product-art ${compact ? 'compact' : ''}">${map[type] || map.bag}</div>`;
+}
+
+function nav(active = 'home') {
+  return `<nav class="bottom-nav">
+    <button class="nav-item ${active === 'home' ? 'active' : ''}" data-go="home">${icon('home')}<span>Início</span></button>
+    <button class="nav-item ${active === 'search' ? 'active' : ''}" data-go="search">${icon('search')}<span>Buscar</span></button>
+    <button class="nav-item ${active === 'fav' ? 'active' : ''}" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
+    <button class="nav-item ${active === 'profile' ? 'active' : ''}" data-go="profile">${icon('user')}<span>Perfil</span></button>
+  </nav>`;
+}
+
+function logo() {
+  return `<img src="assets/logo-achou-comprou.png" alt="Achou, Comprou" class="mini-logo">`;
+}
+
+function splash() {
+  app.innerHTML = `<main class="app-shell screen splash">
+    <img src="assets/logo-achou-comprou.png" class="splash-logo" alt="Achou, Comprou">
+    <div class="splash-copy">Tudo que você procura, <b>perto de você.</b></div>
+    <div class="splash-features">
+      <div class="feature"><div class="ico">${icon('search')}</div><div><b>Encontre</b><span>produtos nas lojas da sua cidade</span></div></div>
+      <div class="feature"><div class="ico">${icon('sliders')}</div><div><b>Compare</b><span>preços, ofertas e disponibilidade</span></div></div>
+      <div class="feature"><div class="ico">${icon('bag')}</div><div><b>Compre</b><span>direto com o comércio local</span></div></div>
+    </div>
+    <button class="btn btn-yellow btn-block" data-go="home">Começar agora</button>
+    <button class="btn btn-outline btn-block" data-go="profile">Entrar</button>
+    <div class="small-link" data-go="home">Continuar sem conta</div>
+  </main>`;
+  bind();
+}
+
+function home() {
+  const cats = [
+    ['shirt', 'Moda'], ['food', 'Alimentação'], ['beauty', 'Beleza'], ['health', 'Saúde'], ['home', 'Casa'],
+    ['phone', 'Tecnologia'], ['car', 'Automotivo'], ['tools', 'Serviços'], ['grid', 'Outros'], ['grid', 'Ver todas']
+  ];
+  app.innerHTML = `<main class="app-shell">
+    <header class="topbar">
+      <div class="brand-row">
+        ${logo()}
+        <button class="location-button">${icon('pin')}<span>Grajaú - MA</span><span class="chevron">⌄</span></button>
+        <button class="round-action" aria-label="Notificações">${icon('bell')}</button>
+      </div>
+      <div class="search"><span class="search-leading">${icon('search')}</span><input id="q" placeholder="O que você está procurando?"><button id="searchBtn" aria-label="Filtros">${icon('sliders')}</button></div>
+    </header>
+    <section class="content">
+      <div class="hint"><b>Experimente:</b> “Tênis infantil nº 28”</div>
+      <div class="cats">${cats.map(([i, t]) => `<button class="cat"><i>${icon(i)}</i><span>${t}</span></button>`).join('')}</div>
+      <div class="banner" data-go="store">
+        <div><span class="eyebrow">Comércio local</span><h2>Compre perto de você</h2><p>Encontre ofertas e produtos disponíveis em Grajaú.</p><div class="banner-location">${icon('pin')} Grajaú - MA</div></div>
+        <div class="banner-art">${icon('bag', 'banner-icon')}</div>
+      </div>
+      <div class="section-title"><h3>${icon('flame')} Ofertas perto de você</h3><a>Ver todas</a></div>
+      <div class="offers">${data.offers.map(o => `<article class="card" data-go="product"><div class="product-img">${productVisual(o.type, true)}</div><span class="discount">${o.discount}</span><div class="card-body"><div class="card-title">${o.name}</div><div><span class="price">${o.price}</span> <span class="old">${o.old}</span></div><div class="store">${o.store}</div><div class="dist">${icon('pin')} ${o.dist}</div></div></article>`).join('')}</div>
+      <div class="section-title"><h3>${icon('star')} Lojas em destaque</h3><a>Ver todas</a></div>
+      <div class="shops">${data.shops.map((s, i) => `<button class="shop" data-go="store"><div class="shop-logo">${i === 0 ? 'M' : s.slice(0,1)}</div><b>${s}</b><small>${['Moda e Calçados', 'Moda Feminina', 'Celulares', 'Utilidades', 'Alimentação'][i]}</small></button>`).join('')}</div>
+    </section>
+    ${nav('home')}
+  </main>`;
+  bind();
+  document.getElementById('searchBtn').onclick = () => search(document.getElementById('q').value || 'Tênis infantil nº 28');
+  document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(e.target.value); });
+}
+
+function search(q = 'Tênis infantil nº 28') {
+  const results = [
+    ['R$ 129,90', 'Maranhão Calçados', '0,8 km'], ['R$ 119,90', 'Top Calçados', '1,2 km'],
+    ['R$ 99,90', 'Estilo Kids', '1,5 km'], ['R$ 139,90', 'Sport Center', '2,1 km']
+  ];
+  app.innerHTML = `<main class="app-shell">
+    <header class="topbar search-page-top"><div class="search"><button data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><input value="${q.replaceAll('"', '&quot;')}"><span>${icon('sliders')}</span></div></header>
+    <section class="content">
+      <div class="chips"><button class="chip active">Todos (12)</button><button class="chip">Produtos (10)</button><button class="chip">Lojas (2)</button></div>
+      <div class="list">${results.map(r => `<article class="result"><div class="thumb">${productVisual('shoe', true)}</div><div><span class="tag">Disponível</span><h4>Tênis Infantil Nº 28</h4><div class="price">${r[0]}</div><div class="store">${r[1]}</div><div class="dist">${icon('pin')} ${r[2]} de você</div><button class="btn btn-yellow" data-go="product">Ver produto</button></div></article>`).join('')}</div>
+    </section>
+    ${nav('search')}
+  </main>`;
+  bind();
+}
+
+function product() {
+  const fav = state.favorites.has('Tênis Infantil');
+  app.innerHTML = `<main class="app-shell product-page">
+    <div class="page-head"><button class="back" data-go="search" aria-label="Voltar">${icon('arrowLeft')}</button><b>Produto</b><div class="head-actions"><button aria-label="Favoritar">${icon('heart')}</button><button aria-label="Compartilhar">${icon('share')}</button></div></div>
+    <div class="hero-product">${productVisual('shoe')}</div>
+    <div class="product-info">
+      <h1>Tênis Infantil</h1>
+      <div><span class="big-price">R$ 129,90</span> <span class="old">R$ 159,90</span></div>
+      <div class="store-box" data-go="store"><div class="store-box-title">Maranhão Calçados</div><div class="store-box-meta">${icon('star')} 4,9 <span>•</span> ${icon('pin')} 0,8 km de você</div></div>
+      <h3>Numeração</h3><div class="chips"><button class="chip">26</button><button class="chip">27</button><button class="chip active">28</button><button class="chip">29</button><button class="chip">30</button></div>
+      <h3>Cor</h3><div class="chips"><button class="chip active">Preto</button><button class="chip">Azul</button><button class="chip">Rosa</button></div>
+      <h3>Descrição</h3><p>Tênis infantil confortável, ideal para o dia a dia. Leve, resistente e com ótimo custo-benefício.</p>
+    </div>
+    <div class="sticky-actions"><button class="btn btn-green" id="waBtn">${icon('chat')} Falar com a loja</button><button class="btn btn-yellow" id="favBtn">${icon('heart')} ${fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}</button></div>
+  </main>`;
+  bind();
+  document.getElementById('favBtn').onclick = () => { fav ? state.favorites.delete('Tênis Infantil') : state.favorites.add('Tênis Infantil'); product(); };
+  document.getElementById('waBtn').onclick = () => alert('No aplicativo real, este botão abrirá o WhatsApp da loja com a mensagem do produto pronta.');
+}
+
+function store() {
+  app.innerHTML = `<main class="app-shell">
+    <section class="store-hero"><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><div class="store-icon">${icon('store')}</div><h1>Maranhão Calçados</h1><div class="rating-row">${icon('star')} 4,9 <span>(127 avaliações)</span></div><div class="store-meta">${icon('pin')} Grajaú - MA <span>•</span> 0,8 km de você</div><div class="store-buttons"><button class="btn btn-green">${icon('chat')} WhatsApp</button><button class="btn instagram">Instagram</button><button class="btn btn-yellow">${icon('pin')} Como chegar</button></div></section>
+    <section class="content"><div class="section-title"><h3>Produtos</h3><a>Ofertas</a></div><div class="offers">${data.offers.map(o => `<article class="card" data-go="product"><div class="product-img">${productVisual(o.type, true)}</div><div class="card-body"><div class="card-title">${o.name}</div><div class="price">${o.price}</div></div></article>`).join('')}</div></section>
+    ${nav('home')}
+  </main>`;
+  bind();
+}
+
+function favorites() {
+  const items = data.offers.filter(o => state.favorites.has(o.name));
+  app.innerHTML = `<main class="app-shell"><div class="page-head"><b>Meus favoritos</b></div><section class="content"><div class="list">${items.length ? items.map(o => `<article class="result"><div class="thumb">${productVisual(o.type, true)}</div><div><h4>${o.name}</h4><div class="price">${o.price}</div><div class="store">${o.store}</div><button class="btn btn-yellow" data-go="product">Abrir produto</button></div></article>`).join('') : '<div class="empty">Você ainda não salvou nenhum produto.</div>'}</div></section>${nav('fav')}</main>`;
+  bind();
+}
+
+function profile() {
+  app.innerHTML = `<main class="app-shell profile-page">
+    <div class="profile-head"><div class="avatar">${icon('user')}</div><div><h2>Minha conta</h2><p>Entre para salvar favoritos e acompanhar suas buscas.</p></div></div>
+    <div class="menu-list"><button data-go="fav"><span>${icon('heart')} Meus favoritos</span><b>›</b></button><button><span>${icon('search')} Minhas buscas</span><b>›</b></button><button><span>${icon('bell')} Notificações</span><b>›</b></button><button><span>${icon('settings')} Configurações</span><b>›</b></button></div>
+    <div class="role-box"><span class="eyebrow">Para comerciantes</span><h3>Tem uma loja?</h3><p>Cadastre seus produtos e ofertas no Achou, Comprou.</p><button class="btn btn-yellow btn-block" data-go="merchantLogin">Entrar como comerciante</button><button class="btn btn-outline btn-block admin-enter" data-go="adminLogin">Acesso administrativo</button></div>
+    ${nav('profile')}
+  </main>`;
+  bind();
+}
+
+function merchantLogin() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="profile" aria-label="Voltar">${icon('arrowLeft')}</button><b>Área do comerciante</b></div><div class="form-card"><div class="form-intro"><span class="section-icon">${icon('store')}</span><div><h2>Entrar na minha loja</h2><p>Acesse seu painel para gerenciar produtos, ofertas e desempenho.</p></div></div><label>E-mail<input value="lojista@exemplo.com"></label><label>Senha<input type="password" value="123456"></label><button class="btn btn-yellow btn-block" data-go="merchant">Entrar</button><button class="btn btn-secondary btn-block" data-go="merchantRegister">Cadastrar minha loja</button></div></main>`;
+  bind();
+}
+
+function merchantRegister() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar minha loja</b></div><div class="form-card"><label>Nome da loja<input placeholder="Ex.: Loja Exemplo"></label><label>Categoria principal<select><option>Moda</option><option>Calçados</option><option>Alimentação</option><option>Beleza</option><option>Tecnologia</option><option>Outros</option></select></label><label>WhatsApp<input placeholder="(99) 99999-9999"></label><label>Instagram<input placeholder="@sualoja"></label><label>Endereço<input placeholder="Rua, número, bairro"></label><label>Horário de funcionamento<input placeholder="Seg a Sáb, 8h às 18h"></label><label>Descrição<textarea placeholder="Conte um pouco sobre a loja"></textarea></label><button class="btn btn-yellow btn-block" id="sendStore">Enviar cadastro</button><div id="regMsg"></div></div></main>`;
+  bind();
+  document.getElementById('sendStore').onclick = () => { document.getElementById('regMsg').innerHTML = '<div class="notice success">Cadastro enviado. Status: aguardando aprovação.</div>'; };
+}
+
+function metric(iconName, label, value, small = '') {
+  return `<div class="metric"><div class="metric-top"><span class="metric-icon">${icon(iconName)}</span><span>${label}</span></div><strong>${value}</strong>${small ? `<small>${small}</small>` : ''}</div>`;
+}
+
+function merchant() {
+  app.innerHTML = `<main class="app-shell merchant"><div class="merchant-top"><span class="eyebrow">Área do comerciante</span><h1>Loja Maranhão</h1><p>Acompanhe o desempenho e gerencie sua operação.</p></div><div class="metric-grid">${metric('eye','Visualizações','1.245')}${metric('package','Produtos vistos','856')}${metric('chat','Cliques no WhatsApp','132')}${metric('flame','Ofertas ativas','5')}</div><div class="merchant-actions"><button data-go="productForm"><span>${icon('plus')} Cadastrar produto</span><b>›</b></button><button data-go="offerForm"><span>${icon('flame')} Criar oferta</span><b>›</b></button><button data-go="merchantProducts"><span>${icon('package')} Gerenciar produtos</span><b>›</b></button><button data-go="stats"><span>${icon('chart')} Ver estatísticas</span><b>›</b></button><button data-go="plans"><span>${icon('star')} Meu plano</span><b>›</b></button></div><button class="btn btn-secondary btn-block merchant-back" data-go="profile">Voltar ao app do cliente</button></main>`;
+  bind();
+}
+
+function merchantProducts() {
+  const products = [['shoe','Tênis Infantil','R$ 129,90','Ativo'],['shirt','Blusinha casual','R$ 39,90','Ativo'],['bag','Bolsa feminina','R$ 99,90','Pausado']];
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Meus produtos</b><button class="mini-action" data-go="productForm">${icon('plus')} Novo</button></div><div class="content"><div class="list">${products.map(p => `<article class="result"><div class="thumb">${productVisual(p[0], true)}</div><div><h4>${p[1]}</h4><div class="price">${p[2]}</div><span class="status ${p[3] === 'Ativo' ? 'ok' : 'pause'}">${p[3]}</span><div class="row-actions"><button>Editar</button><button>Pausar</button></div></div></article>`).join('')}</div></div></main>`;
+  bind();
+}
+
+function productForm() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar produto</b></div><div class="form-card"><label>Nome<input placeholder="Ex.: Tênis infantil"></label><label>Categoria<select id="prodCat"><option value="roupa">Roupa</option><option value="calcado">Calçado</option><option value="pizza">Pizza / Alimentação</option><option value="beleza">Beleza / Perfumaria</option><option value="celular">Celular</option><option value="outro">Outro</option></select></label><label>Marca<input placeholder="Marca"></label><div class="two-cols"><label>Preço normal<input placeholder="R$ 0,00"></label><label>Preço promocional<input placeholder="R$ 0,00"></label></div><div id="dynamicFields"></div><label>Estoque<select><option>Controle simples</option><option>Controle detalhado por variação</option></select></label><label>Descrição<textarea placeholder="Descrição do produto"></textarea></label><button class="btn btn-yellow btn-block" id="saveProduct">Salvar produto</button><div id="saveMsg"></div></div></main>`;
+  bind();
+  const sel = document.getElementById('prodCat'), box = document.getElementById('dynamicFields');
+  function dyn() {
+    const map = {
+      roupa: '<label>Tamanhos<input placeholder="P, M, G"></label><label>Cores<input placeholder="Preto, Branco, Rosa"></label>',
+      calcado: '<label>Numerações<input placeholder="28, 29, 30, 31"></label><label>Cores<input placeholder="Preto, Azul"></label>',
+      pizza: '<label>Tamanho<input placeholder="Pequena, Média, Grande"></label><label>Sabores<input placeholder="Calabresa, Frango, Portuguesa"></label><label>Borda / adicionais<input placeholder="Catupiry, Cheddar"></label>',
+      beleza: '<label>Tipo<input placeholder="Perfume, Shampoo, Cosmético"></label><label>Volume / tamanho<input placeholder="100 ml"></label>',
+      celular: '<label>Modelo<input placeholder="Modelo"></label><div class="two-cols"><label>Armazenamento<input placeholder="128 GB"></label><label>RAM<input placeholder="8 GB"></label></div><label>Cor<input placeholder="Preto"></label>',
+      outro: '<label>Características<input placeholder="Informe as principais características"></label>'
+    };
+    box.innerHTML = map[sel.value];
+  }
+  sel.onchange = dyn;
+  dyn();
+  document.getElementById('saveProduct').onclick = () => { document.getElementById('saveMsg').innerHTML = '<div class="notice success">Produto salvo no protótipo. No sistema real será gravado no banco.</div>'; };
+}
+
+function offerForm() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Criar oferta</b></div><div class="form-card"><label>Produto<select><option>Tênis Infantil</option><option>Blusinha casual</option></select></label><div class="two-cols"><label>Preço normal<input value="159,90"></label><label>Preço promocional<input value="129,90"></label></div><label>Validade<input type="date"></label><label>Quantidade disponível<input type="number" value="10"></label><button class="btn btn-yellow btn-block" id="publishOffer">Publicar oferta</button><div id="offerMsg"></div></div></main>`;
+  bind();
+  document.getElementById('publishOffer').onclick = () => document.getElementById('offerMsg').innerHTML = '<div class="notice success">Oferta publicada no protótipo.</div>';
+}
+
+function stats() {
+  app.innerHTML = `<main class="app-shell merchant"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Estatísticas</b></div><div class="metric-grid">${metric('eye','Visualizações da loja','1.245','+18% no mês')}${metric('chat','Cliques no WhatsApp','132','+22% no mês')}${metric('heart','Favoritos','86','+11% no mês')}${metric('package','Produtos vistos','856','+15% no mês')}</div><div class="chart-card"><div class="section-title compact-title"><h3>Produtos mais vistos</h3><span>Últimos 30 dias</span></div><div class="bar"><span>Tênis Infantil</span><i style="width:92%"></i><b>342</b></div><div class="bar"><span>Blusinha casual</span><i style="width:67%"></i><b>251</b></div><div class="bar"><span>Bolsa feminina</span><i style="width:41%"></i><b>154</b></div></div></main>`;
+  bind();
+}
+
+function plans() {
+  app.innerHTML = `<main class="app-shell merchant"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Planos da loja</b></div><div class="plans"><div class="plan"><h4>Grátis</h4><div class="amount">R$ 0,00<span>/mês</span></div><ul><li>Até 2 produtos</li><li>Até 2 ofertas por mês</li><li>Página básica</li></ul><button class="btn btn-secondary btn-block">Plano atual</button></div><div class="plan featured"><h4>Premium</h4><div class="amount">R$ 49,90<span>/mês</span></div><ul><li>Produtos ilimitados</li><li>Ofertas ilimitadas</li><li>Selo de destaque</li><li>Prioridade nas categorias</li><li>Estatísticas avançadas</li><li>Página completa da loja</li></ul><button class="btn btn-yellow btn-block">Quero Premium</button></div><div class="plan featured top-plan"><span class="best">Mais visibilidade</span><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><ul><li>Tudo do Premium</li><li>Página completa da loja</li><li>Loja no banner principal da frente do app</li></ul><button class="btn btn-yellow btn-block">Quero aparecer no banner</button></div></div><div class="notice">No MVP, o pagamento será confirmado manualmente por Pix e o administrador ativa o plano.</div></main>`;
+  bind();
+}
+
+function adminLogin() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="profile" aria-label="Voltar">${icon('arrowLeft')}</button><b>Administração</b></div><div class="form-card"><div class="form-intro"><span class="section-icon">${icon('settings')}</span><div><h2>Painel Achou, Comprou</h2><p>Acesso exclusivo para administração da plataforma.</p></div></div><label>E-mail<input value="admin@exemplo.com"></label><label>Senha<input type="password" value="123456"></label><button class="btn btn-yellow btn-block" data-go="admin">Entrar</button><div class="notice">Tela demonstrativa. O acesso real será protegido pelo Supabase Auth.</div></div></main>`;
+  bind();
+}
+
+function admin() {
+  const pending = state.stores.filter(s => s.status === 'aguardando').length;
+  app.innerHTML = `<main class="app-shell merchant"><div class="merchant-top"><span class="eyebrow">Administração</span><h1>Painel Achou, Comprou</h1><p>Controle lojas, planos, produtos e banners.</p></div><div class="metric-grid">${metric('store','Lojas',state.stores.length)}${metric('clock','Aguardando',pending)}${metric('package','Produtos','642')}${metric('card','Planos pagos','24')}</div><div class="merchant-actions"><button data-go="adminStores"><span>${icon('check')} Aprovar lojas</span><b>›</b></button><button data-go="adminPlans"><span>${icon('card')} Gerenciar planos</span><b>›</b></button><button data-go="adminBanners"><span>${icon('image')} Banner da frente do app</span><b>›</b></button><button><span>${icon('package')} Produtos e ofertas</span><b>›</b></button><button><span>${icon('chart')} Estatísticas gerais</span><b>›</b></button></div><button class="btn btn-secondary btn-block merchant-back" data-go="profile">Sair do administrador</button></main>`;
+  bind();
+}
+
+function adminStores() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="admin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Lojas cadastradas</b></div><div class="content"><div class="list">${state.stores.map((s, i) => `<article class="admin-store"><div><h4>${s.name}</h4><p>${s.cat} · ${s.rating} avaliação · ${s.dist}</p><span class="status ${s.status === 'aprovada' ? 'ok' : 'wait'}">${s.status}</span></div><div class="admin-actions">${s.status === 'aguardando' ? `<button class="approve" data-approve="${i}">Aprovar</button><button>Reprovar</button>` : '<button>Editar</button>'}</div></article>`).join('')}</div></div></main>`;
+  bind();
+  document.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => { state.stores[+b.dataset.approve].status = 'aprovada'; adminStores(); });
+}
+
+function adminPlans() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="admin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Gerenciar planos</b></div><div class="content"><div class="list">${state.stores.filter(s => s.status === 'aprovada').map(s => `<article class="admin-store"><div><h4>${s.name}</h4><p>Plano atual: <b>${s.plan.replace('_', ' + ')}</b></p></div><select><option ${s.plan === 'gratis' ? 'selected' : ''}>Grátis</option><option ${s.plan === 'premium' ? 'selected' : ''}>Premium - R$ 49,90</option><option ${s.plan === 'premium_banner' ? 'selected' : ''}>Premium + Banner - R$ 59,90</option></select></article>`).join('')}</div></div></main>`;
+  bind();
+}
+
+function adminBanners() {
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="admin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Banner principal</b></div><div class="form-card"><div class="notice">Somente lojas Premium + Banner podem aparecer aqui.</div><label>Loja<select><option>Maranhão Calçados</option></select></label><label>Título<input value="Compre no comércio local"></label><label>Mensagem<input value="Ofertas especiais perto de você"></label><label>Início<input type="date"></label><label>Fim<input type="date"></label><button class="btn btn-yellow btn-block" id="saveBanner">Ativar no banner</button><div id="bannerMsg"></div></div></main>`;
+  bind();
+  document.getElementById('saveBanner').onclick = () => document.getElementById('bannerMsg').innerHTML = '<div class="notice success">Banner ativado no protótipo.</div>';
+}
+
+function bind() {
+  document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
+    const go = el.dataset.go;
+    ({ home, search, product, store, profile, merchantLogin, merchantRegister, merchant, merchantProducts, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, fav: favorites }[go] || home)();
+  });
+}
+
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+splash();
