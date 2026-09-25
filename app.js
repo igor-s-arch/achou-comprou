@@ -150,6 +150,15 @@ function normalizeText(value = '') {
 function storePriority(plan) { return ({ premium_banner: 3, premium: 2, gratis: 1 })[plan] || 0; }
 function approvedStores() { return db.merchants.filter(m => m.status === 'aprovada').sort((a,b) => storePriority(b.plan) - storePriority(a.plan)); }
 function storeById(id) { return db.merchants.find(m => m.id === id) || null; }
+function publicPremiumBanners() {
+  const now=Date.now();
+  return (db.banners||[]).filter(b=>{
+    const m=storeById(b.storeId);
+    const starts=!b.start || Number.isNaN(new Date(b.start).getTime()) || new Date(b.start).getTime()<=now;
+    const ends=!b.end || Number.isNaN(new Date(b.end).getTime()) || new Date(b.end).getTime()>now;
+    return !!b.active && starts && ends && m?.status==='aprovada' && m?.plan==='premium_banner';
+  }).sort((a,b)=>(Number(a.order||0)-Number(b.order||0)) || String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+}
 function publicProducts() {
   const approved = new Set(approvedStores().map(m => m.id));
   return db.products.filter(p => p.status === 'ativo' && approved.has(p.storeId));
@@ -425,8 +434,12 @@ function splash() {
 }
 
 function home() {
-  const activeBanner = db.banners.find(b => b.active);
-  const bannerStore = activeBanner ? storeById(activeBanner.storeId) : approvedStores()[0] || null;
+  const premiumBanners = publicPremiumBanners();
+  const bannerItems = premiumBanners.length ? premiumBanners : [{
+    id:'default-banner', storeId:null, title:'Compre perto de você',
+    message:'Produtos, ofertas e lojas da sua cidade em um só lugar.',
+    imageData:'', active:true
+  }];
   const offers = publicOffers();
   const shops = approvedStores();
   const client = currentClient();
@@ -453,10 +466,32 @@ function home() {
       <div class="home-section-head"><div><span>CATEGORIAS</span><h3>O que você procura hoje?</h3></div><button data-go="categories">Ver todas</button></div>
       <div class="cats cats-pro">${cats.map(([i, t, term]) => t === 'Ver todas' ? `<button class="cat" data-go="categories"><i>${icon(i)}</i><span>${t}</span></button>` : `<button class="cat" data-search-term="${term}"><i>${icon(i)}</i><span>${t}</span></button>`).join('')}</div>
 
-      <div class="banner banner-pro" ${bannerStore ? `data-store-id="${bannerStore.id}"` : ''}>
-        <div class="banner-copy"><span class="banner-label">DESTAQUE DA CIDADE</span><small>${bannerStore ? esc(bannerStore.name) : 'Comércio local'}</small><h2>${activeBanner ? esc(activeBanner.title) : 'Compre perto de você'}</h2><p>${activeBanner ? esc(activeBanner.message) : 'Produtos, ofertas e lojas da sua cidade em um só lugar.'}</p><div class="banner-footer"><span>${icon('pin')} Grajaú - MA</span><b>Ver destaque ${icon('arrowRight')}</b></div></div>
-        <div class="banner-mark">AC</div>
-      </div>
+      <section class="banner-carousel" id="homeBannerCarousel" aria-label="Destaques da cidade">
+        <div class="banner-carousel-track" id="homeBannerTrack">
+          ${bannerItems.map((banner,index)=>{
+            const bannerStore=storeById(banner.storeId);
+            const bannerVisual=banner.imageData
+              ? `<div class="banner-media"><img src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Achou, Comprou')}"></div>`
+              : bannerStore?.logoData
+                ? `<div class="banner-media logo"><img src="${esc(bannerStore.logoData)}" alt="Logo ${esc(bannerStore.name)}"></div>`
+                : '<div class="banner-mark">AC</div>';
+            return `<article class="banner banner-pro banner-slide" data-banner-index="${index}">
+              <div class="banner-copy">
+                <span class="banner-label">${bannerStore ? 'PREMIUM + BANNER' : 'DESTAQUE DA CIDADE'}</span>
+                <small>${bannerStore ? esc(bannerStore.name) : 'Comércio local'}</small>
+                <h2>${esc(banner.title||'Compre perto de você')}</h2>
+                <p>${esc(banner.message||'Produtos, ofertas e lojas da sua cidade em um só lugar.')}</p>
+                <div class="banner-footer">
+                  <span>${icon('pin')} Grajaú - MA</span>
+                  ${bannerStore ? `<button class="banner-cta" type="button" data-store-id="${bannerStore.id}">Ver destaque ${icon('arrowRight')}</button>` : '<b>Comércio local</b>'}
+                </div>
+              </div>
+              ${bannerVisual}
+            </article>`;
+          }).join('')}
+        </div>
+        ${bannerItems.length>1?`<div class="banner-carousel-dots" aria-label="Navegação dos banners">${bannerItems.map((_,i)=>`<button type="button" class="${i===0?'active':''}" data-banner-dot="${i}" aria-label="Mostrar banner ${i+1}"></button>`).join('')}</div>`:''}
+      </section>
 
       <div class="home-section-head"><div><span>OFERTAS</span><h3>Perto de você</h3></div><button data-search-term="">Ver todas</button></div>
       <div class="offers home-offers">${offers.length ? offers.slice(0,8).map(({product:p, offer:o, store:m}) => `<article class="card home-product-card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="product-price-row"><span class="price">${money(o.promo)}</span>${o.normal ? `<span class="old">${money(o.normal)}</span>` : ''}</div><div class="store">${esc(m.name)}</div><div class="dist">${icon('pin')} ${esc(m.dist || 'Grajaú')}</div></div></article>`).join('') : '<div class="empty">Nenhuma oferta ativa no momento.</div>'}</div>
@@ -482,6 +517,38 @@ function home() {
   bind();
   document.getElementById('searchBtn').onclick = () => search(document.getElementById('q').value);
   document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(e.target.value); });
+
+  clearInterval(window.__achouBannerTimer);
+  const bannerTrack=document.getElementById('homeBannerTrack');
+  const bannerCarousel=document.getElementById('homeBannerCarousel');
+  const bannerDots=[...document.querySelectorAll('[data-banner-dot]')];
+  let bannerIndex=0;
+  let touchStartX=null;
+  const showBanner=(next)=>{
+    if(!bannerTrack)return;
+    const total=bannerItems.length;
+    bannerIndex=(next+total)%total;
+    bannerTrack.style.transform=`translateX(-${bannerIndex*100}%)`;
+    bannerDots.forEach((dot,i)=>dot.classList.toggle('active',i===bannerIndex));
+  };
+  const restartBannerTimer=()=>{
+    clearInterval(window.__achouBannerTimer);
+    if(bannerItems.length<2)return;
+    window.__achouBannerTimer=setInterval(()=>{
+      if(!document.body.contains(bannerTrack)){clearInterval(window.__achouBannerTimer);return;}
+      showBanner(bannerIndex+1);
+    },4800);
+  };
+  bannerDots.forEach(dot=>dot.onclick=()=>{showBanner(Number(dot.dataset.bannerDot));restartBannerTimer();});
+  bannerCarousel?.addEventListener('touchstart',e=>{touchStartX=e.touches?.[0]?.clientX ?? null;},{passive:true});
+  bannerCarousel?.addEventListener('touchend',e=>{
+    if(touchStartX===null)return;
+    const endX=e.changedTouches?.[0]?.clientX ?? touchStartX;
+    const delta=endX-touchStartX;
+    touchStartX=null;
+    if(Math.abs(delta)>42){showBanner(bannerIndex+(delta<0?1:-1));restartBannerTimer();}
+  },{passive:true});
+  restartBannerTimer();
 }
 
 function search(q = '') {
@@ -1284,13 +1351,98 @@ function adminPlans() {
 function adminBanners() {
   if (!db.session.admin) return adminLogin();
   const eligible = db.merchants.filter(m=>m.status==='aprovada'&&m.plan==='premium_banner');
-  const active = db.banners.find(b=>b.active);
-  const activeStore = active ? storeById(active.storeId) : null;
-  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">${adminHeader('Banner principal','Destaque da página inicial')}<section class="admin-content"><div class="admin-banner-preview"><span>PRÉVIA DO BANNER</span><div><small>${activeStore?esc(activeStore.name):'Comércio local'}</small><h2>${active?esc(active.title):'Compre perto de você'}</h2><p>${active?esc(active.message):'Produtos e ofertas da sua cidade em um só lugar.'}</p></div></div><form class="admin-form-card" id="bannerForm"><div class="admin-form-heading"><span>${icon('image')}</span><div><b>Configurar destaque</b><small>Somente lojas Premium + Banner são elegíveis.</small></div></div>${eligible.length?`<label>Loja<select id="bannerStore">${eligible.map(m=>`<option value="${m.id}" ${active?.storeId===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select></label><label>Título<input id="bannerTitle" maxlength="60" value="${esc(active?.title||'Compre no comércio local')}"></label><label>Mensagem<input id="bannerMessage" maxlength="90" value="${esc(active?.message||'Ofertas especiais perto de você')}"></label><div class="admin-form-actions"><button class="btn btn-yellow" type="submit">Publicar banner</button>${active?'<button class="btn btn-secondary" type="button" id="disableBanner">Desativar</button>':''}</div><div id="bannerMsg"></div>`:'<div class="admin-empty">Nenhuma loja aprovada está no plano Premium + Banner.</div>'}</form></section>${adminNav('banners')}</main>`;
+  const eligibleIds=new Set(eligible.map(m=>m.id));
+  const activeBanners=(db.banners||[]).filter(b=>b.active&&eligibleIds.has(b.storeId));
+  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">
+    ${adminHeader('Banners da Home','Carrossel Premium + Banner')}
+    <section class="admin-content">
+      <div class="admin-summary-strip three">
+        <div><small>Lojas elegíveis</small><strong>${eligible.length}</strong></div>
+        <div><small>Banners ativos</small><strong>${activeBanners.length}</strong></div>
+        <div><small>Rotação</small><strong>4,8s</strong></div>
+      </div>
+
+      <div class="admin-banner-preview carousel-mode">
+        <span>COMO APARECE NA HOME</span>
+        <div><small>Premium + Banner</small><h2>Banners em movimento</h2><p>As lojas ativas passam automaticamente e também podem ser arrastadas para o lado.</p></div>
+      </div>
+
+      <form class="admin-form-card" id="bannerForm">
+        <div class="admin-form-heading"><span>${icon('image')}</span><div><b>Novo destaque</b><small>Somente lojas aprovadas no Premium + Banner.</small></div></div>
+        ${eligible.length?`
+          <label>Loja<select id="bannerStore">${eligible.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></label>
+          <label>Título<input id="bannerTitle" maxlength="60" value="Oferta especial perto de você"></label>
+          <label>Mensagem<input id="bannerMessage" maxlength="100" value="Veja as novidades desta loja no Achou, Comprou."></label>
+          <div class="product-media-field">
+            <label class="media-label">Arte do banner (opcional)</label>
+            <input class="media-file-input" id="bannerImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="media-picker cover admin-banner-image-picker" type="button" id="bannerImagePreview"></button>
+            <small>Se não enviar uma arte, o sistema usa a identidade visual da loja.</small>
+          </div>
+          <label>Exibir até (opcional)<input id="bannerEndDate" type="date"></label>
+          <div class="admin-form-actions"><button class="btn btn-yellow" type="submit">Adicionar ao carrossel</button></div>
+          <div id="bannerMsg"></div>
+        `:'<div class="admin-empty">Nenhuma loja aprovada está no plano Premium + Banner.</div>'}
+      </form>
+
+      <div class="admin-section-head"><div><span>CARROSSEL ATIVO</span><h2>Destaques publicados</h2></div></div>
+      <div class="admin-banner-list">
+        ${activeBanners.length?activeBanners.map(b=>{const m=storeById(b.storeId);return `
+          <article class="admin-banner-item">
+            <div class="admin-banner-thumb">${b.imageData?`<img src="${esc(b.imageData)}" alt="">`:`<span>${esc((m?.name||'A').slice(0,2).toUpperCase())}</span>`}</div>
+            <div><small>${esc(m?.name||'Loja')}</small><b>${esc(b.title||'Destaque')}</b><span>${b.end?`Até ${new Date(b.end).toLocaleDateString('pt-BR')}`:'Sem data final'}</span></div>
+            <button class="btn btn-secondary admin-banner-remove" type="button" data-disable-banner="${b.id}">Retirar</button>
+          </article>`;
+        }).join(''):'<div class="admin-empty">Nenhum banner ativo. A Home mostra o destaque padrão.</div>'}
+      </div>
+    </section>
+    ${adminNav('banners')}
+  </main>`;
   bind();
   if (!eligible.length) return;
-  document.getElementById('bannerForm').onsubmit=async e=>{e.preventDefault();const payload={storeId:document.getElementById('bannerStore').value,title:document.getElementById('bannerTitle').value.trim(),message:document.getElementById('bannerMessage').value.trim()};if(window.ACCloud?.enabled){const result=await window.ACCloud.publishBanner(payload);if(!result.ok){document.getElementById('bannerMsg').innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível publicar o banner.')}</div>`;return;}db.banners.forEach(b=>b.active=false);db.banners.push(result.banner);}else{db.banners.forEach(b=>b.active=false);db.banners.push({id:id('banner'),...payload,active:true});}saveDb();adminBanners();};
-  document.getElementById('disableBanner')?.addEventListener('click',async()=>{if(window.ACCloud?.enabled){const result=await window.ACCloud.disableBanners();if(!result.ok){alert(result.message||'Não foi possível desativar o banner.');return;}}db.banners.forEach(b=>b.active=false);saveDb();adminBanners();});
+
+  const bannerImagePicker=bindImagePicker('bannerImageFile','bannerImagePreview',{maxW:1400,maxH:700,quality:.82,emptyTitle:'Adicionar arte',emptyText:'Imagem horizontal'});
+
+  document.getElementById('bannerForm').onsubmit=async e=>{
+    e.preventDefault();
+    const msg=document.getElementById('bannerMsg');
+    const submit=e.currentTarget.querySelector('button[type="submit"]');
+    const payload={
+      storeId:document.getElementById('bannerStore').value,
+      title:document.getElementById('bannerTitle').value.trim(),
+      message:document.getElementById('bannerMessage').value.trim(),
+      imageData:bannerImagePicker.get(),
+      endDate:document.getElementById('bannerEndDate').value
+    };
+    if(!payload.title){msg.innerHTML='<div class="notice error">Informe um título para o banner.</div>';return;}
+
+    if(window.ACCloud?.enabled){
+      submit.disabled=true;msg.innerHTML='<div class="notice">Publicando no carrossel...</div>';
+      const result=await window.ACCloud.publishBanner(payload);
+      submit.disabled=false;
+      if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível publicar o banner.')}</div>`;return;}
+      db.banners.forEach(b=>{if(b.storeId===payload.storeId)b.active=false;});
+      db.banners.push(result.banner);
+    }else{
+      db.banners.forEach(b=>{if(b.storeId===payload.storeId)b.active=false;});
+      db.banners.push({id:id('banner'),...payload,active:true,start:new Date().toISOString(),end:payload.endDate?`${payload.endDate}T23:59:59`:'',createdAt:new Date().toISOString()});
+    }
+    saveDb();
+    adminBanners();
+  };
+
+  document.querySelectorAll('[data-disable-banner]').forEach(btn=>btn.onclick=async()=>{
+    const bannerId=btn.dataset.disableBanner;
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;
+      const result=await window.ACCloud.setBannerActive(bannerId,false);
+      if(!result.ok){btn.disabled=false;alert(result.message||'Não foi possível retirar o banner.');return;}
+    }
+    const local=(db.banners||[]).find(b=>b.id===bannerId);
+    if(local)local.active=false;
+    saveDb();
+    adminBanners();
+  });
 }
 
 function adminCatalog() {
