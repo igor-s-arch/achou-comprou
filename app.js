@@ -816,7 +816,7 @@ function merchantRegister() {
       <label>Razão social<input id="regLegalName" required placeholder="Razão social registrada no CNPJ"></label>
       <div class="two-cols merchant-legal-grid">
         <label>CNPJ<input id="regCnpj" required inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"></label>
-        <label>Inscrição estadual<input id="regStateRegistration" required placeholder="Número ou ISENTO"></label>
+        <label class="notranslate" translate="no">Inscrição Estadual<input id="regStateRegistration" required placeholder="Número ou ISENTO"></label>
       </div>
       <label>Endereço completo<input id="regAddress" required placeholder="Rua, número, bairro, cidade - UF"></label>
 
