@@ -91,6 +91,46 @@ function paymentStatusLabel(status){return ({aguardando:'Aguardando PIX',em_anal
 function paymentStatusClass(status){return ({pago:'ok',em_analise:'wait',aguardando:'wait',recusado:'bad',cancelado:'blocked',vencido:'bad'})[status]||'wait';}
 function paymentById(id){return (db.payments||[]).find(p=>p.id===id)||null;}
 
+function pixEmvField(id,value){
+  const text=String(value??'');
+  return `${id}${String(text.length).padStart(2,'0')}${text}`;
+}
+function pixText(value,maxLength){
+  return String(value||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9 ]+/g,' ')
+    .replace(/\s+/g,' ').trim().slice(0,maxLength);
+}
+function pixCrc16(payload){
+  let crc=0xFFFF;
+  for(let i=0;i<payload.length;i++){
+    crc^=payload.charCodeAt(i)<<8;
+    for(let bit=0;bit<8;bit++) crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);
+    crc&=0xFFFF;
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+function buildPixCopyPaste({key,name,city,amount}){
+  const pixKey=String(key||'').trim();
+  if(!pixKey)return '';
+  const merchantAccount=pixEmvField('00','br.gov.bcb.pix')+pixEmvField('01',pixKey);
+  const merchantName=pixText(name||'ACHOU COMPROU',25)||'ACHOU COMPROU';
+  const merchantCity=pixText(city||'GRAJAU',15)||'GRAJAU';
+  const value=Number(amount||0);
+  let payload=
+    pixEmvField('00','01')+
+    pixEmvField('26',merchantAccount)+
+    pixEmvField('52','0000')+
+    pixEmvField('53','986')+
+    (value>0?pixEmvField('54',value.toFixed(2)):'')+
+    pixEmvField('58','BR')+
+    pixEmvField('59',merchantName)+
+    pixEmvField('60',merchantCity)+
+    pixEmvField('62',pixEmvField('05','***'))+
+    '6304';
+  return payload+pixCrc16(payload);
+}
+
 
 const STORE_WEEK_DAYS=[
   {key:'seg',label:'Segunda-feira',short:'Seg'},
@@ -1434,6 +1474,10 @@ async function merchantPayment(paymentId) {
       <section class="payment-pix-card">
         <div class="payment-section-title"><span>1</span><div><b>Faça o PIX</b><small>Valor exato: ${brlNumber(payment.value)}</small></div></div>
         ${cfg.pixKey?`
+          <div class="pix-qr-wrap">
+            <div class="pix-qr-box"><canvas id="pixQrCanvas" width="220" height="220" aria-label="QR Code PIX"></canvas><small id="pixQrStatus">Aponte a câmera do banco para o QR Code</small></div>
+            <div class="pix-copy-card"><small>PIX COPIA E COLA</small><textarea id="pixCopyPaste" readonly aria-label="PIX copia e cola"></textarea><button type="button" id="copyPixPayload">Copiar código PIX</button></div>
+          </div>
           <div class="pix-key-box"><small>CHAVE PIX</small><strong id="pixKeyText">${esc(cfg.pixKey)}</strong><button type="button" id="copyPixKey">Copiar chave</button></div>
           <div class="pix-owner"><b>${esc(cfg.pixName||'Beneficiário não informado')}</b><span>${esc(cfg.pixCity||'Grajaú - MA')}</span></div>
         `:'<div class="notice error">A chave PIX ainda não foi configurada pelo administrador.</div>'}
@@ -1453,6 +1497,24 @@ async function merchantPayment(paymentId) {
     ${merchantNav('plan')}
   </main>`;
   bind();
+  const pixPayload=cfg.pixKey?buildPixCopyPaste({key:cfg.pixKey,name:cfg.pixName,city:cfg.pixCity,amount:payment.value}):'';
+  const pixTextArea=document.getElementById('pixCopyPaste');
+  if(pixTextArea)pixTextArea.value=pixPayload;
+  const pixCanvas=document.getElementById('pixQrCanvas');
+  const pixQrStatus=document.getElementById('pixQrStatus');
+  if(pixCanvas&&pixPayload){
+    if(window.QRCode?.toCanvas){
+      window.QRCode.toCanvas(pixCanvas,pixPayload,{width:220,margin:2,errorCorrectionLevel:'M'},err=>{
+        if(err&&pixQrStatus)pixQrStatus.textContent='Não foi possível gerar o QR Code. Use o PIX copia e cola.';
+      });
+    }else if(pixQrStatus){
+      pixQrStatus.textContent='QR Code indisponível. Use o PIX copia e cola.';
+    }
+  }
+  document.getElementById('copyPixPayload')?.addEventListener('click',async e=>{
+    if(!pixPayload)return;
+    try{await navigator.clipboard.writeText(pixPayload);e.currentTarget.textContent='Código copiado';setTimeout(()=>e.currentTarget.textContent='Copiar código PIX',1400);}catch(_){pixTextArea?.select();document.execCommand?.('copy');}
+  });
   document.getElementById('copyPixKey')?.addEventListener('click',async e=>{
     try{await navigator.clipboard.writeText(cfg.pixKey);e.currentTarget.textContent='Copiado';setTimeout(()=>e.currentTarget.textContent='Copiar chave',1200);}catch(_){alert('Copie a chave PIX exibida na tela.');}
   });
@@ -1584,7 +1646,7 @@ async function adminPlans() {
       ${expiring?`<div class="admin-alert show">${icon('clock')}<div><b>${expiring} ${expiring===1?'assinatura vence':'assinaturas vencem'} em até 7 dias</b><span>Confira as renovações para evitar perda dos benefícios.</span></div></div>`:''}
 
       <form class="admin-form-card pix-admin-card" id="pixConfigForm">
-        <div class="admin-form-heading"><span>${icon('card')}</span><div><b>Configuração do PIX</b><small>Essa chave será mostrada somente ao lojista que gerar um pagamento.</small></div></div>
+        <div class="admin-form-heading"><span>${icon('card')}</span><div><b>Configuração do PIX</b><small>A chave fica visível apenas no pagamento e o QR Code é gerado automaticamente com o valor do plano.</small></div></div>
         <label>Chave PIX<input id="adminPixKey" value="${esc(config.pixKey||'')}" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"></label>
         <div class="two-cols"><label>Nome do beneficiário<input id="adminPixName" value="${esc(config.pixName||'')}" placeholder="Nome que aparece no PIX"></label><label>Cidade<input id="adminPixCity" value="${esc(config.pixCity||'Grajaú - MA')}" placeholder="Grajaú - MA"></label></div>
         <label>Instrução<textarea id="adminPixInstruction" placeholder="Orientação para o lojista">${esc(config.instruction||'Após fazer o PIX, envie o comprovante para análise.')}</textarea></label>
