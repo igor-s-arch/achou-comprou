@@ -1186,6 +1186,26 @@ function metric(iconName, label, value, small = '') {
   return `<div class="metric"><div class="metric-top"><span class="metric-icon">${icon(iconName)}</span><span>${label}</span></div><strong>${value}</strong>${small ? `<small>${small}</small>` : ''}</div>`;
 }
 
+function merchantDeviceClass(){
+  const width=window.innerWidth || document.documentElement.clientWidth || 390;
+  const coarse=window.matchMedia?.('(pointer: coarse)')?.matches || false;
+  if(width>=1024 && !coarse)return 'merchant-desktop';
+  if(width>=700)return 'merchant-tablet';
+  return 'merchant-mobile';
+}
+function merchantDeviceLabel(){
+  const mode=merchantDeviceClass();
+  return mode==='merchant-desktop'?'Computador':mode==='merchant-tablet'?'Tablet':'Celular';
+}
+function applyMerchantDeviceMode(){
+  const shell=document.querySelector('.merchant');
+  if(!shell)return;
+  shell.classList.remove('merchant-mobile','merchant-tablet','merchant-desktop');
+  shell.classList.add(merchantDeviceClass());
+  const chip=document.querySelector('[data-merchant-device-label]');
+  if(chip)chip.textContent=merchantDeviceLabel();
+}
+
 function merchantNav(active = 'dashboard') {
   const items = [
     ['merchant','home','Painel','dashboard'],
@@ -1208,15 +1228,21 @@ function merchant() {
   const lastProducts = products.slice(-3).reverse();
   const lastOffer = offers.slice(-1)[0];
   const pending = m.status !== 'aprovada' ? `<div class="merchant-alert">${icon('clock')}<div><b>${statusText}</b><span>Você pode preparar produtos e ofertas. A loja só aparece para clientes depois da aprovação.</span></div></div>` : '';
+  const heroCover=m.coverData?`<img class="merchant-dash-cover" src="${esc(m.coverData)}" alt="">`:'';
+  const shopLogo=m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:icon('store');
 
-  app.innerHTML = `<main class="app-shell merchant merchant-dashboard-pro">
-    <header class="merchant-dash-hero">
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-dashboard-pro">
+    <header class="merchant-dash-hero ${m.coverData?'has-cover':''}">
+      ${heroCover}<div class="merchant-dash-overlay"></div>
       <div class="merchant-dash-brand">
         <div><span>PAINEL DO LOJISTA</span><b>Achou, Comprou</b></div>
-        <button class="merchant-ghost-icon" data-store-id="${m.id}" aria-label="Ver loja pública">${icon('eye')}</button>
+        <div class="merchant-dash-tools">
+          <span class="merchant-device-chip">${icon('grid')} <b data-merchant-device-label>${merchantDeviceLabel()}</b></span>
+          <button class="merchant-ghost-icon" data-store-id="${m.id}" aria-label="Ver loja pública">${icon('eye')}</button>
+        </div>
       </div>
       <div class="merchant-shop-main">
-        <div class="merchant-shop-avatar">${icon('store')}</div>
+        <div class="merchant-shop-avatar ${m.logoData?'with-logo':''}">${shopLogo}</div>
         <div class="merchant-shop-copy"><h1>${esc(m.name)}</h1><p>${esc(m.category)}</p><div class="merchant-status ${statusClass}"><i></i>${statusText}</div></div>
       </div>
       <div class="merchant-plan-strip"><div><small>PLANO ATUAL</small><strong>${planText}</strong>${m.requestedPlan ? `<span>${planLabel(m.requestedPlan)} solicitado</span>` : ''}</div><button data-go="plans">Gerenciar ${icon('arrowRight')}</button></div>
@@ -1236,19 +1262,21 @@ function merchant() {
       <div class="merchant-quick-grid">
         <button class="primary" data-go="productForm"><span>${icon('plus')}</span><div><b>Novo produto</b><small>Adicionar ao catálogo</small></div>${icon('arrowRight','merchant-arrow')}</button>
         <button data-go="offerForm"><span>${icon('flame')}</span><div><b>Nova oferta</b><small>Criar promoção</small></div>${icon('arrowRight','merchant-arrow')}</button>
-        <button data-go="merchantStore"><span>${icon('store')}</span><div><b>Minha loja</b><small>Editar informações</small></div>${icon('arrowRight','merchant-arrow')}</button>
+        <button data-go="merchantStore"><span>${icon('store')}</span><div><b>Minha loja</b><small>Logo, capa e informações</small></div>${icon('arrowRight','merchant-arrow')}</button>
         <button data-go="stats"><span>${icon('chart')}</span><div><b>Estatísticas</b><small>Acompanhar desempenho</small></div>${icon('arrowRight','merchant-arrow')}</button>
       </div>
 
-      <section class="merchant-panel-card">
-        <div class="merchant-panel-head"><div><span>CATÁLOGO</span><h3>Produtos recentes</h3></div><button data-go="merchantProducts">Ver todos</button></div>
-        <div class="merchant-recent-list">${lastProducts.length ? lastProducts.map(p => `<button data-product-id="${p.id}"><div class="merchant-product-thumb">${productMedia(p, true)}</div><div><b>${esc(p.name)}</b><span>${categoryLabel(p.type)} · ${money(p.promo || p.price)}</span></div><i class="merchant-mini-status ${p.status === 'ativo' ? 'on' : ''}">${p.status === 'ativo' ? 'Ativo' : 'Pausado'}</i></button>`).join('') : `<div class="merchant-empty-mini"><b>Seu catálogo está vazio</b><span>Cadastre o primeiro produto para começar.</span><button data-go="productForm">Cadastrar produto</button></div>`}</div>
-      </section>
+      <div class="merchant-dashboard-panels">
+        <section class="merchant-panel-card">
+          <div class="merchant-panel-head"><div><span>CATÁLOGO</span><h3>Produtos recentes</h3></div><button data-go="merchantProducts">Ver todos</button></div>
+          <div class="merchant-recent-list">${lastProducts.length ? lastProducts.map(p => `<button data-product-id="${p.id}"><div class="merchant-product-thumb">${productMedia(p, true)}</div><div><b>${esc(p.name)}</b><span>${categoryLabel(p.type)} · ${money(p.promo || p.price)}</span></div><i class="merchant-mini-status ${p.status === 'ativo' ? 'on' : ''}">${p.status === 'ativo' ? 'Ativo' : 'Pausado'}</i></button>`).join('') : `<div class="merchant-empty-mini"><b>Seu catálogo está vazio</b><span>Cadastre o primeiro produto para começar.</span><button data-go="productForm">Cadastrar produto</button></div>`}</div>
+        </section>
 
-      <section class="merchant-panel-card">
-        <div class="merchant-panel-head"><div><span>PROMOÇÕES</span><h3>Oferta em destaque</h3></div><button data-go="merchantOffers">Gerenciar</button></div>
-        ${lastOffer ? (() => { const p = db.products.find(x => x.id === lastOffer.productId); return `<div class="merchant-offer-highlight"><div><small>${p ? esc(p.name) : 'Produto'}</small><strong>${money(lastOffer.promo)}</strong><span>de ${money(lastOffer.normal)} · até ${lastOffer.validUntil ? new Date(lastOffer.validUntil+'T12:00:00').toLocaleDateString('pt-BR') : 'sem validade'}</span></div><div class="merchant-offer-badge">ATIVA</div></div>`; })() : `<div class="merchant-empty-line"><span>Nenhuma oferta ativa no momento.</span><button data-go="offerForm">Criar oferta</button></div>`}
-      </section>
+        <section class="merchant-panel-card">
+          <div class="merchant-panel-head"><div><span>PROMOÇÕES</span><h3>Oferta em destaque</h3></div><button data-go="merchantOffers">Gerenciar</button></div>
+          ${lastOffer ? (() => { const p = db.products.find(x => x.id === lastOffer.productId); return `<div class="merchant-offer-highlight"><div><small>${p ? esc(p.name) : 'Produto'}</small><strong>${money(lastOffer.promo)}</strong><span>de ${money(lastOffer.normal)} · até ${lastOffer.validUntil ? new Date(lastOffer.validUntil+'T12:00:00').toLocaleDateString('pt-BR') : 'sem validade'}</span></div><div class="merchant-offer-badge">ATIVA</div></div>`; })() : `<div class="merchant-empty-line"><span>Nenhuma oferta ativa no momento.</span><button data-go="offerForm">Criar oferta</button></div>`}
+        </section>
+      </div>
 
       <button class="merchant-logout-link" id="merchantLogout">${icon('arrowLeft')} Sair da área do lojista</button>
     </section>
@@ -1260,7 +1288,7 @@ function merchant() {
 function merchantProducts() {
   const m = currentMerchant(); if (!m) return merchantLogin(); const products = merchantProductsFor(m.id);
   const activeCount = products.filter(p => p.status === 'ativo').length;
-  app.innerHTML = `<main class="app-shell merchant merchant-subpage">
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage">
     <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>CATÁLOGO</span><b>Meus produtos</b></div><button class="merchant-add-small" data-go="productForm">${icon('plus')} Novo</button></div>
     <section class="merchant-sub-body">
       <div class="merchant-summary-card"><div><small>Produtos cadastrados</small><strong>${products.length}</strong></div><div><small>Ativos</small><strong>${activeCount}</strong></div><div><small>Plano</small><strong>${planLabel(m.plan)}</strong></div></div>
@@ -1287,7 +1315,7 @@ function merchantOffers() {
   const offers = merchantOffersFor(m.id).slice().reverse();
   const activeCount = offers.filter(o => o.active).length;
   const used = m.plan === 'gratis' ? Math.min(offers.length, 2) : offers.length;
-  app.innerHTML = `<main class="app-shell merchant merchant-subpage">
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage">
     <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>PROMOÇÕES</span><b>Minhas ofertas</b></div><button class="merchant-add-small" data-go="offerForm">${icon('plus')} Nova</button></div>
     <section class="merchant-sub-body">
       <div class="merchant-summary-card"><div><small>Ofertas ativas</small><strong>${activeCount}</strong></div><div><small>${m.plan === 'gratis' ? 'Uso mensal' : 'Publicadas'}</small><strong>${m.plan === 'gratis' ? `${used}/2` : offers.length}</strong></div><div><small>Plano</small><strong>${planLabel(m.plan)}</strong></div></div>
@@ -1302,7 +1330,7 @@ function merchantOffers() {
 
 function merchantStore() {
   const m = currentMerchant(); if (!m) return merchantLogin();
-  app.innerHTML = `<main class="app-shell merchant merchant-subpage">
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage">
     <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>PERFIL COMERCIAL</span><b>Minha loja</b></div><button class="merchant-view-store" data-store-id="${m.id}">${icon('eye')}</button></div>
     <section class="merchant-sub-body">
       <div class="merchant-store-card"><div class="merchant-store-avatar ${m.logoData ? 'with-logo' : ''}">${m.logoData ? `<img src="${m.logoData}" alt="Logo ${esc(m.name)}">` : icon('store')}</div><div><span>${esc(m.category)}</span><h2>${esc(m.name)}</h2><p>${m.status === 'aprovada' ? 'Loja publicada no aplicativo' : 'Aguardando aprovação'}</p></div></div>
@@ -1472,7 +1500,7 @@ async function stats() {
   const contacts=products.map(p=>({p,n:whatsappByProduct[p.id]||0})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
   const max=Math.max(1,...ranked.map(x=>x.n));
   const contactMax=Math.max(1,...contacts.map(x=>x.n));
-  app.innerHTML = `<main class="app-shell merchant"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Estatísticas</b></div>
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()}"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Estatísticas</b></div>
   <div class="report-period"><b>Resultados dos últimos 30 dias</b><span>Use estes números para acompanhar o retorno do Achou, Comprou.</span></div>
   <div class="metric-grid">
     ${metric('user','Pessoas alcançadas',String(uniqueVisitors30),'Visitantes únicos')}
@@ -1491,7 +1519,7 @@ async function plans() {
   if(window.ACCloud?.enabled) await syncMerchantPayments(m.id);
   const history=(db.payments||[]).filter(p=>p.storeId===m.id).slice(0,4);
   const expiry=m.plan!=='gratis'&&m.planExpiresAt?`<div class="plan-expiry-note">Ativo até <b>${formatDateBR(m.planExpiresAt)}</b></div>`:'';
-  app.innerHTML = `<main class="app-shell merchant plans-page">
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} plans-page">
     <div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Meu plano</b></div>
     <header class="plans-hero compact"><span>PLANO ATUAL: ${planLabel(m.plan).toUpperCase()}</span><h1>Escolha o nível de presença da sua loja.</h1><p>Planos pagos são liberados por 30 dias após a confirmação do PIX.</p>${expiry}</header>
     <section class="plans-wrap">${planCards('account')}<div id="planMsg" class="plans-note">${m.status!=='aprovada'?'Sua loja precisa ser aprovada antes de realizar o pagamento.':'Escolha um plano pago para gerar a solicitação de PIX.'}</div></section>
@@ -1529,7 +1557,7 @@ async function merchantPayment(paymentId) {
   const cfg=db.paymentConfig||{};
   const paid=payment.status==='pago';
   const reviewing=payment.status==='em_analise';
-  app.innerHTML=`<main class="app-shell merchant payment-page">
+  app.innerHTML=`<main class="app-shell merchant ${merchantDeviceClass()} payment-page">
     <div class="page-head"><button class="back" data-go="plans" aria-label="Voltar">${icon('arrowLeft')}</button><b>Pagamento do plano</b></div>
     <section class="payment-hero">
       <span>${planLabel(payment.plan).toUpperCase()}</span>
@@ -2095,6 +2123,7 @@ function adminCatalog() {
 }
 function bind() {
   applyAdminDeviceMode();
+  applyMerchantDeviceMode();
   document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
     const go = el.dataset.go;
     ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, adminSettings, fav: favorites }[go] || home)();
@@ -2133,7 +2162,10 @@ async function bootstrapCloudSession(){
 let adminDeviceResizeTimer=0;
 window.addEventListener('resize',()=>{
   clearTimeout(adminDeviceResizeTimer);
-  adminDeviceResizeTimer=setTimeout(applyAdminDeviceMode,120);
+  adminDeviceResizeTimer=setTimeout(()=>{
+    applyAdminDeviceMode();
+    applyMerchantDeviceMode();
+  },120);
 });
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 if(window.ACCloud?.enabled){
