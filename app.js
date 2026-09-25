@@ -1801,8 +1801,9 @@ async function bootstrapCloudSession(){
   const session=await window.ACCloud.getSession();
   if(!session?.user){db.session.clientId=null;db.session.merchantId=null;db.session.admin=false;saveDb();return;}
   const profile=await window.ACCloud.getProfile(session.user.id);
-  if(profile?.tipo==='admin'){
-    db.session.admin=true;db.session.clientId=null;db.session.merchantId=null;await syncCloudAdminData();
+  const adminAllowed=db.session.admin ? await window.ACCloud.isCurrentUserAdmin?.() : false;
+  if(profile?.tipo==='admin' || adminAllowed){
+    db.session.admin=true;db.session.clientId=null;db.session.merchantId=null;await syncCloudAdminData();await syncAdminPayments();
   } else if(profile?.tipo==='comerciante'){
     db.session.admin=false;
     let store=await window.ACCloud.getMerchantStore(session.user.id);
