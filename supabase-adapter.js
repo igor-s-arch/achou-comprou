@@ -813,6 +813,7 @@
 
     async merchantStats(storeId){
       if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
+      const session=await api.getSession();
       const [events,ratings]=await Promise.all([
         client.from('eventos').select('tipo,produto_id,user_id,metadata,created_at').eq('loja_id',storeId),
         client.from('avaliacoes_lojas').select('nota,updated_at').eq('loja_id',storeId)
@@ -827,6 +828,7 @@
       const whatsappByProduct={};
       const visitors30=new Set();
       rows.forEach(r=>{
+        if(r.user_id && r.user_id===session?.user?.id)return;
         if(Object.prototype.hasOwnProperty.call(counts,r.tipo))counts[r.tipo]++;
         const recent=new Date(r.created_at||0).getTime()>=since30;
         if(recent&&Object.prototype.hasOwnProperty.call(counts30,r.tipo))counts30[r.tipo]++;
@@ -845,15 +847,18 @@
     async adminAnalytics(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const session=await api.getSession();
-      const [profiles,events,ratings]=await Promise.all([
+      const [profiles,events,ratings,admins]=await Promise.all([
         client.from('perfis').select('user_id,tipo,created_at'),
         client.from('eventos').select('tipo,loja_id,produto_id,user_id,metadata,created_at'),
-        client.from('avaliacoes_lojas').select('loja_id,nota,updated_at')
+        client.from('avaliacoes_lojas').select('loja_id,nota,updated_at'),
+        client.from('administradores').select('user_id')
       ]);
-      const error=profiles.error||events.error||ratings.error;
+      const error=profiles.error||events.error||ratings.error||admins.error;
       if(error)return {ok:false,message:errorMessage(error)};
-      const currentUser=session?.user?.id||'';
-      const registeredClients=(profiles.data||[]).filter(p=>p.tipo==='cliente'&&p.user_id!==currentUser).length;
+      const adminIds=new Set((admins.data||[]).map(a=>a.user_id));
+      const merchantIds=new Set((profiles.data||[]).filter(p=>p.tipo==='comerciante').map(p=>p.user_id));
+      const excludedIds=new Set([...adminIds,...merchantIds]);
+      const registeredClients=(profiles.data||[]).filter(p=>p.tipo==='cliente'&&!adminIds.has(p.user_id)).length;
       const since30=Date.now()-30*86400000;
       const visitors30=new Set();
       const stores={};
@@ -864,6 +869,7 @@
         return stores[id];
       };
       (events.data||[]).forEach(r=>{
+        if(r.user_id && excludedIds.has(r.user_id))return;
         const ts=new Date(r.created_at||0).getTime();
         const recent=ts>=since30;
         const visitor=r.user_id||r.metadata?.visitor_id;
