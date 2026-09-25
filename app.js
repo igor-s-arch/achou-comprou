@@ -1377,13 +1377,97 @@ async function stats() {
   bind();
 }
 
-function plans() {
+async function plans() {
   const m = currentMerchant(); if (!m) return merchantLogin();
-  app.innerHTML = `<main class="app-shell merchant plans-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Meu plano</b></div><header class="plans-hero compact"><span>PLANO ATUAL: ${planLabel(m.plan).toUpperCase()}</span><h1>Escolha o nível de presença da sua loja.</h1><p>Você pode solicitar uma mudança a qualquer momento.</p></header><section class="plans-wrap">${planCards('account')}<div id="planMsg" class="plans-note">No MVP, os planos pagos são confirmados manualmente por Pix e ativados pelo administrador.</div></section>${merchantNav('plan')}</main>`;
-  bind(); document.querySelectorAll('[data-request-plan]').forEach(btn => btn.onclick = async () => {
+  if(window.ACCloud?.enabled) await syncMerchantPayments(m.id);
+  const history=(db.payments||[]).filter(p=>p.storeId===m.id).slice(0,4);
+  const expiry=m.plan!=='gratis'&&m.planExpiresAt?`<div class="plan-expiry-note">Ativo até <b>${formatDateBR(m.planExpiresAt)}</b></div>`:'';
+  app.innerHTML = `<main class="app-shell merchant plans-page">
+    <div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Meu plano</b></div>
+    <header class="plans-hero compact"><span>PLANO ATUAL: ${planLabel(m.plan).toUpperCase()}</span><h1>Escolha o nível de presença da sua loja.</h1><p>Planos pagos são liberados por 30 dias após a confirmação do PIX.</p>${expiry}</header>
+    <section class="plans-wrap">${planCards('account')}<div id="planMsg" class="plans-note">${m.status!=='aprovada'?'Sua loja precisa ser aprovada antes de realizar o pagamento.':'Escolha um plano pago para gerar a solicitação de PIX.'}</div></section>
+    ${history.length?`<section class="merchant-payment-history"><div class="section-title"><h3>Pagamentos</h3><a>Histórico</a></div>${history.map(p=>`<button class="payment-history-row" data-payment-open="${p.id}"><div><b>${planLabel(p.plan)}</b><small>${formatDateBR(p.requestedAt)} · ${brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></button>`).join('')}</section>`:''}
+    ${merchantNav('plan')}
+  </main>`;
+  bind();
+  document.querySelectorAll('[data-payment-open]').forEach(btn=>btn.onclick=()=>merchantPayment(btn.dataset.paymentOpen));
+  document.querySelectorAll('[data-request-plan]').forEach(btn => btn.onclick = async () => {
     const requested=btn.dataset.requestPlan;
-    if(window.ACCloud?.enabled){btn.disabled=true;const result=await window.ACCloud.requestMerchantPlan(m.id,requested);btn.disabled=false;if(!result.ok){document.getElementById('planMsg').innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível registrar a solicitação.')}</div>`;return;}m.requestedPlan=result.store.plano_solicitado||null;} else m.requestedPlan=requested;
-    saveDb(); document.getElementById('planMsg').innerHTML = `<b>Solicitação registrada:</b> ${planLabel(requested)}. A ativação será feita pelo administrador após a confirmação do pagamento.`;
+    const msg=document.getElementById('planMsg');
+    if(m.status!=='aprovada'){msg.innerHTML='<div class="notice error">Sua loja ainda precisa ser aprovada antes do pagamento.</div>';return;}
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;msg.innerHTML='<div class="notice">Gerando solicitação de pagamento...</div>';
+      const result=await window.ACCloud.requestPlanPayment(m.id,requested);
+      btn.disabled=false;
+      if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível gerar o pagamento.')}</div>`;return;}
+      m.requestedPlan=requested;
+      db.payments=(db.payments||[]).filter(p=>p.id!==result.payment.id);
+      db.payments.unshift(result.payment);
+      saveDb();
+      merchantPayment(result.payment.id);
+      return;
+    }
+    const payment={id:id('pay'),storeId:m.id,plan:requested,value:planPrice(requested),status:'aguardando',method:'pix',requestedAt:new Date().toISOString()};
+    db.payments.unshift(payment);m.requestedPlan=requested;saveDb();merchantPayment(payment.id);
+  });
+}
+
+async function merchantPayment(paymentId) {
+  const m=currentMerchant(); if(!m)return merchantLogin();
+  if(window.ACCloud?.enabled) await syncMerchantPayments(m.id);
+  const payment=paymentById(paymentId)||(db.payments||[]).find(p=>p.storeId===m.id&&['aguardando','em_analise','recusado'].includes(p.status));
+  if(!payment)return plans();
+  const cfg=db.paymentConfig||{};
+  const paid=payment.status==='pago';
+  const reviewing=payment.status==='em_analise';
+  app.innerHTML=`<main class="app-shell merchant payment-page">
+    <div class="page-head"><button class="back" data-go="plans" aria-label="Voltar">${icon('arrowLeft')}</button><b>Pagamento do plano</b></div>
+    <section class="payment-hero">
+      <span>${planLabel(payment.plan).toUpperCase()}</span>
+      <h1>${brlNumber(payment.value)}</h1>
+      <p>${paid?'Pagamento confirmado e plano ativado por 30 dias.':reviewing?'Seu comprovante foi enviado e está aguardando conferência.':'Faça o PIX e envie o comprovante para análise.'}</p>
+      <span class="admin-status ${paymentStatusClass(payment.status)}">${paymentStatusLabel(payment.status)}</span>
+    </section>
+    ${paid?`
+      <section class="payment-success-card"><div class="payment-success-icon">${icon('check')}</div><h2>Plano ativo</h2><p>Período: <b>${formatDateBR(payment.periodStart)}</b> até <b>${formatDateBR(payment.periodEnd)}</b>.</p><button class="btn btn-yellow btn-block" data-go="merchant">Voltar ao painel</button></section>
+    `:`
+      <section class="payment-pix-card">
+        <div class="payment-section-title"><span>1</span><div><b>Faça o PIX</b><small>Valor exato: ${brlNumber(payment.value)}</small></div></div>
+        ${cfg.pixKey?`
+          <div class="pix-key-box"><small>CHAVE PIX</small><strong id="pixKeyText">${esc(cfg.pixKey)}</strong><button type="button" id="copyPixKey">Copiar chave</button></div>
+          <div class="pix-owner"><b>${esc(cfg.pixName||'Beneficiário não informado')}</b><span>${esc(cfg.pixCity||'Grajaú - MA')}</span></div>
+        `:'<div class="notice error">A chave PIX ainda não foi configurada pelo administrador.</div>'}
+        ${cfg.instruction?`<p class="payment-instruction">${esc(cfg.instruction)}</p>`:''}
+      </section>
+      <section class="payment-proof-card">
+        <div class="payment-section-title"><span>2</span><div><b>${reviewing?'Comprovante enviado':'Envie o comprovante'}</b><small>Imagem ou PDF, até 8 MB.</small></div></div>
+        ${reviewing?'<div class="notice success">Recebemos seu comprovante. O plano será ativado somente depois da confirmação do administrador.</div>':`
+          ${payment.status==='recusado'?`<div class="notice error">O comprovante anterior foi recusado.${payment.note?` Motivo: ${esc(payment.note)}`:''} Envie um novo comprovante.</div>`:''}
+          <input class="payment-proof-input" id="paymentProofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+          <button class="btn btn-yellow btn-block" id="sendPaymentProof" type="button" ${!cfg.pixKey?'disabled':''}>Já paguei · enviar comprovante</button>
+          <div id="paymentProofMsg"></div>
+        `}
+      </section>
+      <div class="payment-security-note">O plano não é ativado apenas pelo envio do comprovante. A liberação acontece após a conferência no painel administrativo.</div>
+    `}
+    ${merchantNav('plan')}
+  </main>`;
+  bind();
+  document.getElementById('copyPixKey')?.addEventListener('click',async e=>{
+    try{await navigator.clipboard.writeText(cfg.pixKey);e.currentTarget.textContent='Copiado';setTimeout(()=>e.currentTarget.textContent='Copiar chave',1200);}catch(_){alert('Copie a chave PIX exibida na tela.');}
+  });
+  document.getElementById('sendPaymentProof')?.addEventListener('click',async e=>{
+    const file=document.getElementById('paymentProofFile')?.files?.[0];
+    const msg=document.getElementById('paymentProofMsg');
+    if(!file){msg.innerHTML='<div class="notice error">Selecione o comprovante antes de enviar.</div>';return;}
+    if(file.size>8*1024*1024){msg.innerHTML='<div class="notice error">O arquivo deve ter no máximo 8 MB.</div>';return;}
+    if(window.ACCloud?.enabled){
+      e.currentTarget.disabled=true;msg.innerHTML='<div class="notice">Enviando comprovante...</div>';
+      const result=await window.ACCloud.uploadPaymentProof(payment.id,file);
+      if(!result.ok){e.currentTarget.disabled=false;msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível enviar o comprovante.')}</div>`;return;}
+      db.payments=(db.payments||[]).map(p=>p.id===result.payment.id?result.payment:p);saveDb();merchantPayment(result.payment.id);return;
+    }
+    payment.status='em_analise';payment.paidAt=new Date().toISOString();saveDb();merchantPayment(payment.id);
   });
 }
 
