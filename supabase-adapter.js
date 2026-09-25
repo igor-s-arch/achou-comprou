@@ -75,7 +75,9 @@
     description: store.descricao || '',
     email: store.email_contato || '', password: '',
     status: store.status || 'aguardando',
-    plan: store.plano_id || 'gratis',
+    storedPlan: store.plano_id || 'gratis',
+    plan: (store.plano_id && store.plano_id!=='gratis' && (!store.plano_ativo_ate || new Date(store.plano_ativo_ate).getTime()<=Date.now())) ? 'gratis' : (store.plano_id || 'gratis'),
+    planExpiresAt: store.plano_ativo_ate || '',
     requestedPlan: store.plano_solicitado || null,
     rating: store.avaliacao ? String(store.avaliacao).replace('.',',') : 'Novo',
     dist: '—',
@@ -120,6 +122,14 @@
     start:b.inicio || '', end:b.fim || '', order:Number(b.ordem || 0),
     active:b.ativo !== false, createdAt:b.created_at || ''
   });
+  const localPayment = p => ({
+    id:p.id, storeId:p.loja_id, plan:p.plano_id, value:Number(p.valor||0),
+    method:p.metodo||'pix', status:p.status||'aguardando',
+    proofPath:p.comprovante_path||'', note:p.observacao||'',
+    requestedAt:p.solicitado_em||p.created_at||'', paidAt:p.pago_em||'',
+    confirmedAt:p.confirmado_em||'', periodStart:p.periodo_inicio||'',
+    periodEnd:p.periodo_fim||'', createdAt:p.created_at||''
+  });
 
   async function dataUrlToBlob(dataUrl){
     const response = await fetch(dataUrl);
@@ -154,6 +164,7 @@
     localProduct,
     localOffer,
     localBanner,
+    localPayment,
 
     async getSession(){
       if(!client) return null;
@@ -362,6 +373,98 @@
         coverUrl=uploaded.url;
       }
       return api.updateMerchantStore(storeId,{...patch,logoUrl,coverUrl});
+    },
+
+    async getPaymentConfig(){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.from('configuracao_pagamentos').select('*').eq('id',1).maybeSingle();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,config:{
+        pixKey:data?.pix_chave||'',pixName:data?.pix_nome||'',pixCity:data?.pix_cidade||'Grajaú - MA',
+        instruction:data?.instrucao||'Após fazer o PIX, envie o comprovante para análise.'
+      }};
+    },
+
+    async savePaymentConfig({pixKey,pixName,pixCity,instruction}){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.from('configuracao_pagamentos').update({
+        pix_chave:pixKey||null,pix_nome:pixName||null,pix_cidade:pixCity||null,
+        instrucao:instruction||null,updated_at:new Date().toISOString()
+      }).eq('id',1).select('*').single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,config:data};
+    },
+
+    async requestPlanPayment(storeId,plan){
+      if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.rpc('solicitar_pagamento_plano',{p_loja_id:storeId,p_plano_id:normalizePlan(plan)}).single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
+    },
+
+    async loadMerchantPayments(storeId){
+      if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
+      const [payments,config]=await Promise.all([
+        client.from('pagamentos').select('*').eq('loja_id',storeId).order('solicitado_em',{ascending:false}),
+        api.getPaymentConfig()
+      ]);
+      if(payments.error)return {ok:false,message:errorMessage(payments.error)};
+      return {ok:true,payments:(payments.data||[]).map(localPayment),config:config.ok?config.config:null};
+    },
+
+    async uploadPaymentProof(paymentId,file){
+      if(!client||!paymentId||!file)return {ok:false,message:'Selecione o comprovante.'};
+      const session=await api.getSession();
+      const userId=session?.user?.id;
+      if(!userId)return {ok:false,message:'Entre novamente na conta da loja.'};
+      const ext=(String(file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+      const path=`${userId}/${paymentId}-${Date.now()}.${ext}`;
+      const {error:uploadError}=await client.storage.from('comprovantes-pix').upload(path,file,{contentType:file.type||undefined,upsert:false});
+      if(uploadError)return {ok:false,message:errorMessage(uploadError)};
+      const {data,error}=await client.rpc('enviar_comprovante_pagamento',{p_pagamento_id:paymentId,p_comprovante_path:path}).single();
+      if(error)return {ok:false,message:errorMessage(error)};
+      return {ok:true,payment:localPayment(data)};
+    },
+
+    async loadAdminPayments(){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      await client.rpc('processar_planos_vencidos');
+      const [payments,config]=await Promise.all([
+        client.from('pagamentos').select('*').order('solicitado_em',{ascending:false}),
+        api.getPaymentConfig()
+      ]);
+      if(payments.error)return {ok:false,message:errorMessage(payments.error)};
+      return {ok:true,payments:(payments.data||[]).map(localPayment),config:config.ok?config.config:null};
+    },
+
+    async confirmPayment(paymentId,note=''){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.rpc('confirmar_pagamento_pix',{p_pagamento_id:paymentId,p_observacao:note||null}).single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
+    },
+
+    async rejectPayment(paymentId,note=''){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.rpc('recusar_pagamento_pix',{p_pagamento_id:paymentId,p_observacao:note||null}).single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
+    },
+
+    async activatePlanManual(storeId,plan,days=30,note=''){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.rpc('ativar_plano_manual',{
+        p_loja_id:storeId,p_plano_id:normalizePlan(plan),p_dias:Number(days)||30,
+        p_observacao:note||'Ativação manual pelo administrador'
+      }).single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
+    },
+
+    async downgradeStore(storeId){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.rpc('rebaixar_loja_gratis',{p_loja_id:storeId,p_observacao:'Plano alterado para Grátis pelo administrador'});
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,result:data};
+    },
+
+    async paymentProofUrl(path){
+      if(!client||!path)return {ok:false,message:'Comprovante não disponível.'};
+      const {data,error}=await client.storage.from('comprovantes-pix').createSignedUrl(path,300);
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,url:data?.signedUrl||''};
     },
 
     async resetPassword(email){
