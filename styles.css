@@ -392,3 +392,76 @@ body{background:#e9ebee}
   .admin-report-metrics>div:nth-child(3){border-left:0}
   .store-rating-card.compact{grid-template-columns:1fr}
 }
+
+/* ===== ADMIN RESPONSIVO POR DISPOSITIVO ===== */
+.admin-device-chip{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:5px 8px;border:1px solid #303238;border-radius:999px;background:#151619;color:#d7d9dd;font-size:7px;font-weight:800}
+.admin-device-chip .ui-icon{width:11px;height:11px;color:var(--yellow)}
+.admin-device-chip b{color:#fff;font-size:7px}
+
+.admin-pro.admin-tablet{max-width:900px}
+.admin-tablet .admin-content{padding:20px}
+.admin-tablet .admin-kpi-grid,.admin-tablet .admin-result-grid{grid-template-columns:repeat(4,1fr)}
+.admin-tablet .admin-quick-grid{grid-template-columns:repeat(3,1fr)}
+.admin-tablet .admin-top{padding:24px 22px 26px}
+.admin-tablet .admin-top h1{font-size:27px}
+
+.admin-pro.admin-desktop{max-width:none;width:100%;padding:0 0 0 220px;overflow:visible;background:#eef0f3}
+.admin-desktop .admin-top{min-height:154px;padding:30px 38px;align-items:center;background:
+radial-gradient(circle at 82% 24%,rgba(255,208,0,.16),transparent 28%),
+linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
+.admin-desktop .admin-top h1{font-size:34px;margin-top:7px}
+.admin-desktop .admin-top p{font-size:12px}
+.admin-desktop .admin-kicker{font-size:8px}
+.admin-desktop .admin-profile-dot{width:54px;height:54px;border-radius:16px;font-size:12px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
+.admin-desktop .admin-device-chip{font-size:8px;padding:6px 10px;margin-top:12px}
+.admin-desktop .admin-device-chip b{font-size:8px}
+.admin-desktop .admin-content{max-width:1480px;margin:0 auto;padding:28px 34px 44px}
+.admin-desktop .admin-kpi-grid{grid-template-columns:repeat(4,1fr);gap:14px}
+.admin-desktop .admin-kpi-grid article{min-height:145px;padding:18px;border-radius:18px;box-shadow:0 8px 28px rgba(17,24,39,.045)}
+.admin-desktop .admin-kpi-grid article>span{width:38px;height:38px;border-radius:11px}
+.admin-desktop .admin-kpi-grid article>span .ui-icon{width:19px;height:19px}
+.admin-desktop .admin-kpi-grid small{font-size:10px;margin-top:15px}
+.admin-desktop .admin-kpi-grid strong{font-size:31px}
+.admin-desktop .admin-kpi-grid em{font-size:9px}
+.admin-desktop .admin-result-grid{grid-template-columns:repeat(4,1fr);gap:14px}
+.admin-desktop .admin-result-grid article{min-height:115px;padding:17px;border-radius:17px}
+.admin-desktop .admin-result-grid small{font-size:9px}
+.admin-desktop .admin-result-grid strong{font-size:28px}
+.admin-desktop .admin-result-grid span{font-size:9px}
+.admin-desktop .admin-quick-grid{grid-template-columns:repeat(5,1fr);gap:12px}
+.admin-desktop .admin-quick-grid button{min-height:88px;padding:15px;border-radius:16px}
+.admin-desktop .admin-quick-grid b{font-size:11px}
+.admin-desktop .admin-quick-grid small{font-size:8px}
+.admin-desktop .admin-section-head{margin-top:24px}
+.admin-desktop .admin-section-head h2{font-size:20px}
+.admin-desktop .admin-panel-card{padding:18px;border-radius:18px}
+.admin-desktop .admin-panel-head h3{font-size:16px}
+.admin-desktop .admin-store-list>button{padding:14px 0}
+.admin-desktop .admin-store-copy b{font-size:11px}
+.admin-desktop .admin-store-copy small{font-size:9px}
+.admin-desktop .admin-bottom-nav{position:fixed;left:0;top:0;bottom:0;transform:none;width:220px;height:100vh;padding:118px 12px 20px;background:linear-gradient(180deg,#090a0c,#111318);border-top:0;border-right:1px solid #24262b;display:flex;flex-direction:column;gap:7px;z-index:40}
+.admin-desktop .admin-bottom-nav::before{content:"ACHOU, COMPROU";position:absolute;top:34px;left:22px;color:#fff;font-size:15px;font-weight:950;letter-spacing:.01em}
+.admin-desktop .admin-bottom-nav::after{content:"ADMINISTRAÇÃO";position:absolute;top:60px;left:22px;color:var(--yellow);font-size:7px;font-weight:950;letter-spacing:.15em}
+.admin-desktop .admin-bottom-nav button{height:50px;min-height:50px;flex-direction:row;justify-content:flex-start;gap:12px;padding:0 14px;border-radius:12px;font-size:10px;text-align:left}
+.admin-desktop .admin-bottom-nav button:hover{background:#181a1f;color:#fff}
+.admin-desktop .admin-bottom-nav button.active{background:#1d1f24;color:var(--yellow)}
+.admin-desktop .admin-bottom-nav .ui-icon{width:19px;height:19px}
+.admin-desktop.admin-subpage{padding-bottom:0}
+.admin-desktop .admin-sub-head{min-height:82px;padding:16px 28px;grid-template-columns:42px 1fr 42px}
+.admin-desktop .admin-sub-head>div b{font-size:17px}
+.admin-desktop .admin-sub-head>div small{font-size:9px}
+.admin-desktop .admin-summary-strip{padding:15px 9px;border-radius:17px}
+.admin-desktop .admin-summary-strip small{font-size:8px}
+.admin-desktop .admin-summary-strip strong{font-size:21px}
+.admin-desktop .admin-store-management{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.admin-desktop .admin-store-card{padding:16px;border-radius:17px}
+.admin-desktop .admin-report-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.admin-desktop .admin-report-card{padding:15px}
+.admin-desktop .admin-report-metrics strong{font-size:15px}
+.admin-desktop .admin-report-metrics small{font-size:7px}
+.admin-desktop .admin-subscription-list article{grid-template-columns:1fr 220px}
+.admin-desktop .admin-logout-link{max-width:260px;margin:18px auto 0;display:block}
+
+@media(max-width:699px){
+  .admin-pro.admin-mobile{max-width:520px}
+}
