@@ -604,3 +604,157 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   .admin-branding-fields,.admin-branding-upload-grid{grid-template-columns:1fr}
   .admin-upload-card.wide{grid-column:auto}
 }
+
+/* ===== LOJISTA RESPONSIVO CELULAR / TABLET / PC ===== */
+.merchant-dash-hero{isolation:isolate}
+.merchant-dash-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.merchant-dash-overlay{position:absolute;inset:0;z-index:0;background:linear-gradient(90deg,rgba(7,8,10,.94),rgba(10,11,13,.84) 54%,rgba(10,11,13,.62))}
+.merchant-dash-brand,.merchant-shop-main,.merchant-plan-strip{position:relative;z-index:2}
+.merchant-shop-avatar.with-logo{background:#fff;padding:4px;overflow:hidden}
+.merchant-shop-avatar.with-logo img{width:100%;height:100%;object-fit:cover;border-radius:13px;display:block}
+.merchant-dash-tools{display:flex;align-items:center;gap:8px}
+.merchant-device-chip{display:inline-flex;align-items:center;gap:5px;height:38px;padding:0 10px;border:1px solid #2d2f34;border-radius:11px;background:rgba(23,24,28,.78);color:#d9dadd;backdrop-filter:blur(10px)}
+.merchant-device-chip .ui-icon{width:14px;height:14px;color:var(--yellow)}
+.merchant-device-chip b{font-size:7.5px;color:#fff}
+.merchant-dashboard-panels{display:grid;gap:15px}
+
+.merchant-tablet{max-width:900px}
+.merchant-tablet .merchant-dashboard-body,.merchant-tablet .merchant-sub-body{padding:20px}
+.merchant-tablet .merchant-kpi-grid{grid-template-columns:repeat(4,1fr)}
+.merchant-tablet .merchant-quick-grid{grid-template-columns:repeat(4,1fr)}
+.merchant-tablet .merchant-dashboard-panels{grid-template-columns:repeat(2,minmax(0,1fr))}
+.merchant-tablet .merchant-dash-hero{padding:24px 22px 20px}
+.merchant-tablet .merchant-shop-main{grid-template-columns:72px 1fr}
+.merchant-tablet .merchant-shop-avatar{width:72px;height:72px}
+.merchant-tablet .merchant-shop-copy h1{font-size:28px}
+
+.merchant-desktop{
+  max-width:none!important;
+  width:100%;
+  min-height:100vh;
+  padding:0 0 0 220px!important;
+  overflow:visible!important;
+  background:#eef0f3!important;
+}
+.merchant-desktop .merchant-bottom-nav{
+  position:fixed;left:0;top:0;bottom:0;transform:none;
+  width:220px;height:100vh;padding:118px 12px 20px;
+  background:linear-gradient(180deg,#090a0c,#111318);
+  border-top:0;border-right:1px solid #24262b;
+  display:flex;flex-direction:column;gap:7px;z-index:40
+}
+.merchant-desktop .merchant-bottom-nav::before{
+  content:"ACHOU, COMPROU";
+  position:absolute;top:34px;left:22px;
+  color:#fff;font-size:15px;font-weight:950
+}
+.merchant-desktop .merchant-bottom-nav::after{
+  content:"ÁREA DO LOJISTA";
+  position:absolute;top:60px;left:22px;
+  color:var(--yellow);font-size:7px;font-weight:950;letter-spacing:.15em
+}
+.merchant-desktop .merchant-bottom-nav button{
+  height:50px;min-height:50px;
+  flex-direction:row;justify-content:flex-start;
+  gap:12px;padding:0 14px;border-radius:12px;
+  font-size:10px;text-align:left
+}
+.merchant-desktop .merchant-bottom-nav button:hover{background:#181a1f;color:#fff}
+.merchant-desktop .merchant-bottom-nav button.active{background:#1d1f24;color:var(--yellow)}
+.merchant-desktop .merchant-bottom-nav button .ui-icon{width:19px;height:19px}
+
+.merchant-desktop .merchant-dash-hero{
+  min-height:310px;padding:28px 38px 24px;
+  background:
+    radial-gradient(circle at 82% 24%,rgba(255,208,0,.16),transparent 28%),
+    linear-gradient(135deg,#090a0c 0%,#15171b 100%)
+}
+.merchant-desktop .merchant-dash-brand>div:first-child span{font-size:8px}
+.merchant-desktop .merchant-dash-brand>div:first-child b{font-size:16px}
+.merchant-desktop .merchant-device-chip{height:44px;padding:0 13px}
+.merchant-desktop .merchant-device-chip b{font-size:8px}
+.merchant-desktop .merchant-ghost-icon{width:44px;height:44px}
+.merchant-desktop .merchant-shop-main{
+  grid-template-columns:92px 1fr;
+  gap:18px;margin-top:42px;max-width:760px
+}
+.merchant-desktop .merchant-shop-avatar{
+  width:92px;height:92px;border-radius:24px
+}
+.merchant-desktop .merchant-shop-avatar .ui-icon{width:42px;height:42px}
+.merchant-desktop .merchant-shop-avatar.with-logo img{border-radius:19px}
+.merchant-desktop .merchant-shop-copy h1{font-size:34px}
+.merchant-desktop .merchant-shop-copy p{font-size:13px}
+.merchant-desktop .merchant-status{font-size:10px;padding:6px 9px}
+.merchant-desktop .merchant-plan-strip{
+  max-width:760px;margin-top:22px;padding:14px 16px;border-radius:16px
+}
+.merchant-desktop .merchant-plan-strip strong{font-size:15px}
+.merchant-desktop .merchant-plan-strip span{font-size:9px}
+.merchant-desktop .merchant-dashboard-body{
+  max-width:1480px;margin:0 auto;padding:28px 34px 44px
+}
+.merchant-desktop .merchant-alert{padding:14px 15px;border-radius:15px}
+.merchant-desktop .merchant-section-heading{margin:8px 2px 12px}
+.merchant-desktop .merchant-section-heading h2{font-size:21px}
+.merchant-desktop .merchant-kpi-grid{grid-template-columns:repeat(4,1fr);gap:14px}
+.merchant-desktop .merchant-kpi{
+  min-height:150px;padding:18px;border-radius:18px;
+  box-shadow:0 8px 28px rgba(17,24,39,.045)
+}
+.merchant-desktop .merchant-kpi>span{width:39px;height:39px;border-radius:11px}
+.merchant-desktop .merchant-kpi>span .ui-icon{width:19px;height:19px}
+.merchant-desktop .merchant-kpi small{font-size:10px}
+.merchant-desktop .merchant-kpi strong{font-size:32px}
+.merchant-desktop .merchant-kpi em{font-size:9px}
+.merchant-desktop .merchant-quick-grid{grid-template-columns:repeat(4,1fr);gap:12px}
+.merchant-desktop .merchant-quick-grid>button{
+  min-height:92px;padding:15px;border-radius:16px
+}
+.merchant-desktop .merchant-quick-grid b{font-size:11px}
+.merchant-desktop .merchant-quick-grid small{font-size:8.5px}
+.merchant-desktop .merchant-dashboard-panels{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:14px
+}
+.merchant-desktop .merchant-panel-card{padding:18px;border-radius:18px}
+.merchant-desktop .merchant-panel-head h3{font-size:16px}
+.merchant-desktop .merchant-recent-list>button{padding:14px 0}
+.merchant-desktop .merchant-recent-list b{font-size:11px}
+.merchant-desktop .merchant-recent-list span{font-size:9px}
+.merchant-desktop .merchant-logout-link{max-width:260px;margin:18px auto 0}
+
+.merchant-desktop.merchant-subpage,
+.merchant-desktop.plans-page,
+.merchant-desktop.payment-page{padding-bottom:0!important}
+.merchant-desktop .merchant-sub-head{
+  min-height:82px;padding:16px 28px;
+  grid-template-columns:42px 1fr auto
+}
+.merchant-desktop .merchant-sub-head>div b{font-size:17px}
+.merchant-desktop .merchant-sub-head>div span{font-size:8px}
+.merchant-desktop .merchant-sub-body{
+  max-width:1280px;margin:0 auto;padding:26px 34px 44px
+}
+.merchant-desktop .merchant-summary-card{border-radius:17px}
+.merchant-desktop .merchant-store-card{border-radius:18px}
+.merchant-desktop .merchant-store-form{padding:20px;border-radius:18px}
+.merchant-desktop .store-media-grid{grid-template-columns:320px 1fr;gap:16px}
+.merchant-desktop .merchant-account-card{padding:18px;border-radius:18px}
+.merchant-desktop .page-head{
+  position:sticky;top:0;z-index:12;
+  min-height:72px;padding:14px 28px;
+  background:#0b0c0e;color:#fff;border-bottom:1px solid #25272b
+}
+.merchant-desktop .metric-grid{grid-template-columns:repeat(4,1fr);gap:14px}
+.merchant-desktop .chart-card{padding:20px;border-radius:18px}
+.merchant-desktop .plans{grid-template-columns:repeat(3,1fr);align-items:stretch}
+.merchant-desktop .plans-wrap{max-width:1280px;margin:0 auto}
+.merchant-desktop .payment-card{max-width:860px;margin-left:auto;margin-right:auto}
+
+@media(max-width:699px){
+  .merchant-mobile{max-width:520px}
+  .merchant-dash-tools{gap:6px}
+  .merchant-device-chip{height:34px;padding:0 8px}
+  .merchant-device-chip b{font-size:6.8px}
+  .merchant-dash-cover{object-position:center}
+}
