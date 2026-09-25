@@ -59,7 +59,9 @@ function upsertCloudMerchant(store,user){
   const existing=db.merchants.find(m=>m.id===store.id);
   const next={
     id:store.id, ownerId:user.id, owner:user.user_metadata?.nome||user.user_metadata?.name||user.email?.split('@')[0]||'Lojista',
-    name:store.nome||'Minha loja', category:store.categoria_texto||'Outros', whatsapp:store.whatsapp||'',
+    name:store.nome||'Minha loja', category:store.categoria_texto||'Outros',
+    categories:Array.isArray(store.categorias)&&store.categorias.length?store.categorias:[store.categoria_texto||'Outros'],
+    whatsapp:store.whatsapp||'',
     instagram:store.instagram||'', address:store.endereco||'Grajaú - MA', hours:store.horario_funcionamento||'',
     description:store.descricao||'', email:user.email||'', password:'', status:store.status||'aguardando',
     plan:store.plano_id||'gratis', requestedPlan:store.plano_solicitado||null,
@@ -733,14 +735,76 @@ function merchantLogin() {
 
 function merchantRegister() {
   const intent = publicState.merchantPlanIntent ? `<div class="selected-plan-hint">Plano de interesse: <b>${planLabel(publicState.merchantPlanIntent)}</b>. Você poderá confirmar ou trocar na próxima etapa.</div>` : '';
-  app.innerHTML = `<main class="app-shell form-page merchant-register-page"><div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar minha loja</b></div><div class="register-progress"><span class="active">1</span><i></i><span>2</span><i></i><span>3</span><small>Dados</small><small>Plano</small><small>Aprovação</small></div><form class="form-card" id="merchantRegisterForm"><div class="form-intro"><span class="section-icon">${icon('store')}</span><div><h2>Dados da loja</h2><p>Preencha as informações comerciais e crie seu acesso.</p></div></div>${intent}<label>Nome do responsável<input id="regOwner" required placeholder="Nome completo"></label><label>Nome da loja<input id="regName" required placeholder="Ex.: Loja Exemplo"></label><label>Categoria principal<select id="regCategory" required><option value="">Selecione</option><option>Moda</option><option>Calçados</option><option>Alimentação</option><option>Beleza</option><option>Saúde</option><option>Tecnologia</option><option>Casa</option><option>Automotivo</option><option>Serviços</option><option>Outros</option></select></label><label>WhatsApp<input id="regWhatsapp" required placeholder="(99) 99999-9999"></label><label>Instagram<input id="regInstagram" placeholder="@sualoja"></label><label>Endereço<input id="regAddress" required placeholder="Rua, número, bairro"></label><label>Horário de funcionamento<input id="regHours" placeholder="Seg a Sáb, 8h às 18h"></label><label>Descrição<textarea id="regDescription" placeholder="Conte um pouco sobre a loja"></textarea></label><div class="two-cols"><label>E-mail de acesso<input id="regEmail" type="email" required autocomplete="username" placeholder="seuemail@exemplo.com"></label><label>Senha<input id="regPassword" type="password" minlength="6" required autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label></div><button class="btn btn-yellow btn-block" type="submit">Continuar para os planos</button><div id="regMsg"></div></form></main>`;
+  const categoryOptions=['Moda','Calçados','Acessórios','Alimentação','Beleza','Saúde','Tecnologia','Casa','Automotivo','Serviços','Outros'];
+  app.innerHTML = `<main class="app-shell form-page merchant-register-page">
+    <div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar minha loja</b></div>
+    <div class="register-progress"><span class="active">1</span><i></i><span>2</span><i></i><span>3</span><small>Dados</small><small>Plano</small><small>Aprovação</small></div>
+    <form class="form-card merchant-register-card" id="merchantRegisterForm">
+      <div class="form-intro"><span class="section-icon">${icon('store')}</span><div><h2>Dados da empresa</h2><p>Preencha os dados comerciais e fiscais para análise da loja.</p></div></div>
+      ${intent}
+      <div class="merchant-form-section"><div><span>RESPONSÁVEL</span><h3>Acesso da conta</h3></div></div>
+      <label>Nome do responsável<input id="regOwner" required placeholder="Nome completo"></label>
+      <div class="merchant-form-section"><div><span>EMPRESA</span><h3>Dados cadastrais</h3></div></div>
+      <label>Nome da loja<input id="regName" required placeholder="Ex.: Loja Exemplo"></label>
+      <label>Razão social<input id="regLegalName" required placeholder="Razão social registrada no CNPJ"></label>
+      <div class="two-cols merchant-legal-grid">
+        <label>CNPJ<input id="regCnpj" required inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"></label>
+        <label>Inscrição estadual<input id="regStateRegistration" required placeholder="Número ou ISENTO"></label>
+      </div>
+      <label>Endereço completo<input id="regAddress" required placeholder="Rua, número, bairro, cidade - UF"></label>
+
+      <div class="merchant-form-section"><div><span>CATEGORIAS</span><h3>O que sua loja vende?</h3><p>Escolha de 1 a 3 categorias.</p></div><strong id="categoryCounter">0/3</strong></div>
+      <div class="merchant-category-picker" id="merchantCategoryPicker">
+        ${categoryOptions.map(cat=>`<label class="merchant-category-option"><input type="checkbox" name="regCategories" value="${cat}"><span>${cat}</span></label>`).join('')}
+      </div>
+      <div id="categoryMsg"></div>
+
+      <div class="merchant-form-section"><div><span>CONTATO</span><h3>Informações públicas da loja</h3></div></div>
+      <div class="two-cols">
+        <label>WhatsApp<input id="regWhatsapp" required inputmode="tel" placeholder="(99) 99999-9999"></label>
+        <label>Instagram<input id="regInstagram" placeholder="@sualoja"></label>
+      </div>
+      <label>Horário de funcionamento<input id="regHours" placeholder="Seg a Sáb, 8h às 18h"></label>
+      <label>Descrição<textarea id="regDescription" placeholder="Conte um pouco sobre a loja"></textarea></label>
+
+      <div class="merchant-form-section"><div><span>LOGIN</span><h3>Crie seu acesso</h3></div></div>
+      <div class="two-cols"><label>E-mail de acesso<input id="regEmail" type="email" required autocomplete="username" placeholder="seuemail@exemplo.com"></label><label>Senha<input id="regPassword" type="password" minlength="6" required autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label></div>
+      <button class="btn btn-yellow btn-block" type="submit">Continuar para os planos</button>
+      <div id="regMsg"></div>
+    </form>
+  </main>`;
   bind();
+
+  const categoryInputs=[...document.querySelectorAll('input[name="regCategories"]')];
+  const categoryCounter=document.getElementById('categoryCounter');
+  const categoryMsg=document.getElementById('categoryMsg');
+  const updateCategoryState=()=>{
+    const selected=categoryInputs.filter(x=>x.checked);
+    categoryCounter.textContent=`${selected.length}/3`;
+    categoryInputs.forEach(x=>{x.disabled=!x.checked&&selected.length>=3;});
+    categoryMsg.innerHTML=selected.length>=3?'<div class="field-help">Limite de 3 categorias atingido.</div>':'';
+  };
+  categoryInputs.forEach(input=>input.addEventListener('change',updateCategoryState));
+
+  const cnpjInput=document.getElementById('regCnpj');
+  cnpjInput.addEventListener('input',()=>{
+    const d=cnpjInput.value.replace(/\D/g,'').slice(0,14);
+    cnpjInput.value=d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');
+  });
+
   document.getElementById('merchantRegisterForm').onsubmit = e => {
     e.preventDefault();
+    const categories=categoryInputs.filter(x=>x.checked).map(x=>x.value);
+    const cnpj=document.getElementById('regCnpj').value.trim();
+    const cnpjDigits=cnpj.replace(/\D/g,'');
     const draft={
       owner:document.getElementById('regOwner').value.trim(),
       name:document.getElementById('regName').value.trim(),
-      category:document.getElementById('regCategory').value,
+      legalName:document.getElementById('regLegalName').value.trim(),
+      cnpj,
+      stateRegistration:document.getElementById('regStateRegistration').value.trim(),
+      categories,
+      category:categories[0]||'',
       whatsapp:document.getElementById('regWhatsapp').value.trim(),
       instagram:document.getElementById('regInstagram').value.trim(),
       address:document.getElementById('regAddress').value.trim(),
@@ -750,6 +814,19 @@ function merchantRegister() {
       password:document.getElementById('regPassword').value
     };
     const msg=document.getElementById('regMsg');
+    if(categories.length<1 || categories.length>3){
+      msg.innerHTML='<div class="notice error">Escolha pelo menos 1 e no máximo 3 categorias.</div>';
+      return;
+    }
+    if(cnpjDigits.length!==14){
+      msg.innerHTML='<div class="notice error">Informe um CNPJ válido com 14 números.</div>';
+      cnpjInput.focus();
+      return;
+    }
+    if(!draft.stateRegistration){
+      msg.innerHTML='<div class="notice error">Informe a inscrição estadual ou digite ISENTO.</div>';
+      return;
+    }
     if(!window.ACCloud?.enabled && db.merchants.some(m => m.email.toLowerCase() === draft.email)) {
       msg.innerHTML = '<div class="notice error">Já existe uma loja cadastrada com esse e-mail.</div>';
       return;
