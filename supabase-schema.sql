@@ -506,3 +506,25 @@ grant insert on table public.eventos to anon, authenticated;
 grant select on table public.eventos to authenticated;
 revoke all privileges on sequence public.eventos_id_seq from anon, authenticated;
 grant usage on sequence public.eventos_id_seq to anon, authenticated;
+
+
+-- V0.21 — avatares opcionais de clientes
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values ('avatars','avatars',true,5242880,array['image/jpeg','image/png','image/webp'])
+on conflict (id) do nothing;
+
+create policy "publico_le_avatars" on storage.objects
+for select using (bucket_id='avatars');
+
+create policy "usuario_envia_avatar" on storage.objects
+for insert to authenticated
+with check (bucket_id='avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+
+create policy "usuario_atualiza_avatar" on storage.objects
+for update to authenticated
+using (bucket_id='avatars' and (storage.foldername(name))[1]=auth.uid()::text)
+with check (bucket_id='avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+
+create policy "usuario_exclui_avatar" on storage.objects
+for delete to authenticated
+using (bucket_id='avatars' and (storage.foldername(name))[1]=auth.uid()::text);
