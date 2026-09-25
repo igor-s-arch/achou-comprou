@@ -2131,4 +2131,9 @@ if(window.ACCloud?.enabled){
     if(event==='PASSWORD_RECOVERY') passwordResetConfirm();
   });
 }
-bootstrapCloudSession().finally(()=>{ if(!publicState.passwordRecovery) splash(); });
+bootstrapCloudSession().finally(()=>{
+  if(publicState.passwordRecovery)return;
+  if(db.session.admin){admin();return;}
+  if(db.session.merchantId){merchant();return;}
+  splash();
+});
