@@ -661,3 +661,14 @@ begin
       check (jsonb_typeof(horarios_semanais)='object');
   end if;
 end $$;
+
+
+-- V0.26 — pagamentos PIX e assinaturas
+-- Tabelas adicionadas no projeto Supabase:
+-- public.configuracao_pagamentos: chave PIX, beneficiário, cidade e instrução.
+-- public.pagamentos: solicitações, comprovantes, status, confirmação e período do plano.
+-- Storage privado: comprovantes-pix.
+-- RPCs: solicitar_pagamento_plano, enviar_comprovante_pagamento,
+-- confirmar_pagamento_pix, recusar_pagamento_pix, ativar_plano_manual,
+-- rebaixar_loja_gratis e processar_planos_vencidos.
+-- Planos pagos passam a considerar plano_ativo_ate para limites e banner.
