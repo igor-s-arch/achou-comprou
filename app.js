@@ -27,6 +27,8 @@ const DEFAULT_DB = {
   ],
   offers: [{ id:'o1', storeId:'loja-maranhao', productId:'p1', normal:'159,90', promo:'129,90', validUntil:'2026-12-31', quantity:10, active:true }],
   banners: [{ id:'b1', storeId:'loja-maranhao', title:'Compre no comércio local', message:'Ofertas especiais perto de você', active:true }],
+  payments: [],
+  paymentConfig: { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' },
   clients: [{ id:'cliente-demo', name:'Cliente Demo', email:'cliente@exemplo.com', password:'123456', phone:'(99) 99999-0000', city:'Grajaú - MA', favorites:['p1'] }],
   recentSearches: ['tênis infantil número 28','vestido tamanho M'],
   notifications: [
@@ -37,7 +39,7 @@ const DEFAULT_DB = {
   session: { clientId: null, merchantId: null, admin: false }
 };
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||''})) : []; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
+function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||''})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
 let db = loadDb();
 function saveDb() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); return true; } catch (err) { console.error('Falha ao salvar dados locais', err); alert('O navegador ficou sem espaço para salvar novas imagens. Use arquivos menores ou remova imagens antigas.'); return false; } }
 function upsertCloudClient(profile,user){
@@ -65,7 +67,9 @@ function upsertCloudMerchant(store,user){
     instagram:store.instagram||'', address:store.endereco||'Grajaú - MA', hours:store.horario_funcionamento||'',
     weeklyHours:store.horarios_semanais&&typeof store.horarios_semanais==='object'?store.horarios_semanais:(existing?.weeklyHours||{}),
     description:store.descricao||'', email:user.email||'', password:'', status:store.status||'aguardando',
-    plan:store.plano_id||'gratis', requestedPlan:store.plano_solicitado||null,
+    storedPlan:store.plano_id||'gratis',
+    plan:(store.plano_id&&store.plano_id!=='gratis'&&(!store.plano_ativo_ate||new Date(store.plano_ativo_ate).getTime()<=Date.now()))?'gratis':(store.plano_id||'gratis'),
+    planExpiresAt:store.plano_ativo_ate||'', requestedPlan:store.plano_solicitado||null,
     rating:store.avaliacao?String(store.avaliacao).replace('.',','):'Novo', dist:'—',
     logoData:store.logo_url||'', coverData:store.capa_url||''
   };
@@ -80,6 +84,13 @@ async function finishClientAccess(clientId) { db.session.clientId=clientId; awai
 function id(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2,8)}`; }
 function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function planLabel(plan) { return ({gratis:'Grátis', premium:'Premium', premium_banner:'Premium + Banner'})[plan] || 'Grátis'; }
+function planPrice(plan){return ({gratis:0,premium:49.90,premium_banner:59.90})[plan]??0;}
+function brlNumber(value){return Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function formatDateBR(value){if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR');}
+function paymentStatusLabel(status){return ({aguardando:'Aguardando PIX',em_analise:'Em análise',pago:'Pago',recusado:'Recusado',cancelado:'Cancelado',vencido:'Vencido'})[status]||status;}
+function paymentStatusClass(status){return ({pago:'ok',em_analise:'wait',aguardando:'wait',recusado:'bad',cancelado:'blocked',vencido:'bad'})[status]||'wait';}
+function paymentById(id){return (db.payments||[]).find(p=>p.id===id)||null;}
+
 
 const STORE_WEEK_DAYS=[
   {key:'seg',label:'Segunda-feira',short:'Seg'},
@@ -212,6 +223,24 @@ async function syncCloudMerchantCatalog(storeId){
   if(!result.ok)return false;
   db.products=db.products.filter(p=>p.storeId!==storeId).concat(result.products||[]);
   db.offers=db.offers.filter(o=>o.storeId!==storeId).concat(result.offers||[]);
+  saveDb();
+  return true;
+}
+async function syncMerchantPayments(storeId){
+  if(!window.ACCloud?.enabled||!storeId)return false;
+  const result=await window.ACCloud.loadMerchantPayments(storeId);
+  if(!result.ok)return false;
+  db.payments=result.payments||[];
+  if(result.config)db.paymentConfig=result.config;
+  saveDb();
+  return true;
+}
+async function syncAdminPayments(){
+  if(!window.ACCloud?.enabled)return false;
+  const result=await window.ACCloud.loadAdminPayments();
+  if(!result.ok)return false;
+  db.payments=result.payments||[];
+  if(result.config)db.paymentConfig=result.config;
   saveDb();
   return true;
 }
