@@ -643,3 +643,21 @@ $$;
 
 revoke execute on function public.criar_loja_com_dados_fiscais(uuid,uuid,text,text[],text,text,text,text,text,text,text,text,text,text) from public, anon;
 grant execute on function public.criar_loja_com_dados_fiscais(uuid,uuid,text,text[],text,text,text,text,text,text,text,text,text,text) to authenticated;
+
+
+-- V0.25 — horários semanais da loja
+alter table public.lojas
+  add column if not exists horarios_semanais jsonb not null default '{}'::jsonb;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname='lojas_horarios_semanais_objeto'
+      and conrelid='public.lojas'::regclass
+  ) then
+    alter table public.lojas
+      add constraint lojas_horarios_semanais_objeto
+      check (jsonb_typeof(horarios_semanais)='object');
+  end if;
+end $$;
