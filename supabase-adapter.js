@@ -545,12 +545,18 @@
       return error?{ok:false,message:errorMessage(error)}:{ok:true};
     },
 
-    async updateClientProfile(userId,{name,phone,email}){
+    async updateClientProfile(userId,{name,phone,email,avatarData}){
       if(!client||!userId)return {ok:false,message:'Backend não configurado.'};
-      const {data,error}=await client.from('perfis').update({nome:name||null,telefone:phone||null}).eq('user_id',userId).select('*').single();
+      let avatarUrl='';
+      if(avatarData){
+        const uploaded=await uploadDataUrl('avatars',userId,avatarData,'perfil');
+        if(!uploaded.ok)return uploaded;
+        avatarUrl=uploaded.url||'';
+      }
+      const {data,error}=await client.from('perfis').update({nome:name||null,telefone:phone||null,avatar_url:avatarUrl||null}).eq('user_id',userId).select('*').single();
       if(error)return {ok:false,message:errorMessage(error)};
       const session=await api.getSession();
-      const authPatch={data:{nome:name||''}};
+      const authPatch={data:{nome:name||'',avatar_url:avatarUrl||''}};
       if(email && email!==session?.user?.email) authPatch.email=email;
       const authResult=await client.auth.updateUser(authPatch);
       if(authResult.error)return {ok:false,message:errorMessage(authResult.error)};
