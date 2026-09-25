@@ -1675,10 +1675,15 @@ async function adminReports(){
   bind();
 }
 
-function adminStores(focusId='') {
+async function adminStores(focusId='') {
   if (!db.session.admin) return adminLogin();
+  let analytics={stores:{}};
+  if(window.ACCloud?.enabled){
+    const result=await window.ACCloud.adminAnalytics?.();
+    if(result?.ok)analytics=result;
+  }
   const counts = {all:db.merchants.length, pending:db.merchants.filter(x=>x.status==='aguardando').length, approved:db.merchants.filter(x=>x.status==='aprovada').length, blocked:db.merchants.filter(x=>x.status==='bloqueada').length};
-  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">${adminHeader('Lojas cadastradas','Aprovação, status e acesso')}<section class="admin-content"><div class="admin-summary-strip"><div><small>Total</small><strong>${counts.all}</strong></div><div><small>Aguardando</small><strong>${counts.pending}</strong></div><div><small>Aprovadas</small><strong>${counts.approved}</strong></div><div><small>Bloqueadas</small><strong>${counts.blocked}</strong></div></div><div class="admin-filter-row"><button class="active" data-store-filter="todos">Todas</button><button data-store-filter="aguardando">Aguardando</button><button data-store-filter="aprovada">Aprovadas</button><button data-store-filter="bloqueada">Bloqueadas</button></div><div class="admin-store-management" id="adminStoreList">${db.merchants.map(store=>adminStoreCard(store,focusId)).join('')}</div></section>${adminNav('stores')}</main>`;
+  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">${adminHeader('Lojas cadastradas','Aprovação, satisfação e resultados')}<section class="admin-content"><div class="admin-summary-strip"><div><small>Total</small><strong>${counts.all}</strong></div><div><small>Aguardando</small><strong>${counts.pending}</strong></div><div><small>Aprovadas</small><strong>${counts.approved}</strong></div><div><small>Bloqueadas</small><strong>${counts.blocked}</strong></div></div><div class="admin-filter-row"><button class="active" data-store-filter="todos">Todas</button><button data-store-filter="aguardando">Aguardando</button><button data-store-filter="aprovada">Aprovadas</button><button data-store-filter="bloqueada">Bloqueadas</button></div><div class="admin-store-management" id="adminStoreList">${db.merchants.map(store=>adminStoreCard(store,focusId,analytics.stores?.[store.id]||{})).join('')}</div></section>${adminNav('stores')}</main>`;
   bind();
   bindAdminStoreActions();
   document.querySelectorAll('[data-store-filter]').forEach(btn=>btn.onclick=()=>{
@@ -1688,8 +1693,9 @@ function adminStores(focusId='') {
   if (focusId) setTimeout(()=>document.querySelector(`[data-store-card="${focusId}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}),30);
 }
 
-function adminStoreCard(store, focusId='') {
-  return `<article class="admin-store-card ${focusId===store.id?'focus':''}" data-store-card="${store.id}" data-admin-status="${store.status}"><div class="admin-store-card-top"><span class="admin-store-avatar large">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><div class="admin-store-name-row"><h3>${esc(store.name)}</h3>${adminStatusBadge(store.status)}</div><p>${esc(store.category)} · ${esc(store.address || 'Grajaú - MA')}</p><small>${esc(store.email)}</small></div></div><div class="admin-store-meta"><div><small>Plano</small><b>${planLabel(store.plan)}</b></div><div><small>Produtos</small><b>${merchantProductsFor(store.id).length}</b></div><div><small>Ofertas</small><b>${merchantOffersFor(store.id).filter(o=>o.active).length}</b></div></div><div class="admin-store-actions">${store.status==='aguardando'?`<button class="primary" data-approve="${store.id}">${icon('check')} Aprovar</button><button data-reject="${store.id}">Reprovar</button>`:''}${store.status==='aprovada'?`<button data-block="${store.id}">Bloquear loja</button><button data-view-store="${store.id}">${icon('eye')} Ver no app</button>`:''}${store.status==='bloqueada'?`<button class="primary" data-reactivate="${store.id}">Reativar</button>`:''}${store.status==='reprovada'?`<button class="primary" data-reactivate="${store.id}">Aprovar agora</button>`:''}</div></article>`;
+function adminStoreCard(store, focusId='', results={}) {
+  const satisfaction=results.ratingAverage==null?(store.rating&&store.rating!=='Novo'?store.rating+' ★':'Sem avaliações'):`${Number(results.ratingAverage).toFixed(1)} ★`;
+  return `<article class="admin-store-card ${focusId===store.id?'focus':''}" data-store-card="${store.id}" data-admin-status="${store.status}"><div class="admin-store-card-top"><span class="admin-store-avatar large">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><div class="admin-store-name-row"><h3>${esc(store.name)}</h3>${adminStatusBadge(store.status)}</div><p>${esc(store.category)} · ${esc(store.address || 'Grajaú - MA')}</p><small>${esc(store.email)}</small></div></div><div class="admin-store-meta results"><div><small>Plano</small><b>${planLabel(store.plan)}</b></div><div><small>Satisfação</small><b>${satisfaction}</b></div><div><small>WhatsApp 30d</small><b>${results.whatsapp30||0}</b></div><div><small>Pessoas 30d</small><b>${results.uniqueVisitors30||0}</b></div></div><div class="admin-store-actions">${store.status==='aguardando'?`<button class="primary" data-approve="${store.id}">${icon('check')} Aprovar</button><button data-reject="${store.id}">Reprovar</button>`:''}${store.status==='aprovada'?`<button data-block="${store.id}">Bloquear loja</button><button data-view-store="${store.id}">${icon('eye')} Ver no app</button>`:''}${store.status==='bloqueada'?`<button class="primary" data-reactivate="${store.id}">Reativar</button>`:''}${store.status==='reprovada'?`<button class="primary" data-reactivate="${store.id}">Aprovar agora</button>`:''}</div></article>`;
 }
 
 function bindAdminStoreActions(){
