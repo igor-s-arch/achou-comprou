@@ -27,7 +27,9 @@
   const normalizeText = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const categorySlugFromText = value => {
     const text = normalizeText(value);
-    if (text.includes('moda') || text.includes('calcad') || text.includes('roupa')) return 'moda';
+    if (text.includes('acessor')) return 'acessorios';
+    if (text.includes('calcad')) return 'calcados';
+    if (text.includes('moda') || text.includes('roupa')) return 'moda';
     if (text.includes('alimenta') || text.includes('pizza') || text.includes('comida')) return 'alimentacao';
     if (text.includes('beleza') || text.includes('perfume')) return 'beleza';
     if (text.includes('saude')) return 'saude';
@@ -38,7 +40,7 @@
     return 'outros';
   };
   const categorySlugFromProductType = type => ({
-    roupa:'moda', calcado:'moda', pizza:'alimentacao', beleza:'beleza', celular:'tecnologia'
+    roupa:'moda', calcado:'calcados', pizza:'alimentacao', beleza:'beleza', celular:'tecnologia'
   }[type] || 'outros');
   let grajauCityId = null;
   const categoryIds = new Map();
@@ -64,6 +66,7 @@
     owner: '',
     name: store.nome || 'Loja',
     category: store.categoria_texto || 'Outros',
+    categories: Array.isArray(store.categorias) && store.categorias.length ? store.categorias : [store.categoria_texto || 'Outros'],
     whatsapp: store.whatsapp || '',
     instagram: store.instagram || '',
     address: store.endereco || 'Grajaú - MA',
@@ -166,10 +169,19 @@
 
     merchantDraftFromUser(user, fallback={}){
       const meta=user?.user_metadata||{};
+      const categories = Array.isArray(fallback.categories) && fallback.categories.length
+        ? fallback.categories
+        : Array.isArray(meta.loja_categorias) && meta.loja_categorias.length
+          ? meta.loja_categorias
+          : [fallback.category || meta.loja_categoria || 'Outros'];
       return {
         owner: fallback.owner || meta.nome || meta.name || '',
         name: fallback.name || meta.loja_nome || '',
-        category: fallback.category || meta.loja_categoria || 'Outros',
+        legalName: fallback.legalName || meta.loja_razao_social || '',
+        cnpj: fallback.cnpj || meta.loja_cnpj || '',
+        stateRegistration: fallback.stateRegistration || meta.loja_inscricao_estadual || '',
+        categories: categories.slice(0,3),
+        category: categories[0] || 'Outros',
         whatsapp: fallback.whatsapp || meta.loja_whatsapp || '',
         instagram: fallback.instagram || meta.loja_instagram || '',
         address: fallback.address || meta.loja_endereco || '',
@@ -184,30 +196,33 @@
       const existing=await api.getMerchantStore(user.id);
       if(existing)return {ok:true,store:existing};
       const draft=api.merchantDraftFromUser(user,fallback);
-      if(!draft.name || !draft.whatsapp){
-        return {ok:false,message:'O cadastro da loja ainda não possui os dados mínimos para concluir a ativação.'};
+      if(!draft.name || !draft.whatsapp || !draft.address || !draft.legalName || !draft.cnpj || !draft.stateRegistration){
+        return {ok:false,message:'O cadastro da loja ainda não possui todos os dados obrigatórios.'};
       }
+      const categories=(draft.categories||[]).filter(Boolean).slice(0,3);
+      if(!categories.length)return {ok:false,message:'Selecione pelo menos uma categoria.'};
+      const cnpjDigits=String(draft.cnpj||'').replace(/\D/g,'');
+      if(cnpjDigits.length!==14)return {ok:false,message:'Informe um CNPJ válido com 14 números.'};
       const [cidadeId,categoriaId]=await Promise.all([
         getGrajauCityId(),
-        getCategoryId(categorySlugFromText(draft.category))
+        getCategoryId(categorySlugFromText(categories[0]))
       ]);
-      const payload={
-        owner_id:user.id,
-        cidade_id:cidadeId,
-        nome:draft.name,
-        categoria_principal_id:categoriaId,
-        categoria_texto:draft.category||'Outros',
-        whatsapp:draft.whatsapp,
-        instagram:draft.instagram||null,
-        endereco:draft.address||null,
-        horario_funcionamento:draft.hours||null,
-        descricao:draft.description||null,
-        email_contato:user.email||null,
-        status:'aguardando',
-        plano_id:'gratis',
-        plano_solicitado:draft.plan==='gratis'?null:draft.plan
-      };
-      const {data,error}=await client.from('lojas').insert(payload).select('*').single();
+      const {data,error}=await client.rpc('criar_loja_com_dados_fiscais',{
+        p_cidade_id:cidadeId,
+        p_categoria_principal_id:categoriaId,
+        p_nome:draft.name,
+        p_categorias:categories,
+        p_whatsapp:draft.whatsapp,
+        p_instagram:draft.instagram||'',
+        p_endereco:draft.address,
+        p_horario:draft.hours||'',
+        p_descricao:draft.description||'',
+        p_email_contato:user.email||'',
+        p_plano_solicitado:draft.plan,
+        p_razao_social:draft.legalName,
+        p_cnpj:cnpjDigits,
+        p_inscricao_estadual:draft.stateRegistration
+      }).single();
       if(error)return {ok:false,message:errorMessage(error)};
       return {ok:true,store:data};
     },
@@ -236,14 +251,25 @@
       return {ok:true,user:data.user,profile,needsEmailConfirmation};
     },
 
-    async signUpMerchant({owner,name,category,whatsapp,instagram,address,hours,description,email,password,plan='gratis'}){
+    async signUpMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,hours,description,email,password,plan='gratis'}){
       if(!client)return {ok:false,message:'Backend não configurado.'};
+      const cleanCategories=(Array.isArray(categories)?categories:[category]).filter(Boolean).slice(0,3);
+      if(!cleanCategories.length)return {ok:false,message:'Selecione pelo menos uma categoria.'};
+      const cnpjDigits=String(cnpj||'').replace(/\D/g,'');
+      if(cnpjDigits.length!==14)return {ok:false,message:'Informe um CNPJ válido com 14 números.'};
+      if(!legalName)return {ok:false,message:'Informe a razão social.'};
+      if(!stateRegistration)return {ok:false,message:'Informe a inscrição estadual ou ISENTO.'};
+      if(!address)return {ok:false,message:'Informe o endereço da loja.'};
       const normalizedPlan=normalizePlan(plan);
       const metadata={
         nome:owner,
         tipo:'comerciante',
         loja_nome:name,
-        loja_categoria:category||'Outros',
+        loja_razao_social:legalName,
+        loja_cnpj:cnpjDigits,
+        loja_inscricao_estadual:stateRegistration,
+        loja_categorias:cleanCategories,
+        loja_categoria:cleanCategories[0]||'Outros',
         loja_whatsapp:whatsapp,
         loja_instagram:instagram||'',
         loja_endereco:address||'',
@@ -259,7 +285,7 @@
       const needsEmailConfirmation=!data.session;
       let store=null;
       if(data.user && data.session){
-        const created=await api.ensureMerchantStore(data.user,{owner,name,category,whatsapp,instagram,address,hours,description,plan:normalizedPlan});
+        const created=await api.ensureMerchantStore(data.user,{owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,whatsapp,instagram,address,hours,description,plan:normalizedPlan});
         if(!created.ok)return created;
         store=created.store;
       }
