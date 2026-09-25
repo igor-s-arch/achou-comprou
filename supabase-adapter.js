@@ -416,7 +416,11 @@
       if(Object.prototype.hasOwnProperty.call(patch,'plan')) payload.plano_id=normalizePlan(patch.plan);
       if(Object.prototype.hasOwnProperty.call(patch,'requestedPlan')) payload.plano_solicitado=patch.requestedPlan?normalizePlan(patch.requestedPlan):null;
       const {data,error}=await client.from('lojas').update(payload).eq('id',storeId).select('*').single();
-      return error?{ok:false,message:errorMessage(error)}:{ok:true,store:data};
+      if(error)return {ok:false,message:errorMessage(error)};
+      if(data && (data.status!=='aprovada' || data.plano_id!=='premium_banner')){
+        await client.from('banners').update({ativo:false}).eq('loja_id',storeId).eq('ativo',true);
+      }
+      return {ok:true,store:data};
     },
 
     async publishBanner({storeId,title,message,imageData='',endDate=''}) {
