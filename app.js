@@ -41,6 +41,20 @@ const DEFAULT_DB = {
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||''})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
 let db = loadDb();
+let adminBranding={
+  name:'Igor',
+  role:'Administrador',
+  subtitle:'Controle da plataforma em um só lugar.',
+  logoUrl:'',
+  bannerUrl:'',
+  avatarUrl:''
+};
+async function loadAdminBranding(){
+  if(!window.ACCloud?.enabled)return adminBranding;
+  const result=await window.ACCloud.getAdminBranding?.();
+  if(result?.ok && result.config)adminBranding={...adminBranding,...result.config};
+  return adminBranding;
+}
 function saveDb() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); return true; } catch (err) { console.error('Falha ao salvar dados locais', err); alert('O navegador ficou sem espaço para salvar novas imagens. Use arquivos menores ou remova imagens antigas.'); return false; } }
 function upsertCloudClient(profile,user){
   if(!user) return;
@@ -1646,8 +1660,11 @@ async function admin() {
   if (!db.session.admin) return adminLogin();
   let analytics={registeredClients:0,activeVisitors30:0,whatsapp30:0,ratingAverage:null,ratingCount:0,stores:{}};
   if(window.ACCloud?.enabled){
-    const result=await window.ACCloud.adminAnalytics?.();
-    if(result?.ok)analytics=result;
+    const [analyticsResult]=await Promise.all([
+      window.ACCloud.adminAnalytics?.(),
+      loadAdminBranding()
+    ]);
+    if(analyticsResult?.ok)analytics=analyticsResult;
   }
   const pending = db.merchants.filter(s => s.status === 'aguardando').length;
   const approved = db.merchants.filter(s => s.status === 'aprovada').length;
@@ -1661,17 +1678,127 @@ async function admin() {
     premium_banner: db.merchants.filter(s=>s.plan==='premium_banner').length
   };
   const recent = db.merchants.slice().reverse().slice(0,4);
-  app.innerHTML = `<main class="app-shell admin-pro ${adminDeviceClass()}"><header class="admin-top"><div><span class="admin-kicker">PAINEL ADMINISTRATIVO</span><h1>Achou, Comprou</h1><p>Controle da plataforma em um só lugar.</p><span class="admin-device-chip">${icon('grid')} <b data-admin-device-label>${adminDeviceLabel()}</b></span></div><button class="admin-profile-dot" aria-label="Administrador">AC</button></header><section class="admin-content">
-  <div class="admin-alert ${pending ? 'show' : ''}">${icon('clock')}<div><b>${pending || 'Nenhuma'} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação</b><span>${pending ? 'Revise os novos cadastros para liberar a publicação.' : 'Todos os cadastros estão em dia.'}</span></div>${pending ? '<button data-go="adminStores">Revisar</button>' : ''}</div>
-  <div class="admin-kpi-grid"><article><span>${icon('store')}</span><small>Lojas aprovadas</small><strong>${approved}</strong><em>${db.merchants.length} cadastradas</em></article><article><span>${icon('package')}</span><small>Produtos</small><strong>${db.products.length}</strong><em>${activeOffers} ofertas ativas</em></article><article><span>${icon('card')}</span><small>Planos pagos</small><strong>${paid}</strong><em>${paid ? Math.round(paid/Math.max(approved,1)*100) : 0}% das aprovadas</em></article><article><span>${icon('image')}</span><small>Banner principal</small><strong>${bannerStore ? 'Ativo' : '—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha'}</em></article></div>
-  <div class="admin-section-head"><div><span>RESULTADOS DO APP</span><h2>Últimos 30 dias</h2></div><button class="admin-link-btn" data-go="adminReports">Ver relatório</button></div>
-  <div class="admin-result-grid"><article><small>Clientes cadastrados</small><strong>${analytics.registeredClients||0}</strong><span>sem contar lojistas</span></article><article><small>Pessoas ativas</small><strong>${analytics.activeVisitors30||0}</strong><span>visitantes únicos</span></article><article><small>Contatos WhatsApp</small><strong>${analytics.whatsapp30||0}</strong><span>cliques enviados às lojas</span></article><article><small>Satisfação média</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+' ★'}</strong><span>${analytics.ratingCount||0} avaliações</span></article></div>
-  <div class="admin-section-head"><div><span>ATALHOS</span><h2>Gestão rápida</h2></div></div><div class="admin-quick-grid"><button data-go="adminStores"><span>${icon('check')}</span><b>Aprovar lojas</b><small>Cadastros e bloqueios</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminPlans"><span>${icon('card')}</span><b>Planos</b><small>Ativação e solicitações</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminReports"><span>${icon('chart')}</span><b>Relatórios</b><small>Resultados das lojas</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminBanners"><span>${icon('image')}</span><b>Banner principal</b><small>Destaque da Home</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminCatalog"><span>${icon('package')}</span><b>Produtos e ofertas</b><small>Visão geral do catálogo</small>${icon('arrowRight','admin-arrow')}</button></div>
-  <section class="admin-panel-card"><div class="admin-panel-head"><div><span>LOJAS</span><h3>Cadastros recentes</h3></div><button data-go="adminStores">Ver todas</button></div><div class="admin-store-list">${recent.map(m=>`<button data-admin-store="${m.id}"><span class="admin-store-avatar">${esc((m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-store-copy"><b>${esc(m.name)}</b><small>${esc(m.category)} · ${planLabel(m.plan)}</small></span>${adminStatusBadge(m.status)}</button>`).join('')}</div></section>
-  <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Grátis</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section><button class="admin-logout-link" id="adminLogout">Sair da administração</button></section>${adminNav('dashboard')}</main>`;
+  const logoSrc=adminBranding.logoUrl||'./assets/logo-achou-comprou.png';
+  const initials=String(adminBranding.name||'Administrador').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'AC';
+  const avatar=adminBranding.avatarUrl
+    ? `<img src="${esc(adminBranding.avatarUrl)}" alt="Foto de ${esc(adminBranding.name)}">`
+    : `<span>${esc(initials)}</span>`;
+  const bannerImg=adminBranding.bannerUrl?`<img class="admin-hero-bg" src="${esc(adminBranding.bannerUrl)}" alt="">`:'';
+
+  app.innerHTML = `<main class="app-shell admin-pro ${adminDeviceClass()}">
+    <header class="admin-top admin-hero ${adminBranding.bannerUrl?'has-custom-banner':''}">
+      ${bannerImg}<div class="admin-hero-shade"></div>
+      <div class="admin-hero-main">
+        <div class="admin-brand-row">
+          <img class="admin-brand-logo" src="${esc(logoSrc)}" alt="Achou, Comprou">
+          <div class="admin-hero-tools">
+            <span class="admin-device-chip">${icon('phone')} <b data-admin-device-label>${adminDeviceLabel()}</b></span>
+            <button class="admin-settings-btn" data-go="adminSettings" aria-label="Configurações do painel">${icon('settings')}</button>
+          </div>
+        </div>
+        <span class="admin-kicker">PAINEL ADMINISTRATIVO</span>
+        <h1>Achou, <em>Comprou</em></h1>
+        <p>${esc(adminBranding.subtitle||'Controle da plataforma em um só lugar.')}</p>
+        <div class="admin-welcome"><span>👋</span> Bem-vindo, <b>${esc(adminBranding.name||'Administrador')}</b></div>
+      </div>
+      <div class="admin-profile-card">
+        <div class="admin-profile-photo">${avatar}<i></i></div>
+        <strong>${esc(adminBranding.name||'Administrador')}</strong>
+        <small>${esc(adminBranding.role||'Administrador')}</small>
+      </div>
+    </header>
+    <section class="admin-content">
+      <div class="admin-alert ${pending ? 'show' : ''}">${icon('clock')}<div><b>${pending || 'Nenhuma'} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação</b><span>${pending ? 'Revise os novos cadastros para liberar a publicação.' : 'Todos os cadastros estão em dia.'}</span></div>${pending ? '<button data-go="adminStores">Revisar</button>' : ''}</div>
+      <div class="admin-kpi-grid">
+        <article><span>${icon('store')}</span><small>Lojas aprovadas</small><strong>${approved}</strong><em>${db.merchants.length} cadastradas</em></article>
+        <article><span>${icon('package')}</span><small>Produtos</small><strong>${db.products.length}</strong><em>${activeOffers} ofertas ativas</em></article>
+        <article><span>${icon('card')}</span><small>Planos pagos</small><strong>${paid}</strong><em>${paid ? Math.round(paid/Math.max(approved,1)*100) : 0}% das aprovadas</em></article>
+        <article><span>${icon('image')}</span><small>Banner principal</small><strong>${bannerStore ? 'Ativo' : '—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha'}</em></article>
+      </div>
+      <div class="admin-section-head"><div><span>RESULTADOS DO APP</span><h2>Últimos 30 dias</h2></div><button class="admin-link-btn" data-go="adminReports">Ver relatório</button></div>
+      <div class="admin-result-grid">
+        <article><small>Clientes cadastrados</small><strong>${analytics.registeredClients||0}</strong><span>sem contar lojistas</span></article>
+        <article><small>Pessoas ativas</small><strong>${analytics.activeVisitors30||0}</strong><span>visitantes únicos</span></article>
+        <article><small>Contatos WhatsApp</small><strong>${analytics.whatsapp30||0}</strong><span>cliques enviados às lojas</span></article>
+        <article><small>Satisfação média</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+' ★'}</strong><span>${analytics.ratingCount||0} avaliações</span></article>
+      </div>
+      <section class="admin-growth-card">
+        <div class="admin-growth-icon">${icon('chart')}</div>
+        <div><span>DESEMPENHO DA PLATAFORMA</span><h3>Os resultados do app estão <b>crescendo!</b></h3><p>Acompanhe contatos, usuários ativos e o desempenho de cada lojista.</p><button data-go="adminReports">Ver relatório completo ${icon('arrowRight')}</button></div>
+        <div class="admin-growth-bars"><i></i><i></i><i></i><i></i></div>
+      </section>
+      <div class="admin-section-head"><div><span>ATALHOS</span><h2>Gestão rápida</h2></div></div>
+      <div class="admin-quick-grid">
+        <button data-go="adminStores"><span>${icon('check')}</span><b>Aprovar lojas</b><small>Cadastros e bloqueios</small>${icon('arrowRight','admin-arrow')}</button>
+        <button data-go="adminPlans"><span>${icon('card')}</span><b>Planos</b><small>Ativação e solicitações</small>${icon('arrowRight','admin-arrow')}</button>
+        <button data-go="adminReports"><span>${icon('chart')}</span><b>Relatórios</b><small>Resultados das lojas</small>${icon('arrowRight','admin-arrow')}</button>
+        <button data-go="adminBanners"><span>${icon('image')}</span><b>Banner principal</b><small>Destaque da Home</small>${icon('arrowRight','admin-arrow')}</button>
+        <button data-go="adminCatalog"><span>${icon('package')}</span><b>Produtos e ofertas</b><small>Visão geral do catálogo</small>${icon('arrowRight','admin-arrow')}</button>
+      </div>
+      <section class="admin-panel-card"><div class="admin-panel-head"><div><span>LOJAS</span><h3>Cadastros recentes</h3></div><button data-go="adminStores">Ver todas</button></div><div class="admin-store-list">${recent.map(m=>`<button data-admin-store="${m.id}"><span class="admin-store-avatar">${esc((m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-store-copy"><b>${esc(m.name)}</b><small>${esc(m.category)} · ${planLabel(m.plan)}</small></span>${adminStatusBadge(m.status)}</button>`).join('')}</div></section>
+      <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Grátis</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section>
+      <button class="admin-logout-link" id="adminLogout">Sair da administração</button>
+    </section>${adminNav('dashboard')}</main>`;
   bind();
   document.getElementById('adminLogout').onclick = async () => { if(window.ACCloud?.enabled) await window.ACCloud.signOut(); db.session.admin = false; saveDb(); profile(); };
   document.querySelectorAll('[data-admin-store]').forEach(b => b.onclick = () => adminStores(b.dataset.adminStore));
+}
+
+async function adminSettings(){
+  if(!db.session.admin)return adminLogin();
+  await loadAdminBranding();
+  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">
+    ${adminHeader('Aparência do painel','Banner, logo e perfil do administrador')}
+    <section class="admin-content">
+      <div class="admin-branding-intro"><span>${icon('settings')}</span><div><b>Personalização do Admin</b><p>Altere a identidade visual sem precisar mexer no código.</p></div></div>
+      <form class="admin-branding-form" id="adminBrandingForm">
+        <div class="admin-branding-fields">
+          <label>Nome exibido<input id="adminBrandName" value="${esc(adminBranding.name||'Igor')}" maxlength="60" required></label>
+          <label>Função<input id="adminBrandRole" value="${esc(adminBranding.role||'Administrador')}" maxlength="60" required></label>
+        </div>
+        <label>Subtítulo do painel<input id="adminBrandSubtitle" value="${esc(adminBranding.subtitle||'Controle da plataforma em um só lugar.')}" maxlength="120" required></label>
+        <div class="admin-section-head"><div><span>IMAGENS</span><h2>Identidade visual</h2></div></div>
+        <div class="admin-branding-upload-grid">
+          <div class="admin-upload-card"><label>Logo</label><input id="adminLogoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="image-picker admin-logo-picker" id="adminLogoPreview"></button><button type="button" class="admin-clear-image" id="adminLogoClear">Usar logo padrão</button></div>
+          <div class="admin-upload-card wide"><label>Banner do topo</label><input id="adminBannerInput" type="file" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="image-picker admin-banner-picker" id="adminBannerPreview"></button><button type="button" class="admin-clear-image" id="adminBannerClear">Remover banner</button></div>
+          <div class="admin-upload-card"><label>Foto do administrador</label><input id="adminAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="image-picker admin-avatar-picker" id="adminAvatarPreview"></button><button type="button" class="admin-clear-image" id="adminAvatarClear">Remover foto</button></div>
+        </div>
+        <div id="adminBrandingMsg"></div>
+        <button class="btn btn-yellow btn-block" type="submit">Salvar aparência do painel</button>
+      </form>
+    </section>${adminNav('dashboard')}</main>`;
+  bind();
+
+  const logoPicker=bindImagePicker('adminLogoInput','adminLogoPreview',{initial:adminBranding.logoUrl,maxW:900,maxH:500,quality:.86,emptyTitle:'Logo padrão',emptyText:'Toque para trocar'});
+  const bannerPicker=bindImagePicker('adminBannerInput','adminBannerPreview',{initial:adminBranding.bannerUrl,maxW:1800,maxH:900,quality:.84,emptyTitle:'Adicionar banner',emptyText:'Recomendado: imagem horizontal'});
+  const avatarPicker=bindImagePicker('adminAvatarInput','adminAvatarPreview',{initial:adminBranding.avatarUrl,maxW:700,maxH:700,quality:.84,emptyTitle:'Adicionar foto',emptyText:'Foto quadrada funciona melhor'});
+
+  document.getElementById('adminLogoClear').onclick=()=>logoPicker.set('');
+  document.getElementById('adminBannerClear').onclick=()=>bannerPicker.set('');
+  document.getElementById('adminAvatarClear').onclick=()=>avatarPicker.set('');
+
+  document.getElementById('adminBrandingForm').onsubmit=async e=>{
+    e.preventDefault();
+    const msg=document.getElementById('adminBrandingMsg');
+    const payload={
+      name:document.getElementById('adminBrandName').value.trim(),
+      role:document.getElementById('adminBrandRole').value.trim(),
+      subtitle:document.getElementById('adminBrandSubtitle').value.trim(),
+      logoData:logoPicker.get(),
+      bannerData:bannerPicker.get(),
+      avatarData:avatarPicker.get()
+    };
+    msg.innerHTML='<div class="notice">Salvando aparência...</div>';
+    if(window.ACCloud?.enabled){
+      const result=await window.ACCloud.saveAdminBranding(payload);
+      if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível salvar.')}</div>`;return;}
+      adminBranding={...adminBranding,...result.config};
+    }else{
+      adminBranding={...adminBranding,name:payload.name,role:payload.role,subtitle:payload.subtitle,logoUrl:payload.logoData,bannerUrl:payload.bannerData,avatarUrl:payload.avatarData};
+    }
+    msg.innerHTML='<div class="notice success">Aparência salva com sucesso.</div>';
+    setTimeout(admin,500);
+  };
 }
 
 async function adminReports(){
@@ -1960,7 +2087,7 @@ function bind() {
   applyAdminDeviceMode();
   document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
     const go = el.dataset.go;
-    ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, fav: favorites }[go] || home)();
+    ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, adminSettings, fav: favorites }[go] || home)();
   });
   document.querySelectorAll('[data-product-id]').forEach(el => el.onclick = () => product(el.dataset.productId));
   document.querySelectorAll('[data-store-id]').forEach(el => el.onclick = () => store(el.dataset.storeId));
