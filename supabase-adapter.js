@@ -263,6 +263,46 @@
       return {ok:true,store:data};
     },
 
+    async convertClientToMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,hours,weeklyHours={},description,plan='gratis'}){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const session=await api.getSession();
+      const user=session?.user;
+      if(!user)return {ok:false,message:'Entre na sua conta para concluir o cadastro da loja.'};
+
+      const cleanCategories=(Array.isArray(categories)?categories:[category]).filter(Boolean).slice(0,3);
+      if(!cleanCategories.length)return {ok:false,message:'Selecione pelo menos uma categoria.'};
+      const cnpjDigits=String(cnpj||'').replace(/\D/g,'');
+      if(cnpjDigits.length!==14)return {ok:false,message:'Informe um CNPJ válido com 14 números.'};
+      if(!legalName)return {ok:false,message:'Informe a razão social.'};
+      if(!stateRegistration)return {ok:false,message:'Informe a inscrição estadual ou ISENTO.'};
+      if(!address)return {ok:false,message:'Informe o endereço da loja.'};
+
+      const [cidadeId,categoriaId]=await Promise.all([
+        getGrajauCityId(),
+        getCategoryId(categorySlugFromText(cleanCategories[0]))
+      ]);
+      const normalizedPlan=normalizePlan(plan);
+      const {data,error}=await client.rpc('converter_cliente_para_comerciante',{
+        p_cidade_id:cidadeId,
+        p_categoria_principal_id:categoriaId,
+        p_nome:name,
+        p_categorias:cleanCategories,
+        p_whatsapp:whatsapp,
+        p_instagram:instagram||'',
+        p_endereco:address,
+        p_horario:hours||'',
+        p_horarios_semanais:weeklyHours||{},
+        p_descricao:description||'',
+        p_email_contato:user.email||'',
+        p_plano_solicitado:normalizedPlan,
+        p_razao_social:legalName,
+        p_cnpj:cnpjDigits,
+        p_inscricao_estadual:stateRegistration
+      }).single();
+      if(error)return {ok:false,message:errorMessage(error)};
+      return {ok:true,user,store:data,profile:await api.getProfile(user.id)};
+    },
+
     async signInClient(email,password){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.auth.signInWithPassword({email,password});
@@ -297,6 +337,27 @@
       if(!stateRegistration)return {ok:false,message:'Informe a inscrição estadual ou ISENTO.'};
       if(!address)return {ok:false,message:'Informe o endereço da loja.'};
       const normalizedPlan=normalizePlan(plan);
+
+      // Se o e-mail já existir, tenta usar a mesma conta em vez de criar uma conta duplicada.
+      const existingLogin=await client.auth.signInWithPassword({email,password});
+      if(!existingLogin.error && existingLogin.data?.user){
+        const profile=await api.getProfile(existingLogin.data.user.id);
+        const store=await api.getMerchantStore(existingLogin.data.user.id);
+        if(store){
+          return {ok:false,message:'Já existe uma loja vinculada a este e-mail. Entre pela Área do Lojista.'};
+        }
+        if(profile?.tipo==='admin'){
+          await client.auth.signOut();
+          return {ok:false,message:'Este e-mail pertence à administração e não pode ser usado para cadastrar uma loja.'};
+        }
+        const converted=await api.convertClientToMerchant({
+          owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,
+          whatsapp,instagram,address,hours,weeklyHours,description,plan:normalizedPlan
+        });
+        if(!converted.ok)return converted;
+        return {ok:true,user:converted.user,store:converted.store,profile:converted.profile,needsEmailConfirmation:false,convertedExisting:true};
+      }
+
       const metadata={
         nome:owner,
         tipo:'comerciante',
@@ -319,6 +380,12 @@
       if(emailRedirectTo) options.emailRedirectTo=emailRedirectTo;
       const {data,error}=await client.auth.signUp({email,password,options});
       if(error)return {ok:false,message:errorMessage(error)};
+
+      // Supabase pode ocultar que o e-mail já existe e devolver identities vazio.
+      if(data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+        return {ok:false,existingEmail:true,message:'Este e-mail já possui uma conta. Use a mesma senha da sua conta de cliente para cadastrar a loja.'};
+      }
+
       const needsEmailConfirmation=!data.session;
       let store=null;
       if(data.user && data.session){
@@ -334,19 +401,30 @@
       const {data,error}=await client.auth.signInWithPassword({email,password});
       if(error)return {ok:false,message:errorMessage(error)};
       const profile=await api.getProfile(data.user.id);
+
+      if(profile?.tipo==='cliente'){
+        const store=await api.getMerchantStore(data.user.id);
+        if(store){
+          await client.from('perfis').update({tipo:'comerciante'}).eq('user_id',data.user.id);
+          const refreshed=await api.getProfile(data.user.id);
+          return {ok:true,user:data.user,profile:refreshed,store};
+        }
+        return {ok:false,needsMerchantSetup:true,user:data.user,profile,message:'Sua conta de cliente foi encontrada. Conclua os dados da loja para ativar o acesso de lojista.'};
+      }
+
       if(profile?.tipo!=='comerciante'&&profile?.tipo!=='admin'){
         await client.auth.signOut();
         return {ok:false,message:'Esta conta não possui acesso de lojista.'};
       }
+
       let store=await api.getMerchantStore(data.user.id);
       if(!store && profile?.tipo==='comerciante'){
         const ensured=await api.ensureMerchantStore(data.user);
-        if(!ensured.ok){await client.auth.signOut();return ensured;}
+        if(!ensured.ok)return {ok:false,needsMerchantSetup:true,user:data.user,profile,message:'Conclua os dados da loja para acessar o painel.'};
         store=ensured.store;
       }
       if(!store){
-        await client.auth.signOut();
-        return {ok:false,message:'Nenhuma loja está vinculada a este acesso.'};
+        return {ok:false,needsMerchantSetup:true,user:data.user,profile,message:'Conclua os dados da loja para acessar o painel.'};
       }
       return {ok:true,user:data.user,profile,store};
     },
