@@ -761,6 +761,66 @@
       return {ok:true,profile:data,user:authResult.data?.user||session?.user,emailChangePending:!!(email && email!==session?.user?.email)};
     },
 
+    async getAdminBranding(){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.from('configuracao_admin').select('*').eq('id',1).maybeSingle();
+      if(error)return {ok:false,message:errorMessage(error)};
+      return {ok:true,config:{
+        name:data?.nome_exibicao||'Igor',
+        role:data?.funcao||'Administrador',
+        subtitle:data?.subtitulo||'Controle da plataforma em um só lugar.',
+        logoUrl:data?.logo_url||'',
+        bannerUrl:data?.banner_url||'',
+        avatarUrl:data?.avatar_url||''
+      }};
+    },
+
+    async saveAdminBranding({name,role,subtitle,logoData,bannerData,avatarData}){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const session=await api.getSession();
+      const userId=session?.user?.id;
+      if(!userId)return {ok:false,message:'Entre novamente como administrador.'};
+
+      let logoUrl=logoData||'', bannerUrl=bannerData||'', avatarUrl=avatarData||'';
+
+      if(String(logoUrl).startsWith('data:')){
+        const uploaded=await uploadDataUrl('banners',userId,logoUrl,'admin-logo');
+        if(!uploaded.ok)return uploaded;
+        logoUrl=uploaded.url||'';
+      }
+      if(String(bannerUrl).startsWith('data:')){
+        const uploaded=await uploadDataUrl('banners',userId,bannerUrl,'admin-banner');
+        if(!uploaded.ok)return uploaded;
+        bannerUrl=uploaded.url||'';
+      }
+      if(String(avatarUrl).startsWith('data:')){
+        const uploaded=await uploadDataUrl('avatars',userId,avatarUrl,'admin-avatar');
+        if(!uploaded.ok)return uploaded;
+        avatarUrl=uploaded.url||'';
+      }
+
+      const payload={
+        nome_exibicao:(name||'Igor').trim(),
+        funcao:(role||'Administrador').trim(),
+        subtitulo:(subtitle||'Controle da plataforma em um só lugar.').trim(),
+        logo_url:logoUrl||null,
+        banner_url:bannerUrl||null,
+        avatar_url:avatarUrl||null,
+        updated_at:new Date().toISOString()
+      };
+      const {data,error}=await client.from('configuracao_admin')
+        .update(payload).eq('id',1).select('*').single();
+      if(error)return {ok:false,message:errorMessage(error)};
+      return {ok:true,config:{
+        name:data.nome_exibicao||'Igor',
+        role:data.funcao||'Administrador',
+        subtitle:data.subtitulo||'Controle da plataforma em um só lugar.',
+        logoUrl:data.logo_url||'',
+        bannerUrl:data.banner_url||'',
+        avatarUrl:data.avatar_url||''
+      }};
+    },
+
     async trackEvent(type,{storeId=null,productId=null,offerId=null,search=null,metadata={}}={}){
       if(!client)return {ok:false};
       const session=await api.getSession();
