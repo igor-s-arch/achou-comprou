@@ -113,7 +113,12 @@
     quantity:Number(o.quantidade ?? 0), active:o.ativa !== false,
     createdAt:o.created_at || ''
   });
-  const localBanner = b => ({ id:b.id, storeId:b.loja_id, productId:b.produto_id || null, offerId:b.oferta_id || null, title:b.titulo || '', message:b.mensagem || '', imageData:b.imagem_url || '', active:b.ativo !== false });
+  const localBanner = b => ({
+    id:b.id, storeId:b.loja_id, productId:b.produto_id || null, offerId:b.oferta_id || null,
+    title:b.titulo || '', message:b.mensagem || '', imageData:b.imagem_url || '',
+    start:b.inicio || '', end:b.fim || '', order:Number(b.ordem || 0),
+    active:b.ativo !== false, createdAt:b.created_at || ''
+  });
 
   async function dataUrlToBlob(dataUrl){
     const response = await fetch(dataUrl);
@@ -414,11 +419,43 @@
       return error?{ok:false,message:errorMessage(error)}:{ok:true,store:data};
     },
 
-    async publishBanner({storeId,title,message}){
+    async publishBanner({storeId,title,message,imageData='',endDate=''}) {
       if(!client)return {ok:false,message:'Backend não configurado.'};
-      const off=await client.from('banners').update({ativo:false}).eq('ativo',true);
-      if(off.error)return {ok:false,message:errorMessage(off.error)};
-      const {data,error}=await client.from('banners').insert({loja_id:storeId,titulo:title,mensagem:message,ativo:true}).select('*').single();
+
+      const storeCheck=await client.from('lojas').select('id,status,plano_id').eq('id',storeId).maybeSingle();
+      if(storeCheck.error)return {ok:false,message:errorMessage(storeCheck.error)};
+      if(!storeCheck.data || storeCheck.data.status!=='aprovada' || storeCheck.data.plano_id!=='premium_banner'){
+        return {ok:false,message:'Somente lojas aprovadas com Premium + Banner podem entrar no destaque.'};
+      }
+
+      const session=await api.getSession();
+      let imageUrl=imageData||'';
+      if(String(imageUrl).startsWith('data:')){
+        const uploaded=await uploadDataUrl('banners',session?.user?.id||'admin',imageUrl,'banner');
+        if(!uploaded.ok)return uploaded;
+        imageUrl=uploaded.url;
+      }
+
+      // Mantém somente um banner ativo por loja, mas permite várias lojas no carrossel.
+      const previous=await client.from('banners').update({ativo:false}).eq('loja_id',storeId).eq('ativo',true);
+      if(previous.error)return {ok:false,message:errorMessage(previous.error)};
+
+      const payload={
+        loja_id:storeId,
+        titulo:title,
+        mensagem:message||null,
+        imagem_url:imageUrl||null,
+        inicio:new Date().toISOString(),
+        fim:endDate ? `${endDate}T23:59:59` : null,
+        ativo:true
+      };
+      const {data,error}=await client.from('banners').insert(payload).select('*').single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,banner:localBanner(data)};
+    },
+
+    async setBannerActive(bannerId,active){
+      if(!client||!bannerId)return {ok:false,message:'Banner inválido.'};
+      const {data,error}=await client.from('banners').update({ativo:!!active}).eq('id',bannerId).select('*').single();
       return error?{ok:false,message:errorMessage(error)}:{ok:true,banner:localBanner(data)};
     },
 
