@@ -528,3 +528,118 @@ with check (bucket_id='avatars' and (storage.foldername(name))[1]=auth.uid()::te
 create policy "usuario_exclui_avatar" on storage.objects
 for delete to authenticated
 using (bucket_id='avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+
+
+-- V0.22 — cadastro profissional do lojista
+alter table public.lojas add column if not exists categorias text[] not null default '{}';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname='lojas_categorias_max_3'
+      and conrelid='public.lojas'::regclass
+  ) then
+    alter table public.lojas
+      add constraint lojas_categorias_max_3
+      check (coalesce(cardinality(categorias),0) <= 3);
+  end if;
+end $$;
+
+insert into public.categorias(nome,slug,icone,ordem) values
+('Calçados','calcados','bag',2),
+('Acessórios','acessorios','bag',3)
+on conflict (slug) do update set nome=excluded.nome, ativa=true;
+
+create table if not exists public.loja_dados_fiscais (
+  loja_id uuid primary key references public.lojas(id) on delete cascade,
+  razao_social text not null,
+  cnpj text not null,
+  inscricao_estadual text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint loja_dados_fiscais_cnpj_14 check (length(regexp_replace(cnpj,'\D','','g'))=14)
+);
+
+create unique index if not exists idx_loja_dados_fiscais_cnpj_unique
+on public.loja_dados_fiscais ((regexp_replace(cnpj,'\D','','g')));
+
+alter table public.loja_dados_fiscais enable row level security;
+
+create policy "lojista_le_dados_fiscais" on public.loja_dados_fiscais
+for select to authenticated
+using (public.is_store_owner(loja_id) or public.is_admin());
+
+create policy "lojista_cria_dados_fiscais" on public.loja_dados_fiscais
+for insert to authenticated
+with check (public.is_store_owner(loja_id) or public.is_admin());
+
+create policy "lojista_atualiza_dados_fiscais" on public.loja_dados_fiscais
+for update to authenticated
+using (public.is_store_owner(loja_id) or public.is_admin())
+with check (public.is_store_owner(loja_id) or public.is_admin());
+
+grant select, insert, update on table public.loja_dados_fiscais to authenticated;
+
+create or replace function public.criar_loja_com_dados_fiscais(
+  p_cidade_id uuid,
+  p_categoria_principal_id uuid,
+  p_nome text,
+  p_categorias text[],
+  p_whatsapp text,
+  p_instagram text,
+  p_endereco text,
+  p_horario text,
+  p_descricao text,
+  p_email_contato text,
+  p_plano_solicitado text,
+  p_razao_social text,
+  p_cnpj text,
+  p_inscricao_estadual text
+)
+returns public.lojas
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  nova_loja public.lojas;
+  categorias_limpas text[];
+begin
+  if auth.uid() is null then raise exception 'Usuário não autenticado.'; end if;
+
+  categorias_limpas := array(
+    select distinct btrim(x)
+    from unnest(coalesce(p_categorias, '{}'::text[])) as x
+    where btrim(x) <> ''
+    limit 3
+  );
+
+  if cardinality(categorias_limpas) < 1 then raise exception 'Selecione pelo menos uma categoria.'; end if;
+  if p_razao_social is null or btrim(p_razao_social) = '' then raise exception 'Informe a razão social.'; end if;
+  if length(regexp_replace(coalesce(p_cnpj,''),'\D','','g')) <> 14 then raise exception 'CNPJ inválido.'; end if;
+  if p_inscricao_estadual is null or btrim(p_inscricao_estadual) = '' then raise exception 'Informe a inscrição estadual ou ISENTO.'; end if;
+
+  insert into public.lojas(
+    owner_id, cidade_id, nome, categoria_principal_id, categoria_texto, categorias,
+    whatsapp, instagram, endereco, horario_funcionamento, descricao, email_contato,
+    status, plano_id, plano_solicitado
+  )
+  values(
+    auth.uid(), p_cidade_id, p_nome, p_categoria_principal_id,
+    array_to_string(categorias_limpas, ' · '), categorias_limpas,
+    p_whatsapp, nullif(p_instagram,''), p_endereco, nullif(p_horario,''),
+    nullif(p_descricao,''), nullif(p_email_contato,''),
+    'aguardando', 'gratis', nullif(p_plano_solicitado,'gratis')
+  )
+  returning * into nova_loja;
+
+  insert into public.loja_dados_fiscais(loja_id, razao_social, cnpj, inscricao_estadual)
+  values(nova_loja.id, btrim(p_razao_social), regexp_replace(p_cnpj,'\D','','g'), btrim(p_inscricao_estadual));
+
+  return nova_loja;
+end;
+$$;
+
+revoke execute on function public.criar_loja_com_dados_fiscais(uuid,uuid,text,text[],text,text,text,text,text,text,text,text,text,text) from public, anon;
+grant execute on function public.criar_loja_com_dados_fiscais(uuid,uuid,text,text[],text,text,text,text,text,text,text,text,text,text) to authenticated;
