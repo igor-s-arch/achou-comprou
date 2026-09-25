@@ -321,7 +321,7 @@ async function setFavorite(productId,active){
   return true;
 }
 
-const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merchantPlanIntent:'', merchantDraft:null, afterLogin:null, passwordRecovery:false, filters: { category:'', option:'', color:'', maxPrice:'' } };
+const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merchantPlanIntent:'', merchantDraft:null, merchantExistingAccount:null, afterLogin:null, passwordRecovery:false, filters: { category:'', option:'', color:'', maxPrice:'' } };
 
 function normalizeText(value = '') {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -998,20 +998,24 @@ function merchantLogin() {
   bind();
   document.getElementById('fillMerchantDemo')?.addEventListener('click',()=>{document.getElementById('merchantEmail').value='lojista@exemplo.com';document.getElementById('merchantPassword').value='123456';});
   document.getElementById('merchantForgot').onclick=async()=>{const email=document.getElementById('merchantEmail').value.trim().toLowerCase();const msg=document.getElementById('loginMsg');if(!email){msg.innerHTML='<div class="notice error">Digite seu e-mail para recuperar a senha.</div>';return;}if(window.ACCloud?.enabled){try{localStorage.setItem('achou_recovery_target','merchant')}catch(_){}const result=await window.ACCloud.resetPassword(email);msg.innerHTML=result.ok?'<div class="notice success">Enviamos as instruções. Abra o link do e-mail para definir uma nova senha.</div>':`<div class="notice error">${esc(result.message||'Não foi possível enviar o e-mail.')}</div>`;return;}msg.innerHTML='<div class="notice success">A recuperação será enviada por e-mail quando o backend estiver conectado.</div>';};
-  document.getElementById('merchantLoginForm').onsubmit = async e => { e.preventDefault(); const email = document.getElementById('merchantEmail').value.trim().toLowerCase(); const password = document.getElementById('merchantPassword').value; const msg=document.getElementById('loginMsg'); if(window.ACCloud?.enabled){msg.innerHTML='<div class="notice">Entrando...</div>';const result=await window.ACCloud.signInMerchant(email,password);if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'E-mail ou senha inválidos.')}</div>`;return;}upsertCloudMerchant(result.store,result.user);db.session.merchantId=result.store.id;await syncCloudMerchantCatalog(result.store.id);saveDb();syncPublicStoreState();merchant();return;} const found = db.merchants.find(m => m.email.toLowerCase() === email && m.password === password); if (!found) { msg.innerHTML = '<div class="notice error">E-mail ou senha inválidos.</div>'; return; } db.session.merchantId = found.id; saveDb(); merchant(); };
+  document.getElementById('merchantLoginForm').onsubmit = async e => { e.preventDefault(); const email = document.getElementById('merchantEmail').value.trim().toLowerCase(); const password = document.getElementById('merchantPassword').value; const msg=document.getElementById('loginMsg'); if(window.ACCloud?.enabled){msg.innerHTML='<div class="notice">Entrando...</div>';const result=await window.ACCloud.signInMerchant(email,password);if(!result.ok){if(result.needsMerchantSetup){publicState.merchantExistingAccount={user:result.user,profile:result.profile,email};publicState.merchantPlanIntent='';merchantRegister();return;}msg.innerHTML=`<div class="notice error">${esc(result.message||'E-mail ou senha inválidos.')}</div>`;return;}publicState.merchantExistingAccount=null;upsertCloudMerchant(result.store,result.user);db.session.merchantId=result.store.id;await syncCloudMerchantCatalog(result.store.id);saveDb();syncPublicStoreState();merchant();return;} const found = db.merchants.find(m => m.email.toLowerCase() === email && m.password === password); if (!found) { msg.innerHTML = '<div class="notice error">E-mail ou senha inválidos.</div>'; return; } db.session.merchantId = found.id; saveDb(); merchant(); };
 }
 
 function merchantRegister() {
+  const existingAccount=publicState.merchantExistingAccount;
+  const existingName=existingAccount?.profile?.nome||existingAccount?.user?.user_metadata?.nome||'';
+  const existingEmail=existingAccount?.email||existingAccount?.user?.email||'';
   const intent = publicState.merchantPlanIntent ? `<div class="selected-plan-hint">Plano de interesse: <b>${planLabel(publicState.merchantPlanIntent)}</b>. Você poderá confirmar ou trocar na próxima etapa.</div>` : '';
   const categoryOptions=['Moda','Calçados','Acessórios','Alimentação','Beleza','Saúde','Tecnologia','Casa','Automotivo','Serviços','Outros'];
   app.innerHTML = `<main class="app-shell form-page merchant-register-page">
-    <div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar minha loja</b></div>
+    <div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>${existingAccount?'Concluir cadastro da loja':'Cadastrar minha loja'}</b></div>
     <div class="register-progress"><span class="active">1</span><i></i><span>2</span><i></i><span>3</span><small>Dados</small><small>Plano</small><small>Aprovação</small></div>
     <form class="form-card merchant-register-card" id="merchantRegisterForm">
       <div class="form-intro"><span class="section-icon">${icon('store')}</span><div><h2>Dados da empresa</h2><p>Preencha os dados comerciais e fiscais para análise da loja.</p></div></div>
       ${intent}
+      ${existingAccount?'<div class="notice success">Encontramos sua conta de cliente. Complete os dados abaixo e ela passará a ter acesso de lojista usando o mesmo e-mail.</div>':''}
       <div class="merchant-form-section"><div><span>RESPONSÁVEL</span><h3>Acesso da conta</h3></div></div>
-      <label>Nome do responsável<input id="regOwner" required placeholder="Nome completo"></label>
+      <label>Nome do responsável<input id="regOwner" required placeholder="Nome completo" value="${esc(existingName)}"></label>
       <div class="merchant-form-section"><div><span>EMPRESA</span><h3>Dados cadastrais</h3></div></div>
       <label>Nome da loja<input id="regName" required placeholder="Ex.: Loja Exemplo"></label>
       <label>Razão social<input id="regLegalName" required placeholder="Razão social registrada no CNPJ"></label>
@@ -1037,7 +1041,9 @@ function merchantRegister() {
       <label>Descrição<textarea id="regDescription" placeholder="Conte um pouco sobre a loja"></textarea></label>
 
       <div class="merchant-form-section"><div><span>LOGIN</span><h3>Crie seu acesso</h3></div></div>
-      <div class="two-cols"><label>E-mail de acesso<input id="regEmail" type="email" required autocomplete="username" placeholder="seuemail@exemplo.com"></label><label>Senha<input id="regPassword" type="password" minlength="6" required autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label></div>
+      ${existingAccount
+        ? `<label>E-mail de acesso<input id="regEmail" type="email" value="${esc(existingEmail)}" readonly><input id="regPassword" type="hidden" value=""></label><div class="field-help">Você continuará usando a mesma senha dessa conta.</div>`
+        : `<div class="two-cols"><label>E-mail de acesso<input id="regEmail" type="email" required autocomplete="username" placeholder="seuemail@exemplo.com"></label><label>Senha<input id="regPassword" type="password" minlength="6" required autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label></div>`}
       <button class="btn btn-yellow btn-block" type="submit">Continuar para os planos</button>
       <div id="regMsg"></div>
     </form>
@@ -1130,7 +1136,9 @@ function merchantPlanOnboarding() {
       const msg=document.getElementById('planOnboardMsg');
       document.querySelectorAll('[data-onboard-plan]').forEach(b=>b.disabled=true);
       msg.innerHTML='<div class="notice">Criando seu acesso e cadastrando a loja...</div>';
-      const result=await window.ACCloud.signUpMerchant({...draft,plan:chosen});
+      const result=publicState.merchantExistingAccount
+        ? await window.ACCloud.convertClientToMerchant({...draft,plan:chosen})
+        : await window.ACCloud.signUpMerchant({...draft,plan:chosen});
       if(!result.ok){
         document.querySelectorAll('[data-onboard-plan]').forEach(b=>b.disabled=false);
         msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível concluir o cadastro.')}</div>`;
@@ -1145,10 +1153,12 @@ function merchantPlanOnboarding() {
       if(result.store&&result.user){
         upsertCloudMerchant(result.store,result.user);
         db.session.merchantId=result.store.id;
+        db.session.clientId=null;
         saveDb();
         syncPublicStoreState();
       }
       publicState.merchantDraft=null;
+      publicState.merchantExistingAccount=null;
       merchantSubmitted(chosen,{name:draft.name});
       return;
     }
