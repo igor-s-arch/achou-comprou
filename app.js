@@ -456,8 +456,11 @@ function whatsappUrl(store, product) {
   const digits = String(store?.whatsapp || '').replace(/\D/g,'');
   if (!digits) return '';
   const phone = digits.startsWith('55') ? digits : `55${digits}`;
-  const msg = encodeURIComponent(`Olá, vi ${product?.name || 'um produto'} no Achou, Comprou e tenho interesse. Ainda está disponível?`);
-  return `https://wa.me/${phone}?text=${msg}`;
+  const productPrice = product ? currentPrice(product) : '';
+  const text = product
+    ? `Olá! Vim pelo Achou, Comprou 👋 Tenho interesse no produto *${product.name}*${productPrice ? ` por ${money(productPrice)}` : ''}. Ainda está disponível?`
+    : `Olá! Vim pelo Achou, Comprou 👋 Quero saber mais sobre os produtos da sua loja.`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 
 const data = {
@@ -781,25 +784,44 @@ function product(productId = publicState.productId) {
   document.getElementById('productBack').onclick = () => publicState.query ? search(publicState.query) : home();
   const toggleFav=async()=>{ if(!currentClient()){ publicState.afterLogin={screen:'product',productId:p.id,favoriteId:p.id}; return clientLogin(); } const ok=await setFavorite(p.id,!fav); if(ok) product(p.id); };
   document.getElementById('favBtn').onclick = toggleFav; document.getElementById('headFav').onclick = toggleFav;
-  document.getElementById('waBtn').onclick = () => { const url=whatsappUrl(m,p); if (url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,productId:p.id}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
+  document.getElementById('waBtn').onclick = () => { const url=whatsappUrl(m,p); if (url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,productId:p.id,metadata:{source:'produto',product_name:p.name}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
   if(window.ACCloud?.enabled) window.ACCloud.trackEvent('visualizacao_produto',{storeId:m.id,productId:p.id}).catch(()=>{});
 }
 
-function store(storeId = publicState.storeId) {
+async function store(storeId = publicState.storeId) {
   const m = storeById(storeId) || approvedStores()[0];
   if (!m || m.status !== 'aprovada') return home();
   publicState.storeId = m.id;
   const products = publicProducts().filter(p => p.storeId === m.id);
   const full = m.plan !== 'gratis';
+  const client=currentClient();
+  let myRating=0;
+  if(client && window.ACCloud?.enabled){
+    const mine=await window.ACCloud.getMyStoreRating?.(m.id);
+    if(mine?.ok && mine.rating) myRating=Number(mine.rating.nota||0);
+  }
+  const ratingBox = client
+    ? `<div class="store-rating-card"><div><span>AVALIAÇÃO</span><h3>Como foi sua experiência?</h3><p>Sua nota ajuda outros clientes e mostra o resultado da loja.</p></div><div class="store-rating-stars">${[1,2,3,4,5].map(n=>`<button class="${myRating>=n?'active':''}" data-store-rating="${n}" aria-label="${n} estrelas">${icon('star')}</button>`).join('')}</div><small id="storeRatingMsg">${myRating ? `Sua avaliação atual: ${myRating} estrela${myRating===1?'':'s'}.` : 'Toque nas estrelas para avaliar.'}</small></div>`
+    : `<div class="store-rating-card compact"><div><span>AVALIAÇÃO</span><h3>Avalie esta loja</h3><p>Entre como cliente para registrar sua satisfação.</p></div><button class="btn btn-outline" data-go="clientLogin">Entrar para avaliar</button></div>`;
   app.innerHTML = `<main class="app-shell">
     <section class="store-hero ${m.coverData ? 'has-cover' : ''}" ${m.coverData ? `style="--store-cover:url('${m.coverData}')"` : ''}><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><div class="store-icon ${m.logoData ? 'with-logo' : ''}">${m.logoData ? `<img src="${m.logoData}" alt="Logo ${esc(m.name)}">` : icon('store')}</div><h1>${esc(m.name)}</h1><div class="rating-row">${icon('star')} ${esc(m.rating || 'Novo')} ${full ? '<span>Loja em destaque</span>' : '<span>Perfil básico</span>'}</div><div class="store-meta">${icon('pin')} ${esc(m.address || 'Grajaú - MA')} <span>•</span> ${esc(m.dist || 'Grajaú')}</div><div class="store-buttons"><button class="btn btn-green" id="storeWa">${icon('chat')} WhatsApp</button>${full && m.instagram ? '<button class="btn instagram" id="storeInstagram">Instagram</button>' : ''}<button class="btn btn-yellow" id="storeMap">${icon('pin')} Como chegar</button></div></section>
-    <section class="content">${full ? `<div class="store-about"><h3>Sobre a loja</h3><p>${esc(m.description || 'Comércio local em Grajaú.')}</p>${m.hours ? `<small>Horário: ${esc(m.hours)}</small>` : ''}</div>` : ''}<div class="section-title"><h3>Produtos</h3><a>${products.length} cadastrados</a></div><div class="offers">${products.length ? products.map(p => `<article class="card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="price">${money(currentPrice(p))}</div>${currentPrice(p)!==originalPrice(p) ? `<div class="old">${money(originalPrice(p))}</div>` : ''}</div></article>`).join('') : '<div class="empty">A loja ainda não publicou produtos.</div>'}</div></section>
+    <section class="content">${full ? `<div class="store-about"><h3>Sobre a loja</h3><p>${esc(m.description || 'Comércio local em Grajaú.')}</p>${m.hours ? `<small>Horário: ${esc(m.hours)}</small>` : ''}</div>` : ''}${ratingBox}<div class="section-title"><h3>Produtos</h3><a>${products.length} cadastrados</a></div><div class="offers">${products.length ? products.map(p => `<article class="card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="price">${money(currentPrice(p))}</div>${currentPrice(p)!==originalPrice(p) ? `<div class="old">${money(originalPrice(p))}</div>` : ''}</div></article>`).join('') : '<div class="empty">A loja ainda não publicou produtos.</div>'}</div></section>
     ${nav('home')}
   </main>`;
   bind();
-  document.getElementById('storeWa').onclick=()=>{ const url=whatsappUrl(m,null); if(url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
+  document.getElementById('storeWa').onclick=()=>{ const url=whatsappUrl(m,null); if(url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,metadata:{source:'loja'}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
   if(document.getElementById('storeInstagram')) document.getElementById('storeInstagram').onclick=()=>{ const handle=String(m.instagram||'').replace('@','').trim(); if(handle) window.open(`https://instagram.com/${handle}`,'_blank'); };
   document.getElementById('storeMap').onclick=()=>{ if(m.address) window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address)}`,'_blank'); };
+  document.querySelectorAll('[data-store-rating]').forEach(btn=>btn.onclick=async()=>{
+    const note=Number(btn.dataset.storeRating||0);
+    const msg=document.getElementById('storeRatingMsg');
+    if(!window.ACCloud?.enabled){if(msg)msg.textContent='Avaliação disponível no sistema online.';return;}
+    if(msg)msg.textContent='Salvando sua avaliação...';
+    const result=await window.ACCloud.rateStore(m.id,note);
+    if(!result.ok){if(msg)msg.textContent=result.message||'Não foi possível salvar a avaliação.';return;}
+    if(result.average!=null)m.rating=String(Number(result.average).toFixed(1)).replace('.',',');
+    store(m.id);
+  });
   if(window.ACCloud?.enabled) window.ACCloud.trackEvent('visualizacao_loja',{storeId:m.id}).catch(()=>{});
 }
 
@@ -1406,14 +1428,37 @@ function offerForm() {
 
 async function stats() {
   const m=currentMerchant(); if(!m)return merchantLogin();
-  let counts={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0}, byProduct={};
+  let counts={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0};
+  let counts30={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0};
+  let byProduct={}, whatsappByProduct={}, uniqueVisitors30=0, ratingAverage=null, ratingCount=0;
   if(window.ACCloud?.enabled){
     const result=await window.ACCloud.merchantStats(m.id);
-    if(result.ok){counts=result.counts||counts;byProduct=result.byProduct||{};}
+    if(result.ok){
+      counts=result.counts||counts;
+      counts30=result.counts30||counts30;
+      byProduct=result.byProduct||{};
+      whatsappByProduct=result.whatsappByProduct||{};
+      uniqueVisitors30=result.uniqueVisitors30||0;
+      ratingAverage=result.ratingAverage;
+      ratingCount=result.ratingCount||0;
+    }
   }
-  const ranked=merchantProductsFor(m.id).map(p=>({p,n:byProduct[p.id]||0})).sort((a,b)=>b.n-a.n).slice(0,5);
+  const products=merchantProductsFor(m.id);
+  const ranked=products.map(p=>({p,n:byProduct[p.id]||0})).sort((a,b)=>b.n-a.n).slice(0,5);
+  const contacts=products.map(p=>({p,n:whatsappByProduct[p.id]||0})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
   const max=Math.max(1,...ranked.map(x=>x.n));
-  app.innerHTML = `<main class="app-shell merchant"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Estatísticas</b></div><div class="metric-grid">${metric('eye','Visualizações da loja',String(counts.visualizacao_loja||0),'Dados reais do aplicativo')}${metric('chat','Cliques no WhatsApp',String(counts.clique_whatsapp||0),'Contatos gerados')}${metric('heart','Favoritos',String(counts.favorito||0),'Produtos favoritados')}${metric('package','Produtos vistos',String(counts.visualizacao_produto||0),'Visualizações de produtos')}</div><div class="chart-card"><div class="section-title compact-title"><h3>Produtos mais vistos</h3><span>Desde o início</span></div>${ranked.length?ranked.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/max*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não há visualizações de produtos registradas.</div>'}</div>${merchantNav('dashboard')}</main>`;
+  const contactMax=Math.max(1,...contacts.map(x=>x.n));
+  app.innerHTML = `<main class="app-shell merchant"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Estatísticas</b></div>
+  <div class="report-period"><b>Resultados dos últimos 30 dias</b><span>Use estes números para acompanhar o retorno do Achou, Comprou.</span></div>
+  <div class="metric-grid">
+    ${metric('user','Pessoas alcançadas',String(uniqueVisitors30),'Visitantes únicos')}
+    ${metric('chat','Contatos no WhatsApp',String(counts30.clique_whatsapp||0),'Últimos 30 dias')}
+    ${metric('eye','Visualizações da loja',String(counts30.visualizacao_loja||0),'Últimos 30 dias')}
+    ${metric('star','Satisfação',ratingAverage==null?'—':`${ratingAverage.toFixed(1)} ★`,ratingCount?`${ratingCount} avaliação(ões)`:'Ainda sem avaliações')}
+  </div>
+  <div class="chart-card"><div class="section-title compact-title"><h3>Produtos que mais geraram contatos</h3><span>WhatsApp</span></div>${contacts.length?contacts.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/contactMax*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não houve contato de WhatsApp em um produto específico.</div>'}</div>
+  <div class="chart-card"><div class="section-title compact-title"><h3>Produtos mais vistos</h3><span>Desde o início</span></div>${ranked.length?ranked.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/max*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não há visualizações de produtos registradas.</div>'}</div>
+  ${merchantNav('dashboard')}</main>`;
   bind();
 }
 
@@ -1557,6 +1602,7 @@ function adminNav(active='dashboard') {
   const items = [
     ['dashboard','admin','home','Visão geral'],
     ['stores','adminStores','store','Lojas'],
+    ['reports','adminReports','chart','Relatórios'],
     ['catalog','adminCatalog','package','Catálogo'],
     ['plans','adminPlans','card','Planos'],
     ['banners','adminBanners','image','Banner']
@@ -1574,8 +1620,13 @@ function adminStatusBadge(status) {
   return `<span class="admin-status ${x[1]}">${x[0]}</span>`;
 }
 
-function admin() {
+async function admin() {
   if (!db.session.admin) return adminLogin();
+  let analytics={registeredClients:0,activeVisitors30:0,whatsapp30:0,ratingAverage:null,ratingCount:0,stores:{}};
+  if(window.ACCloud?.enabled){
+    const result=await window.ACCloud.adminAnalytics?.();
+    if(result?.ok)analytics=result;
+  }
   const pending = db.merchants.filter(s => s.status === 'aguardando').length;
   const approved = db.merchants.filter(s => s.status === 'aprovada').length;
   const paid = db.merchants.filter(s => s.plan !== 'gratis' && s.status === 'aprovada').length;
@@ -1588,10 +1639,40 @@ function admin() {
     premium_banner: db.merchants.filter(s=>s.plan==='premium_banner').length
   };
   const recent = db.merchants.slice().reverse().slice(0,4);
-  app.innerHTML = `<main class="app-shell admin-pro"><header class="admin-top"><div><span class="admin-kicker">PAINEL ADMINISTRATIVO</span><h1>Achou, Comprou</h1><p>Controle da plataforma em um só lugar.</p></div><button class="admin-profile-dot" aria-label="Administrador">AC</button></header><section class="admin-content"><div class="admin-alert ${pending ? 'show' : ''}">${icon('clock')}<div><b>${pending || 'Nenhuma'} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação</b><span>${pending ? 'Revise os novos cadastros para liberar a publicação.' : 'Todos os cadastros estão em dia.'}</span></div>${pending ? '<button data-go="adminStores">Revisar</button>' : ''}</div><div class="admin-kpi-grid"><article><span>${icon('store')}</span><small>Lojas aprovadas</small><strong>${approved}</strong><em>${db.merchants.length} cadastradas</em></article><article><span>${icon('package')}</span><small>Produtos</small><strong>${db.products.length}</strong><em>${activeOffers} ofertas ativas</em></article><article><span>${icon('card')}</span><small>Planos pagos</small><strong>${paid}</strong><em>${paid ? Math.round(paid/Math.max(approved,1)*100) : 0}% das aprovadas</em></article><article><span>${icon('image')}</span><small>Banner principal</small><strong>${bannerStore ? 'Ativo' : '—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha'}</em></article></div><div class="admin-section-head"><div><span>ATALHOS</span><h2>Gestão rápida</h2></div></div><div class="admin-quick-grid"><button data-go="adminStores"><span>${icon('check')}</span><b>Aprovar lojas</b><small>Cadastros e bloqueios</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminPlans"><span>${icon('card')}</span><b>Planos</b><small>Ativação e solicitações</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminBanners"><span>${icon('image')}</span><b>Banner principal</b><small>Destaque da Home</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminCatalog"><span>${icon('package')}</span><b>Produtos e ofertas</b><small>Visão geral do catálogo</small>${icon('arrowRight','admin-arrow')}</button></div><section class="admin-panel-card"><div class="admin-panel-head"><div><span>LOJAS</span><h3>Cadastros recentes</h3></div><button data-go="adminStores">Ver todas</button></div><div class="admin-store-list">${recent.map(m=>`<button data-admin-store="${m.id}"><span class="admin-store-avatar">${esc((m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-store-copy"><b>${esc(m.name)}</b><small>${esc(m.category)} · ${planLabel(m.plan)}</small></span>${adminStatusBadge(m.status)}</button>`).join('')}</div></section><section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Grátis</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section><button class="admin-logout-link" id="adminLogout">Sair da administração</button></section>${adminNav('dashboard')}</main>`;
+  app.innerHTML = `<main class="app-shell admin-pro"><header class="admin-top"><div><span class="admin-kicker">PAINEL ADMINISTRATIVO</span><h1>Achou, Comprou</h1><p>Controle da plataforma em um só lugar.</p></div><button class="admin-profile-dot" aria-label="Administrador">AC</button></header><section class="admin-content">
+  <div class="admin-alert ${pending ? 'show' : ''}">${icon('clock')}<div><b>${pending || 'Nenhuma'} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação</b><span>${pending ? 'Revise os novos cadastros para liberar a publicação.' : 'Todos os cadastros estão em dia.'}</span></div>${pending ? '<button data-go="adminStores">Revisar</button>' : ''}</div>
+  <div class="admin-kpi-grid"><article><span>${icon('store')}</span><small>Lojas aprovadas</small><strong>${approved}</strong><em>${db.merchants.length} cadastradas</em></article><article><span>${icon('package')}</span><small>Produtos</small><strong>${db.products.length}</strong><em>${activeOffers} ofertas ativas</em></article><article><span>${icon('card')}</span><small>Planos pagos</small><strong>${paid}</strong><em>${paid ? Math.round(paid/Math.max(approved,1)*100) : 0}% das aprovadas</em></article><article><span>${icon('image')}</span><small>Banner principal</small><strong>${bannerStore ? 'Ativo' : '—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha'}</em></article></div>
+  <div class="admin-section-head"><div><span>RESULTADOS DO APP</span><h2>Últimos 30 dias</h2></div><button class="admin-link-btn" data-go="adminReports">Ver relatório</button></div>
+  <div class="admin-result-grid"><article><small>Clientes cadastrados</small><strong>${analytics.registeredClients||0}</strong><span>sem contar lojistas</span></article><article><small>Pessoas ativas</small><strong>${analytics.activeVisitors30||0}</strong><span>visitantes únicos</span></article><article><small>Contatos WhatsApp</small><strong>${analytics.whatsapp30||0}</strong><span>cliques enviados às lojas</span></article><article><small>Satisfação média</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+' ★'}</strong><span>${analytics.ratingCount||0} avaliações</span></article></div>
+  <div class="admin-section-head"><div><span>ATALHOS</span><h2>Gestão rápida</h2></div></div><div class="admin-quick-grid"><button data-go="adminStores"><span>${icon('check')}</span><b>Aprovar lojas</b><small>Cadastros e bloqueios</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminPlans"><span>${icon('card')}</span><b>Planos</b><small>Ativação e solicitações</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminReports"><span>${icon('chart')}</span><b>Relatórios</b><small>Resultados das lojas</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminBanners"><span>${icon('image')}</span><b>Banner principal</b><small>Destaque da Home</small>${icon('arrowRight','admin-arrow')}</button><button data-go="adminCatalog"><span>${icon('package')}</span><b>Produtos e ofertas</b><small>Visão geral do catálogo</small>${icon('arrowRight','admin-arrow')}</button></div>
+  <section class="admin-panel-card"><div class="admin-panel-head"><div><span>LOJAS</span><h3>Cadastros recentes</h3></div><button data-go="adminStores">Ver todas</button></div><div class="admin-store-list">${recent.map(m=>`<button data-admin-store="${m.id}"><span class="admin-store-avatar">${esc((m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-store-copy"><b>${esc(m.name)}</b><small>${esc(m.category)} · ${planLabel(m.plan)}</small></span>${adminStatusBadge(m.status)}</button>`).join('')}</div></section>
+  <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Grátis</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section><button class="admin-logout-link" id="adminLogout">Sair da administração</button></section>${adminNav('dashboard')}</main>`;
   bind();
   document.getElementById('adminLogout').onclick = async () => { if(window.ACCloud?.enabled) await window.ACCloud.signOut(); db.session.admin = false; saveDb(); profile(); };
   document.querySelectorAll('[data-admin-store]').forEach(b => b.onclick = () => adminStores(b.dataset.adminStore));
+}
+
+async function adminReports(){
+  if(!db.session.admin)return adminLogin();
+  let analytics={registeredClients:0,activeVisitors30:0,appOpens30:0,whatsapp30:0,whatsappAll:0,ratingAverage:null,ratingCount:0,stores:{}};
+  if(window.ACCloud?.enabled){
+    const result=await window.ACCloud.adminAnalytics?.();
+    if(result?.ok)analytics=result;
+  }
+  const rows=db.merchants.filter(m=>m.status==='aprovada').map(m=>{
+    const s=analytics.stores?.[m.id]||{};
+    const top=Object.entries(s.productContacts||{}).sort((a,b)=>b[1]-a[1])[0];
+    const p=top?db.products.find(x=>x.id===top[0]):null;
+    return {m,s,topProduct:p?.name||'',topContacts:top?.[1]||0};
+  }).sort((a,b)=>(b.s.whatsapp30||0)-(a.s.whatsapp30||0)||(b.s.productViews30||0)-(a.s.productViews30||0));
+  app.innerHTML=`<main class="app-shell admin-pro admin-subpage">${adminHeader('Relatórios e resultados','Desempenho real do Achou, Comprou')}
+    <section class="admin-content">
+      <div class="admin-summary-strip four"><div><small>Clientes</small><strong>${analytics.registeredClients||0}</strong></div><div><small>Ativos 30d</small><strong>${analytics.activeVisitors30||0}</strong></div><div><small>WhatsApp 30d</small><strong>${analytics.whatsapp30||0}</strong></div><div><small>Satisfação</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+'★'}</strong></div></div>
+      <div class="admin-section-head"><div><span>DESEMPENHO DAS LOJAS</span><h2>Resultados dos últimos 30 dias</h2></div></div>
+      <div class="admin-report-list">${rows.length?rows.map((x,i)=>`<article class="admin-report-card"><div class="admin-report-rank">${i+1}</div><div class="admin-report-main"><div class="admin-report-title"><div><b>${esc(x.m.name)}</b><small>${esc(x.m.category||'Loja local')}</small></div><span>${x.s.ratingAverage==null?'Sem avaliações':x.s.ratingAverage.toFixed(1)+' ★ · '+(x.s.ratingCount||0)}</span></div><div class="admin-report-metrics"><div><strong>${x.s.whatsapp30||0}</strong><small>Contatos WhatsApp</small></div><div><strong>${x.s.uniqueVisitors30||0}</strong><small>Pessoas alcançadas</small></div><div><strong>${x.s.productViews30||0}</strong><small>Produtos vistos</small></div><div><strong>${x.s.storeViews30||0}</strong><small>Visitas à loja</small></div></div>${x.topProduct?`<div class="admin-report-highlight">${icon('chat')} Produto com mais interesse: <b>${esc(x.topProduct)}</b> · ${x.topContacts} contato(s)</div>`:''}</div></article>`).join(''):'<div class="notice">Ainda não há lojas aprovadas com dados para o relatório.</div>'}</div>
+      <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLATAFORMA</span><h3>Leitura geral</h3></div></div><div class="admin-report-overview"><p><b>${analytics.appOpens30||0}</b> aberturas registradas nos últimos 30 dias.</p><p><b>${analytics.whatsappAll||0}</b> contatos de WhatsApp registrados desde o início.</p><p><b>${analytics.ratingCount||0}</b> avaliações de satisfação registradas.</p></div></section>
+    </section>${adminNav('reports')}</main>`;
+  bind();
 }
 
 function adminStores(focusId='') {
@@ -1850,7 +1931,7 @@ function adminCatalog() {
 function bind() {
   document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
     const go = el.dataset.go;
-    ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, fav: favorites }[go] || home)();
+    ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, fav: favorites }[go] || home)();
   });
   document.querySelectorAll('[data-product-id]').forEach(el => el.onclick = () => product(el.dataset.productId));
   document.querySelectorAll('[data-store-id]').forEach(el => el.onclick = () => store(el.dataset.storeId));
@@ -1859,6 +1940,7 @@ function bind() {
 
 async function bootstrapCloudSession(){
   if(!window.ACCloud?.enabled)return;
+  window.ACCloud.trackAppOpen?.().catch(()=>{});
   await syncCloudPublicCatalog();
   const session=await window.ACCloud.getSession();
   if(!session?.user){db.session.clientId=null;db.session.merchantId=null;db.session.admin=false;saveDb();return;}
