@@ -48,6 +48,7 @@ function upsertCloudClient(profile,user){
     id:user.id,
     name:profile?.nome||user.user_metadata?.nome||user.user_metadata?.name||user.email?.split('@')[0]||'Cliente',
     email:user.email||'', password:'', phone:profile?.telefone||'', city:'Grajaú - MA',
+    avatar:profile?.avatar_url||existing?.avatar||'',
     favorites:existing?.favorites||[]
   };
   if(existing) Object.assign(existing,next); else db.clients.push(next);
@@ -426,6 +427,7 @@ function home() {
   const bannerStore = activeBanner ? storeById(activeBanner.storeId) : approvedStores()[0] || null;
   const offers = publicOffers();
   const shops = approvedStores();
+  const client = currentClient();
   const unreadNotifications = (db.notifications || []).filter(n => !n.read).length;
   const cats = [
     ['shirt', 'Moda', 'moda'], ['bag', 'Calçados', 'calcado'], ['food', 'Alimentação', 'alimentacao'], ['beauty', 'Beleza', 'beleza'], ['health', 'Saúde', 'saude'],
@@ -438,6 +440,7 @@ function home() {
         <div class="home-head-actions">
           <button class="location-button">${icon('pin')}<span>Grajaú - MA</span><span class="chevron">⌄</span></button>
           <button class="round-action" data-go="notifications" aria-label="Notificações">${icon('bell')}${unreadNotifications ? '<span class="notification-dot" aria-hidden="true"></span>' : ''}</button>
+          <button class="round-action home-profile-action ${client?.avatar ? 'has-photo' : ''}" data-go="profile" aria-label="Meu perfil">${client?.avatar ? `<img src="${esc(client.avatar)}" alt="Foto de perfil">` : icon('user')}</button>
         </div>
       </div>
       <div class="search home-search"><span class="search-leading">${icon('search')}</span><input id="q" placeholder="O que você está procurando?"><button id="searchBtn" aria-label="Filtros">${icon('sliders')}</button></div>
@@ -581,7 +584,7 @@ function favorites() {
 function profile() {
   const client = currentClient();
   app.innerHTML = `<main class="app-shell profile-page">
-    ${client ? `<div class="profile-head"><div class="avatar">${icon('user')}</div><div><span class="profile-kicker">Conta do cliente</span><h2>${esc(client.name)}</h2><p>${esc(client.email)}</p><button class="profile-edit-link" data-go="clientEditProfile">Editar perfil</button></div></div>` : `<div class="account-access-card"><div class="account-access-icon">${icon('user')}</div><div><span class="profile-kicker">Sua conta</span><h2>Entre no Achou, Comprou</h2><p>Salve favoritos e mantenha suas preferências em um só lugar.</p></div><button class="btn btn-yellow btn-block" data-go="clientLogin">Entrar ou criar conta</button></div>`}
+    ${client ? `<div class="profile-head"><div class="avatar ${client.avatar ? 'with-photo' : ''}">${client.avatar ? `<img src="${esc(client.avatar)}" alt="Foto de ${esc(client.name)}">` : icon('user')}</div><div><span class="profile-kicker">Conta do cliente</span><h2>${esc(client.name)}</h2><p>${esc(client.email)}</p><button class="profile-edit-link" data-go="clientEditProfile">Editar perfil</button></div></div>` : `<div class="account-access-card"><div class="account-access-icon">${icon('user')}</div><div><span class="profile-kicker">Sua conta</span><h2>Entre no Achou, Comprou</h2><p>Salve favoritos e mantenha suas preferências em um só lugar.</p></div><button class="btn btn-yellow btn-block" data-go="clientLogin">Entrar ou criar conta</button></div>`}
     <div class="menu-list"><button data-go="fav"><span>${icon('heart')} Meus favoritos</span><b>›</b></button><button data-go="recentSearches"><span>${icon('search')} Minhas buscas</span><b>›</b></button><button data-go="notifications"><span>${icon('bell')} Notificações</span><b>›</b></button><button data-go="clientSettings"><span>${icon('settings')} Configurações</span><b>›</b></button></div>
     ${client ? `<button class="btn btn-outline btn-block client-logout" id="clientLogout">Sair da minha conta</button>` : ''}
     <section class="merchant-gateway"><div class="merchant-gateway-mark">${icon('store')}</div><div class="merchant-gateway-copy"><span>Para comerciantes</span><h3>Venda e apareça para quem está procurando.</h3><p>Cadastre sua loja, publique produtos e acompanhe seu desempenho.</p></div><button class="btn btn-yellow btn-block" data-go="merchantLogin">Acessar área do lojista</button><button class="text-link-btn" data-go="plansPreview">Conhecer os planos para lojas</button></section>
@@ -611,24 +614,29 @@ function categories() {
 
 function clientEditProfile(){
   const c=currentClient(); if(!c) return clientLogin();
-  app.innerHTML=`<main class="app-shell form-page client-edit-page"><div class="page-head"><button class="back" data-go="profile" aria-label="Voltar">${icon('arrowLeft')}</button><b>Editar perfil</b></div><form class="form-card client-edit-card" id="clientEditForm"><div class="form-intro"><span class="section-icon">${icon('user')}</span><div><h2>Seus dados</h2><p>Mantenha suas informações atualizadas.</p></div></div><label>Nome completo<input id="editClientName" required value="${esc(c.name||'')}"></label><label>E-mail<input id="editClientEmail" type="email" required value="${esc(c.email||'')}"></label><label>WhatsApp<input id="editClientPhone" inputmode="tel" value="${esc(c.phone||'')}" placeholder="(99) 99999-9999"></label><label>Cidade<input id="editClientCity" value="${esc(c.city||'Grajaú - MA')}" placeholder="Grajaú - MA"></label><button class="btn btn-yellow btn-block" type="submit">Salvar alterações</button><div id="clientEditMsg"></div></form></main>`;
-  bind(); document.getElementById('clientEditForm').onsubmit=async e=>{
+  app.innerHTML=`<main class="app-shell form-page client-edit-page"><div class="page-head"><button class="back" data-go="profile" aria-label="Voltar">${icon('arrowLeft')}</button><b>Editar perfil</b></div><form class="form-card client-edit-card" id="clientEditForm"><div class="form-intro"><span class="section-icon">${icon('user')}</span><div><h2>Seus dados</h2><p>Mantenha suas informações atualizadas.</p></div></div><div class="client-avatar-field"><input class="media-file-input" id="clientAvatarFile" type="file" accept="image/jpeg,image/png,image/webp"><button class="media-picker square client-avatar-picker" type="button" id="clientAvatarPreview"></button><div class="client-avatar-copy"><b>Foto do perfil</b><span>Opcional. Ela aparece no seu perfil e no topo da página inicial.</span>${c.avatar?'<button type="button" class="text-link-btn client-avatar-remove" id="removeClientAvatar">Remover foto</button>':''}</div></div><label>Nome completo<input id="editClientName" required value="${esc(c.name||'')}"></label><label>E-mail<input id="editClientEmail" type="email" required value="${esc(c.email||'')}"></label><label>WhatsApp<input id="editClientPhone" inputmode="tel" value="${esc(c.phone||'')}" placeholder="(99) 99999-9999"></label><label>Cidade<input id="editClientCity" value="${esc(c.city||'Grajaú - MA')}" placeholder="Grajaú - MA"></label><button class="btn btn-yellow btn-block" type="submit">Salvar alterações</button><div id="clientEditMsg"></div></form></main>`;
+  bind();
+  const avatarPicker=bindImagePicker('clientAvatarFile','clientAvatarPreview',{maxW:640,maxH:640,quality:.82,emptyTitle:'Adicionar foto',emptyText:'JPG, PNG ou WebP'});
+  avatarPicker.set(c.avatar||'');
+  document.getElementById('removeClientAvatar')?.addEventListener('click',()=>avatarPicker.set(''));
+  document.getElementById('clientEditForm').onsubmit=async e=>{
     e.preventDefault();
     const msg=document.getElementById('clientEditMsg');
     const email=document.getElementById('editClientEmail').value.trim().toLowerCase();
     const name=document.getElementById('editClientName').value.trim();
     const phone=document.getElementById('editClientPhone').value.trim();
     const city=document.getElementById('editClientCity').value.trim()||'Grajaú - MA';
+    const avatarData=avatarPicker.get()||'';
     if(!window.ACCloud?.enabled && (db.clients||[]).some(x=>x.id!==c.id&&x.email.toLowerCase()===email)){msg.innerHTML='<div class="notice error">Este e-mail já está em uso.</div>';return;}
     if(window.ACCloud?.enabled){
       const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;msg.innerHTML='<div class="notice">Salvando perfil...</div>';
-      const result=await window.ACCloud.updateClientProfile(c.id,{name,phone,email});submit.disabled=false;
+      const result=await window.ACCloud.updateClientProfile(c.id,{name,phone,email,avatarData});submit.disabled=false;
       if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível atualizar o perfil.')}</div>`;return;}
-      c.name=result.profile?.nome||name;c.phone=result.profile?.telefone||phone;c.email=result.user?.email||c.email;c.city=city;saveDb();
+      c.name=result.profile?.nome||name;c.phone=result.profile?.telefone||phone;c.email=result.user?.email||c.email;c.city=city;c.avatar=result.profile?.avatar_url||'';saveDb();
       msg.innerHTML=`<div class="notice success">Perfil atualizado.${result.emailChangePending?' Confira o novo e-mail para confirmar a alteração.':''}</div>`;
       setTimeout(profile,800);return;
     }
-    c.name=name;c.email=email;c.phone=phone;c.city=city;saveDb();msg.innerHTML='<div class="notice success">Perfil atualizado com sucesso.</div>';setTimeout(profile,550);
+    c.name=name;c.email=email;c.phone=phone;c.city=city;c.avatar=avatarData;saveDb();msg.innerHTML='<div class="notice success">Perfil atualizado com sucesso.</div>';setTimeout(profile,550);
   };
 }
 
