@@ -1598,6 +1598,28 @@ function adminLogin() {
   };
 }
 
+function adminDeviceClass(){
+  const width=window.innerWidth || document.documentElement.clientWidth || 390;
+  const coarse=window.matchMedia?.('(pointer: coarse)')?.matches || false;
+  if(width>=1024 && !coarse)return 'admin-desktop';
+  if(width>=700)return 'admin-tablet';
+  return 'admin-mobile';
+}
+function adminDeviceLabel(){
+  const mode=adminDeviceClass();
+  return mode==='admin-desktop'?'Computador':mode==='admin-tablet'?'Tablet':'Celular';
+}
+function applyAdminDeviceMode(){
+  const shell=document.querySelector('.admin-pro');
+  if(!shell)return;
+  shell.classList.remove('admin-mobile','admin-tablet','admin-desktop');
+  const mode=adminDeviceClass();
+  shell.classList.add(mode);
+  shell.dataset.device=mode.replace('admin-','');
+  const chip=document.querySelector('[data-admin-device-label]');
+  if(chip)chip.textContent=adminDeviceLabel();
+}
+
 function adminNav(active='dashboard') {
   const items = [
     ['dashboard','admin','home','Visão geral'],
@@ -1639,7 +1661,7 @@ async function admin() {
     premium_banner: db.merchants.filter(s=>s.plan==='premium_banner').length
   };
   const recent = db.merchants.slice().reverse().slice(0,4);
-  app.innerHTML = `<main class="app-shell admin-pro"><header class="admin-top"><div><span class="admin-kicker">PAINEL ADMINISTRATIVO</span><h1>Achou, Comprou</h1><p>Controle da plataforma em um só lugar.</p></div><button class="admin-profile-dot" aria-label="Administrador">AC</button></header><section class="admin-content">
+  app.innerHTML = `<main class="app-shell admin-pro ${adminDeviceClass()}"><header class="admin-top"><div><span class="admin-kicker">PAINEL ADMINISTRATIVO</span><h1>Achou, Comprou</h1><p>Controle da plataforma em um só lugar.</p><span class="admin-device-chip">${icon('grid')} <b data-admin-device-label>${adminDeviceLabel()}</b></span></div><button class="admin-profile-dot" aria-label="Administrador">AC</button></header><section class="admin-content">
   <div class="admin-alert ${pending ? 'show' : ''}">${icon('clock')}<div><b>${pending || 'Nenhuma'} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação</b><span>${pending ? 'Revise os novos cadastros para liberar a publicação.' : 'Todos os cadastros estão em dia.'}</span></div>${pending ? '<button data-go="adminStores">Revisar</button>' : ''}</div>
   <div class="admin-kpi-grid"><article><span>${icon('store')}</span><small>Lojas aprovadas</small><strong>${approved}</strong><em>${db.merchants.length} cadastradas</em></article><article><span>${icon('package')}</span><small>Produtos</small><strong>${db.products.length}</strong><em>${activeOffers} ofertas ativas</em></article><article><span>${icon('card')}</span><small>Planos pagos</small><strong>${paid}</strong><em>${paid ? Math.round(paid/Math.max(approved,1)*100) : 0}% das aprovadas</em></article><article><span>${icon('image')}</span><small>Banner principal</small><strong>${bannerStore ? 'Ativo' : '—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha'}</em></article></div>
   <div class="admin-section-head"><div><span>RESULTADOS DO APP</span><h2>Últimos 30 dias</h2></div><button class="admin-link-btn" data-go="adminReports">Ver relatório</button></div>
@@ -1665,7 +1687,7 @@ async function adminReports(){
     const p=top?db.products.find(x=>x.id===top[0]):null;
     return {m,s,topProduct:p?.name||'',topContacts:top?.[1]||0};
   }).sort((a,b)=>(b.s.whatsapp30||0)-(a.s.whatsapp30||0)||(b.s.productViews30||0)-(a.s.productViews30||0));
-  app.innerHTML=`<main class="app-shell admin-pro admin-subpage">${adminHeader('Relatórios e resultados','Desempenho real do Achou, Comprou')}
+  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">${adminHeader('Relatórios e resultados','Desempenho real do Achou, Comprou')}
     <section class="admin-content">
       <div class="admin-summary-strip four"><div><small>Clientes</small><strong>${analytics.registeredClients||0}</strong></div><div><small>Ativos 30d</small><strong>${analytics.activeVisitors30||0}</strong></div><div><small>WhatsApp 30d</small><strong>${analytics.whatsapp30||0}</strong></div><div><small>Satisfação</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+'★'}</strong></div></div>
       <div class="admin-section-head"><div><span>DESEMPENHO DAS LOJAS</span><h2>Resultados dos últimos 30 dias</h2></div></div>
@@ -1683,7 +1705,7 @@ async function adminStores(focusId='') {
     if(result?.ok)analytics=result;
   }
   const counts = {all:db.merchants.length, pending:db.merchants.filter(x=>x.status==='aguardando').length, approved:db.merchants.filter(x=>x.status==='aprovada').length, blocked:db.merchants.filter(x=>x.status==='bloqueada').length};
-  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">${adminHeader('Lojas cadastradas','Aprovação, satisfação e resultados')}<section class="admin-content"><div class="admin-summary-strip"><div><small>Total</small><strong>${counts.all}</strong></div><div><small>Aguardando</small><strong>${counts.pending}</strong></div><div><small>Aprovadas</small><strong>${counts.approved}</strong></div><div><small>Bloqueadas</small><strong>${counts.blocked}</strong></div></div><div class="admin-filter-row"><button class="active" data-store-filter="todos">Todas</button><button data-store-filter="aguardando">Aguardando</button><button data-store-filter="aprovada">Aprovadas</button><button data-store-filter="bloqueada">Bloqueadas</button></div><div class="admin-store-management" id="adminStoreList">${db.merchants.map(store=>adminStoreCard(store,focusId,analytics.stores?.[store.id]||{})).join('')}</div></section>${adminNav('stores')}</main>`;
+  app.innerHTML = `<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">${adminHeader('Lojas cadastradas','Aprovação, satisfação e resultados')}<section class="admin-content"><div class="admin-summary-strip"><div><small>Total</small><strong>${counts.all}</strong></div><div><small>Aguardando</small><strong>${counts.pending}</strong></div><div><small>Aprovadas</small><strong>${counts.approved}</strong></div><div><small>Bloqueadas</small><strong>${counts.blocked}</strong></div></div><div class="admin-filter-row"><button class="active" data-store-filter="todos">Todas</button><button data-store-filter="aguardando">Aguardando</button><button data-store-filter="aprovada">Aprovadas</button><button data-store-filter="bloqueada">Bloqueadas</button></div><div class="admin-store-management" id="adminStoreList">${db.merchants.map(store=>adminStoreCard(store,focusId,analytics.stores?.[store.id]||{})).join('')}</div></section>${adminNav('stores')}</main>`;
   bind();
   bindAdminStoreActions();
   document.querySelectorAll('[data-store-filter]').forEach(btn=>btn.onclick=()=>{
@@ -1722,7 +1744,7 @@ async function adminPlans() {
   const paidStores=db.merchants.filter(m=>m.status==='aprovada'&&m.plan!=='gratis');
   const expiring=paidStores.filter(m=>m.planExpiresAt&&new Date(m.planExpiresAt).getTime()-Date.now()<=7*86400000).length;
 
-  app.innerHTML=`<main class="app-shell admin-pro admin-subpage">
+  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">
     ${adminHeader('Assinaturas e pagamentos','PIX manual com confirmação do administrador')}
     <section class="admin-content">
       <div class="admin-summary-strip three payment-summary">
@@ -1835,7 +1857,7 @@ function adminBanners() {
   const eligible = db.merchants.filter(m=>m.status==='aprovada'&&m.plan==='premium_banner');
   const eligibleIds=new Set(eligible.map(m=>m.id));
   const activeBanners=(db.banners||[]).filter(b=>b.active&&eligibleIds.has(b.storeId));
-  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">
+  app.innerHTML = `<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">
     ${adminHeader('Banners da Home','Carrossel Premium + Banner')}
     <section class="admin-content">
       <div class="admin-summary-strip three">
@@ -1931,10 +1953,11 @@ function adminCatalog() {
   if (!db.session.admin) return adminLogin();
   const activeProducts=db.products.filter(p=>p.status==='ativo').length;
   const activeOffers=db.offers.filter(o=>o.active).length;
-  app.innerHTML=`<main class="app-shell admin-pro admin-subpage">${adminHeader('Produtos e ofertas','Visão geral do catálogo')}<section class="admin-content"><div class="admin-summary-strip three"><div><small>Produtos</small><strong>${db.products.length}</strong></div><div><small>Ativos</small><strong>${activeProducts}</strong></div><div><small>Ofertas</small><strong>${activeOffers}</strong></div></div><div class="admin-section-head"><div><span>CATÁLOGO</span><h2>Produtos cadastrados</h2></div></div><div class="admin-catalog-list">${db.products.map(p=>{const m=storeById(p.storeId);const off=activeOfferFor(p.id);return `<article><div class="admin-catalog-thumb">${productMedia(p,true)}</div><div><small>${esc(m?.name||'Loja')}</small><b>${esc(p.name)}</b><span>${esc(p.type)} · ${p.status==='ativo'?'Publicado':'Pausado'}</span></div><div class="admin-catalog-price"><strong>${money(off?.promo||p.promo||p.price)}</strong>${off?'<small>Oferta ativa</small>':''}</div></article>`}).join('')||'<div class="admin-empty">Nenhum produto cadastrado.</div>'}</div><div class="admin-section-head"><div><span>OFERTAS</span><h2>Campanhas ativas</h2></div></div><div class="admin-offer-audit">${db.offers.map(o=>{const p=db.products.find(x=>x.id===o.productId);const m=storeById(o.storeId);return `<article><div><b>${esc(p?.name||'Produto')}</b><small>${esc(m?.name||'Loja')} · validade ${o.validUntil||'não informada'}</small></div><strong>${money(o.promo)}</strong><span class="admin-status ${o.active?'ok':'wait'}">${o.active?'Ativa':'Pausada'}</span></article>`}).join('')||'<div class="admin-empty">Nenhuma oferta cadastrada.</div>'}</div></section>${adminNav('catalog')}</main>`;
+  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">${adminHeader('Produtos e ofertas','Visão geral do catálogo')}<section class="admin-content"><div class="admin-summary-strip three"><div><small>Produtos</small><strong>${db.products.length}</strong></div><div><small>Ativos</small><strong>${activeProducts}</strong></div><div><small>Ofertas</small><strong>${activeOffers}</strong></div></div><div class="admin-section-head"><div><span>CATÁLOGO</span><h2>Produtos cadastrados</h2></div></div><div class="admin-catalog-list">${db.products.map(p=>{const m=storeById(p.storeId);const off=activeOfferFor(p.id);return `<article><div class="admin-catalog-thumb">${productMedia(p,true)}</div><div><small>${esc(m?.name||'Loja')}</small><b>${esc(p.name)}</b><span>${esc(p.type)} · ${p.status==='ativo'?'Publicado':'Pausado'}</span></div><div class="admin-catalog-price"><strong>${money(off?.promo||p.promo||p.price)}</strong>${off?'<small>Oferta ativa</small>':''}</div></article>`}).join('')||'<div class="admin-empty">Nenhum produto cadastrado.</div>'}</div><div class="admin-section-head"><div><span>OFERTAS</span><h2>Campanhas ativas</h2></div></div><div class="admin-offer-audit">${db.offers.map(o=>{const p=db.products.find(x=>x.id===o.productId);const m=storeById(o.storeId);return `<article><div><b>${esc(p?.name||'Produto')}</b><small>${esc(m?.name||'Loja')} · validade ${o.validUntil||'não informada'}</small></div><strong>${money(o.promo)}</strong><span class="admin-status ${o.active?'ok':'wait'}">${o.active?'Ativa':'Pausada'}</span></article>`}).join('')||'<div class="admin-empty">Nenhuma oferta cadastrada.</div>'}</div></section>${adminNav('catalog')}</main>`;
   bind();
 }
 function bind() {
+  applyAdminDeviceMode();
   document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
     const go = el.dataset.go;
     ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, fav: favorites }[go] || home)();
@@ -1970,6 +1993,11 @@ async function bootstrapCloudSession(){
   }
   saveDb();
 }
+let adminDeviceResizeTimer=0;
+window.addEventListener('resize',()=>{
+  clearTimeout(adminDeviceResizeTimer);
+  adminDeviceResizeTimer=setTimeout(applyAdminDeviceMode,120);
+});
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 if(window.ACCloud?.enabled){
   window.ACCloud.onAuthChange?.((event)=>{
