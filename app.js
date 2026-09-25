@@ -1558,13 +1558,127 @@ function bindAdminStoreActions(){
   document.querySelectorAll('[data-view-store]').forEach(b=>b.onclick=()=>store(b.dataset.viewStore));
 }
 
-function adminPlans() {
+async function adminPlans() {
   if (!db.session.admin) return adminLogin();
-  const monthly = db.merchants.reduce((sum,m)=>sum+(m.status==='aprovada'?(m.plan==='premium'?49.90:m.plan==='premium_banner'?59.90:0):0),0);
-  const requests = db.merchants.filter(m=>m.requestedPlan).length;
-  app.innerHTML = `<main class="app-shell admin-pro admin-subpage">${adminHeader('Planos e assinaturas','Ativação manual no MVP')}<section class="admin-content"><div class="admin-plan-summary"><div><span>RECEITA MENSAL ESTIMADA</span><strong>${monthly.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong><small>Baseada nos planos atualmente ativos</small></div><div><span>SOLICITAÇÕES</span><strong>${requests}</strong><small>Aguardando análise</small></div></div><div class="admin-plan-cards"><article><span>GRÁTIS</span><strong>R$ 0</strong><small>2 produtos · 2 ofertas/mês</small></article><article><span>PREMIUM</span><strong>R$ 49,90</strong><small>Produtos e ofertas ilimitados</small></article><article class="featured"><span>PREMIUM + BANNER</span><strong>R$ 59,90</strong><small>Premium + destaque na Home</small></article></div><div class="admin-section-head"><div><span>LOJAS</span><h2>Gerenciar assinaturas</h2></div></div><div class="admin-subscription-list">${db.merchants.filter(m=>m.status==='aprovada').map(store=>`<article><div><b>${esc(store.name)}</b><small>${store.requestedPlan?`Solicitou ${planLabel(store.requestedPlan)}`:'Sem solicitação pendente'}</small></div><select data-plan-store="${store.id}"><option value="gratis" ${store.plan==='gratis'?'selected':''}>Grátis</option><option value="premium" ${store.plan==='premium'?'selected':''}>Premium · R$ 49,90</option><option value="premium_banner" ${store.plan==='premium_banner'?'selected':''}>Premium + Banner · R$ 59,90</option></select></article>`).join('') || '<div class="admin-empty">Nenhuma loja aprovada.</div>'}</div></section>${adminNav('plans')}</main>`;
+  if(window.ACCloud?.enabled){
+    await syncAdminPayments();
+    await syncCloudAdminData();
+  }
+  const payments=db.payments||[];
+  const config=db.paymentConfig||{};
+  const review=payments.filter(p=>['em_analise','aguardando'].includes(p.status));
+  const monthStart=new Date();monthStart.setDate(1);monthStart.setHours(0,0,0,0);
+  const monthPaid=payments.filter(p=>p.status==='pago'&&p.method==='pix'&&new Date(p.confirmedAt||p.paidAt||0)>=monthStart);
+  const received=monthPaid.reduce((sum,p)=>sum+Number(p.value||0),0);
+  const paidStores=db.merchants.filter(m=>m.status==='aprovada'&&m.plan!=='gratis');
+  const expiring=paidStores.filter(m=>m.planExpiresAt&&new Date(m.planExpiresAt).getTime()-Date.now()<=7*86400000).length;
+
+  app.innerHTML=`<main class="app-shell admin-pro admin-subpage">
+    ${adminHeader('Assinaturas e pagamentos','PIX manual com confirmação do administrador')}
+    <section class="admin-content">
+      <div class="admin-summary-strip three payment-summary">
+        <div><small>Recebido no mês</small><strong>${brlNumber(received)}</strong></div>
+        <div><small>Aguardando análise</small><strong>${review.filter(p=>p.status==='em_analise').length}</strong></div>
+        <div><small>Planos pagos ativos</small><strong>${paidStores.length}</strong></div>
+      </div>
+      ${expiring?`<div class="admin-alert show">${icon('clock')}<div><b>${expiring} ${expiring===1?'assinatura vence':'assinaturas vencem'} em até 7 dias</b><span>Confira as renovações para evitar perda dos benefícios.</span></div></div>`:''}
+
+      <form class="admin-form-card pix-admin-card" id="pixConfigForm">
+        <div class="admin-form-heading"><span>${icon('card')}</span><div><b>Configuração do PIX</b><small>Essa chave será mostrada somente ao lojista que gerar um pagamento.</small></div></div>
+        <label>Chave PIX<input id="adminPixKey" value="${esc(config.pixKey||'')}" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"></label>
+        <div class="two-cols"><label>Nome do beneficiário<input id="adminPixName" value="${esc(config.pixName||'')}" placeholder="Nome que aparece no PIX"></label><label>Cidade<input id="adminPixCity" value="${esc(config.pixCity||'Grajaú - MA')}" placeholder="Grajaú - MA"></label></div>
+        <label>Instrução<textarea id="adminPixInstruction" placeholder="Orientação para o lojista">${esc(config.instruction||'Após fazer o PIX, envie o comprovante para análise.')}</textarea></label>
+        <button class="btn btn-yellow" type="submit">Salvar configuração do PIX</button><div id="pixConfigMsg"></div>
+      </form>
+
+      <div class="admin-section-head"><div><span>PAGAMENTOS</span><h2>Para conferir</h2></div><span>${review.length} solicitação(ões)</span></div>
+      <div class="admin-payment-list">
+        ${review.length?review.map(p=>{const store=storeById(p.storeId);return `<article class="admin-payment-card">
+          <div class="admin-payment-main"><span class="admin-store-avatar">${esc((store?.name||'L').slice(0,2).toUpperCase())}</span><div><small>${formatDateBR(p.requestedAt)}</small><b>${esc(store?.name||'Loja')}</b><span>${planLabel(p.plan)} · ${brlNumber(p.value)}</span></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></div>
+          ${p.proofPath?`<button class="payment-proof-link" data-proof-payment="${p.id}">${icon('eye')} Ver comprovante</button>`:'<div class="payment-no-proof">Comprovante ainda não enviado.</div>'}
+          <label class="payment-note-label">Observação (opcional)<input data-payment-note="${p.id}" placeholder="Ex.: PIX conferido no extrato"></label>
+          <div class="admin-payment-actions"><button class="btn btn-yellow" data-confirm-payment="${p.id}" type="button">${icon('check')} Confirmar pagamento</button><button class="btn btn-secondary" data-reject-payment="${p.id}" type="button">Recusar</button></div>
+        </article>`}).join(''):'<div class="admin-empty">Nenhum pagamento aguardando conferência.</div>'}
+      </div>
+
+      <div class="admin-section-head"><div><span>ASSINATURAS</span><h2>Controle das lojas</h2></div></div>
+      <div class="admin-subscription-control">
+        ${db.merchants.filter(m=>m.status==='aprovada').map(store=>`<article class="subscription-control-card">
+          <div class="subscription-store"><span class="admin-store-avatar">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><b>${esc(store.name)}</b><small>${store.requestedPlan?`Solicitou ${planLabel(store.requestedPlan)}`:'Sem solicitação pendente'}</small></div></div>
+          <div class="subscription-current"><small>PLANO ATUAL</small><strong>${planLabel(store.plan)}</strong><span>${store.plan!=='gratis'&&store.planExpiresAt?`Vence em ${formatDateBR(store.planExpiresAt)}`:'Sem vencimento de plano pago'}</span></div>
+          <div class="subscription-manual"><select data-manual-plan="${store.id}"><option value="premium">Premium · R$ 49,90</option><option value="premium_banner" ${store.requestedPlan==='premium_banner'?'selected':''}>Premium + Banner · R$ 59,90</option></select><button class="btn btn-secondary" data-manual-activate="${store.id}" type="button">Ativar 30 dias manualmente</button>${store.plan!=='gratis'?`<button class="danger subscription-downgrade" data-downgrade-store="${store.id}" type="button">Voltar ao Grátis</button>`:''}</div>
+        </article>`).join('')||'<div class="admin-empty">Nenhuma loja aprovada.</div>'}
+      </div>
+
+      <div class="admin-section-head"><div><span>HISTÓRICO</span><h2>Pagamentos recentes</h2></div></div>
+      <div class="admin-payment-history">
+        ${payments.length?payments.slice(0,20).map(p=>{const store=storeById(p.storeId);return `<article><div><b>${esc(store?.name||'Loja')}</b><small>${formatDateBR(p.requestedAt)} · ${planLabel(p.plan)} · ${p.method==='cortesia'?'Ativação manual':brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></article>`}).join(''):'<div class="admin-empty">Ainda não há pagamentos registrados.</div>'}
+      </div>
+    </section>
+    ${adminNav('plans')}
+  </main>`;
   bind();
-  document.querySelectorAll('[data-plan-store]').forEach(sel=>sel.onchange=async()=>{const m=storeById(sel.dataset.planStore);if(!m)return;const plan=sel.value;if(window.ACCloud?.enabled){sel.disabled=true;const result=await window.ACCloud.updateStoreAdmin(m.id,{plan,requestedPlan:null});sel.disabled=false;if(!result.ok){alert(result.message||'Não foi possível alterar o plano.');adminPlans();return;}Object.assign(m,window.ACCloud.localStore(result.store));}else{m.plan=plan;m.requestedPlan=null;}saveDb();syncPublicStoreState();adminPlans();});
+
+  document.getElementById('pixConfigForm').onsubmit=async e=>{
+    e.preventDefault();
+    const msg=document.getElementById('pixConfigMsg');
+    const payload={pixKey:document.getElementById('adminPixKey').value.trim(),pixName:document.getElementById('adminPixName').value.trim(),pixCity:document.getElementById('adminPixCity').value.trim(),instruction:document.getElementById('adminPixInstruction').value.trim()};
+    if(!payload.pixKey){msg.innerHTML='<div class="notice error">Informe a chave PIX que será usada para receber os planos.</div>';return;}
+    if(window.ACCloud?.enabled){
+      const result=await window.ACCloud.savePaymentConfig(payload);
+      if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível salvar a configuração.')}</div>`;return;}
+    }
+    db.paymentConfig=payload;saveDb();msg.innerHTML='<div class="notice success">Configuração do PIX salva.</div>';
+  };
+
+  document.querySelectorAll('[data-proof-payment]').forEach(btn=>btn.onclick=async()=>{
+    const p=paymentById(btn.dataset.proofPayment);if(!p?.proofPath)return;
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;const result=await window.ACCloud.paymentProofUrl(p.proofPath);btn.disabled=false;
+      if(!result.ok||!result.url){alert(result.message||'Não foi possível abrir o comprovante.');return;}
+      window.open(result.url,'_blank');return;
+    }
+  });
+
+  document.querySelectorAll('[data-confirm-payment]').forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.confirmPayment;const note=document.querySelector(`[data-payment-note="${id}"]`)?.value.trim()||'';
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;const result=await window.ACCloud.confirmPayment(id,note);btn.disabled=false;
+      if(!result.ok){alert(result.message||'Não foi possível confirmar o pagamento.');return;}
+      await syncAdminPayments();await syncCloudAdminData();adminPlans();return;
+    }
+    const p=paymentById(id);if(p){p.status='pago';p.confirmedAt=new Date().toISOString();const m=storeById(p.storeId);if(m){m.plan=p.plan;m.planExpiresAt=new Date(Date.now()+30*86400000).toISOString();m.requestedPlan=null;}saveDb();adminPlans();}
+  });
+
+  document.querySelectorAll('[data-reject-payment]').forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.rejectPayment;const note=document.querySelector(`[data-payment-note="${id}"]`)?.value.trim()||'Comprovante não confirmado.';
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;const result=await window.ACCloud.rejectPayment(id,note);btn.disabled=false;
+      if(!result.ok){alert(result.message||'Não foi possível recusar o pagamento.');return;}
+      await syncAdminPayments();adminPlans();return;
+    }
+    const p=paymentById(id);if(p){p.status='recusado';p.note=note;saveDb();adminPlans();}
+  });
+
+  document.querySelectorAll('[data-manual-activate]').forEach(btn=>btn.onclick=async()=>{
+    const storeId=btn.dataset.manualActivate;
+    const plan=document.querySelector(`[data-manual-plan="${storeId}"]`)?.value||'premium';
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;const result=await window.ACCloud.activatePlanManual(storeId,plan,30,'Ativação manual de 30 dias pelo administrador');btn.disabled=false;
+      if(!result.ok){alert(result.message||'Não foi possível ativar o plano.');return;}
+      await syncAdminPayments();await syncCloudAdminData();adminPlans();return;
+    }
+  });
+
+  document.querySelectorAll('[data-downgrade-store]').forEach(btn=>btn.onclick=async()=>{
+    const storeId=btn.dataset.downgradeStore;
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;const result=await window.ACCloud.downgradeStore(storeId);btn.disabled=false;
+      if(!result.ok){alert(result.message||'Não foi possível alterar o plano.');return;}
+      await syncCloudAdminData();adminPlans();return;
+    }
+    const m=storeById(storeId);if(m){m.plan='gratis';m.planExpiresAt='';m.requestedPlan=null;saveDb();adminPlans();}
+  });
 }
 
 function adminBanners() {
