@@ -488,15 +488,22 @@
       return error?{ok:false,message:errorMessage(error)}:{ok:true};
     },
 
+    async isCurrentUserAdmin(){
+      if(!client)return false;
+      const {data,error}=await client.rpc('sou_admin');
+      return !error && data===true;
+    },
+
     async signInAdmin(email,password){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.auth.signInWithPassword({email,password});
       if(error)return {ok:false,message:errorMessage(error)};
-      const profile=await api.getProfile(data.user.id);
-      if(profile?.tipo!=='admin'){
+      const allowed=await api.isCurrentUserAdmin();
+      if(!allowed){
         await client.auth.signOut();
         return {ok:false,message:'Este acesso não possui permissão administrativa.'};
       }
+      const profile=await api.getProfile(data.user.id);
       return {ok:true,user:data.user,profile};
     },
 
