@@ -63,6 +63,7 @@ function upsertCloudMerchant(store,user){
     categories:Array.isArray(store.categorias)&&store.categorias.length?store.categorias:[store.categoria_texto||'Outros'],
     whatsapp:store.whatsapp||'',
     instagram:store.instagram||'', address:store.endereco||'Grajaú - MA', hours:store.horario_funcionamento||'',
+    weeklyHours:store.horarios_semanais&&typeof store.horarios_semanais==='object'?store.horarios_semanais:(existing?.weeklyHours||{}),
     description:store.descricao||'', email:user.email||'', password:'', status:store.status||'aguardando',
     plan:store.plano_id||'gratis', requestedPlan:store.plano_solicitado||null,
     rating:store.avaliacao?String(store.avaliacao).replace('.',','):'Novo', dist:'—',
@@ -79,6 +80,101 @@ async function finishClientAccess(clientId) { db.session.clientId=clientId; awai
 function id(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2,8)}`; }
 function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function planLabel(plan) { return ({gratis:'Grátis', premium:'Premium', premium_banner:'Premium + Banner'})[plan] || 'Grátis'; }
+
+const STORE_WEEK_DAYS=[
+  {key:'seg',label:'Segunda-feira',short:'Seg'},
+  {key:'ter',label:'Terça-feira',short:'Ter'},
+  {key:'qua',label:'Quarta-feira',short:'Qua'},
+  {key:'qui',label:'Quinta-feira',short:'Qui'},
+  {key:'sex',label:'Sexta-feira',short:'Sex'},
+  {key:'sab',label:'Sábado',short:'Sáb'},
+  {key:'dom',label:'Domingo',short:'Dom'}
+];
+function defaultWeeklyHours(){
+  const result={};
+  STORE_WEEK_DAYS.forEach((day,index)=>{result[day.key]={closed:index===6,open:'08:00',close:'18:00'};});
+  return result;
+}
+function normalizeWeeklyHours(value){
+  const base=defaultWeeklyHours();
+  if(!value||typeof value!=='object')return base;
+  STORE_WEEK_DAYS.forEach(day=>{
+    const current=value[day.key];
+    if(current&&typeof current==='object'){
+      base[day.key]={
+        closed:!!current.closed,
+        open:/^\d{2}:\d{2}$/.test(String(current.open||''))?String(current.open):'08:00',
+        close:/^\d{2}:\d{2}$/.test(String(current.close||''))?String(current.close):'18:00'
+      };
+    }
+  });
+  return base;
+}
+function weeklyHoursMarkup(prefix,value){
+  const schedule=normalizeWeeklyHours(value);
+  return `<div class="weekly-hours-editor" data-hours-prefix="${prefix}">
+    ${STORE_WEEK_DAYS.map(day=>{
+      const h=schedule[day.key];
+      return `<div class="weekly-hours-row" data-hours-day="${day.key}">
+        <div class="weekly-day"><b>${day.label}</b></div>
+        <div class="weekly-time-fields">
+          <input type="time" id="${prefix}_${day.key}_open" value="${esc(h.open)}" ${h.closed?'disabled':''} aria-label="Abertura ${day.label}">
+          <span>até</span>
+          <input type="time" id="${prefix}_${day.key}_close" value="${esc(h.close)}" ${h.closed?'disabled':''} aria-label="Fechamento ${day.label}">
+        </div>
+        <label class="weekly-closed-toggle"><input type="checkbox" id="${prefix}_${day.key}_closed" ${h.closed?'checked':''}><span>Fechado</span></label>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function bindWeeklyHoursEditor(prefix){
+  STORE_WEEK_DAYS.forEach(day=>{
+    const closed=document.getElementById(`${prefix}_${day.key}_closed`);
+    const open=document.getElementById(`${prefix}_${day.key}_open`);
+    const close=document.getElementById(`${prefix}_${day.key}_close`);
+    const sync=()=>{
+      const isClosed=!!closed?.checked;
+      if(open)open.disabled=isClosed;
+      if(close)close.disabled=isClosed;
+      closed?.closest('.weekly-hours-row')?.classList.toggle('is-closed',isClosed);
+    };
+    closed?.addEventListener('change',sync);
+    sync();
+  });
+}
+function collectWeeklyHours(prefix){
+  const data={};
+  let openDays=0;
+  for(const day of STORE_WEEK_DAYS){
+    const closed=!!document.getElementById(`${prefix}_${day.key}_closed`)?.checked;
+    const open=document.getElementById(`${prefix}_${day.key}_open`)?.value||'';
+    const close=document.getElementById(`${prefix}_${day.key}_close`)?.value||'';
+    if(!closed){
+      openDays++;
+      if(!open||!close)return {ok:false,message:`Informe os horários de ${day.label}.`};
+      if(open>=close)return {ok:false,message:`Em ${day.label}, o horário de fechamento deve ser depois da abertura.`};
+    }
+    data[day.key]={closed,open:open||'08:00',close:close||'18:00'};
+  }
+  if(!openDays)return {ok:false,message:'Marque pelo menos um dia em que a loja funciona.'};
+
+  const groups=[];
+  STORE_WEEK_DAYS.forEach((day,index)=>{
+    const h=data[day.key];
+    const signature=h.closed?'closed':`${h.open}-${h.close}`;
+    const last=groups[groups.length-1];
+    if(last&&last.signature===signature){last.end=index;}
+    else groups.push({start:index,end:index,signature,h});
+  });
+  const summary=groups.map(group=>{
+    const first=STORE_WEEK_DAYS[group.start].short;
+    const last=STORE_WEEK_DAYS[group.end].short;
+    const days=group.start===group.end?first:`${first} a ${last}`;
+    return group.h.closed?`${days}: Fechado`:`${days}: ${group.h.open}–${group.h.close}`;
+  }).join(' · ');
+  return {ok:true,data,summary};
+}
+
 function money(value) { const n = String(value || '').replace(/[^0-9,]/g,''); return n ? `R$ ${n}` : 'R$ 0,00'; }
 function merchantProductsFor(storeId) { return db.products.filter(p => p.storeId === storeId); }
 function merchantOffersFor(storeId) { return db.offers.filter(o => o.storeId === storeId); }
@@ -831,7 +927,8 @@ function merchantRegister() {
         <label>WhatsApp<input id="regWhatsapp" required inputmode="tel" placeholder="(99) 99999-9999"></label>
         <label>Instagram<input id="regInstagram" placeholder="@sualoja"></label>
       </div>
-      <label>Horário de funcionamento<input id="regHours" placeholder="Seg a Sáb, 8h às 18h"></label>
+      <div class="merchant-form-section schedule-heading"><div><span>HORÁRIOS</span><h3>Horário de funcionamento</h3><p>Informe o horário de cada dia ou marque quando a loja estiver fechada.</p></div></div>
+      ${weeklyHoursMarkup('regHours',defaultWeeklyHours())}
       <label>Descrição<textarea id="regDescription" placeholder="Conte um pouco sobre a loja"></textarea></label>
 
       <div class="merchant-form-section"><div><span>LOGIN</span><h3>Crie seu acesso</h3></div></div>
@@ -852,6 +949,7 @@ function merchantRegister() {
     categoryMsg.innerHTML=selected.length>=3?'<div class="field-help">Limite de 3 categorias atingido.</div>':'';
   };
   categoryInputs.forEach(input=>input.addEventListener('change',updateCategoryState));
+  bindWeeklyHoursEditor('regHours');
 
   const cnpjInput=document.getElementById('regCnpj');
   cnpjInput.addEventListener('input',()=>{
@@ -864,6 +962,9 @@ function merchantRegister() {
     const categories=categoryInputs.filter(x=>x.checked).map(x=>x.value);
     const cnpj=document.getElementById('regCnpj').value.trim();
     const cnpjDigits=cnpj.replace(/\D/g,'');
+    const schedule=collectWeeklyHours('regHours');
+    const msg=document.getElementById('regMsg');
+    if(!schedule.ok){msg.innerHTML=`<div class="notice error">${esc(schedule.message)}</div>`;return;}
     const draft={
       owner:document.getElementById('regOwner').value.trim(),
       name:document.getElementById('regName').value.trim(),
@@ -875,12 +976,12 @@ function merchantRegister() {
       whatsapp:document.getElementById('regWhatsapp').value.trim(),
       instagram:document.getElementById('regInstagram').value.trim(),
       address:document.getElementById('regAddress').value.trim(),
-      hours:document.getElementById('regHours').value.trim(),
+      hours:schedule.summary,
+      weeklyHours:schedule.data,
       description:document.getElementById('regDescription').value.trim(),
       email:document.getElementById('regEmail').value.trim().toLowerCase(),
       password:document.getElementById('regPassword').value
     };
-    const msg=document.getElementById('regMsg');
     if(categories.length<1 || categories.length>3){
       msg.innerHTML='<div class="notice error">Escolha pelo menos 1 e no máximo 3 categorias.</div>';
       return;
@@ -1102,7 +1203,8 @@ function merchantStore() {
         <label>Categoria principal<select id="storeCategory"><option ${m.category==='Moda'?'selected':''}>Moda</option><option ${m.category==='Moda e Calçados'?'selected':''}>Moda e Calçados</option><option ${m.category==='Calçados'?'selected':''}>Calçados</option><option ${m.category==='Alimentação'?'selected':''}>Alimentação</option><option ${m.category==='Beleza'?'selected':''}>Beleza</option><option ${m.category==='Saúde'?'selected':''}>Saúde</option><option ${m.category==='Tecnologia'?'selected':''}>Tecnologia</option><option ${m.category==='Casa'?'selected':''}>Casa</option><option ${m.category==='Automotivo'?'selected':''}>Automotivo</option><option ${m.category==='Serviços'?'selected':''}>Serviços</option><option ${m.category==='Outros'?'selected':''}>Outros</option></select></label>
         <div class="two-cols"><label>WhatsApp<input id="storeWhatsapp" value="${esc(m.whatsapp||'')}" placeholder="(99) 99999-9999"></label><label>Instagram<input id="storeInstagram" value="${esc(m.instagram||'')}" placeholder="@sualoja"></label></div>
         <label>Endereço<input id="storeAddress" value="${esc(m.address||'')}" placeholder="Rua, número, bairro"></label>
-        <label>Horário de funcionamento<input id="storeHours" value="${esc(m.hours||'')}" placeholder="Seg a Sáb, 8h às 18h"></label>
+        <div class="merchant-form-section schedule-heading"><div><span>HORÁRIOS</span><h3>Horário de funcionamento</h3><p>Você pode alterar cada dia separadamente.</p></div></div>
+        ${weeklyHoursMarkup('storeHours',m.weeklyHours&&Object.keys(m.weeklyHours).length?m.weeklyHours:defaultWeeklyHours())}
         <label>Descrição<textarea id="storeDescription" placeholder="Conte um pouco sobre a loja">${esc(m.description||'')}</textarea></label>
         <button class="btn btn-yellow btn-block" type="submit">Salvar alterações</button><div id="storeSaveMsg"></div>
       </form>
@@ -1113,10 +1215,13 @@ function merchantStore() {
   bind();
   const storeLogoPicker = bindImagePicker('storeLogoFile','storeLogoPreview',{initial:m.logoData||'',maxW:520,maxH:520,quality:.82,emptyTitle:'Adicionar logo',emptyText:'Formato quadrado'});
   const storeCoverPicker = bindImagePicker('storeCoverFile','storeCoverPreview',{initial:m.coverData||'',maxW:1200,maxH:650,quality:.76,emptyTitle:'Adicionar capa',emptyText:'Imagem horizontal'});
+  bindWeeklyHoursEditor('storeHours');
   document.getElementById('merchantStoreForm').onsubmit=async e=>{
     e.preventDefault();
     const msg=document.getElementById('storeSaveMsg');
     const submit=e.currentTarget.querySelector('button[type="submit"]');
+    const schedule=collectWeeklyHours('storeHours');
+    if(!schedule.ok){msg.innerHTML=`<div class="notice error">${esc(schedule.message)}</div>`;return;}
     const patch={
       logoData:storeLogoPicker.get(), coverData:storeCoverPicker.get(),
       name:document.getElementById('storeName').value.trim(),
@@ -1124,7 +1229,8 @@ function merchantStore() {
       whatsapp:document.getElementById('storeWhatsapp').value.trim(),
       instagram:document.getElementById('storeInstagram').value.trim(),
       address:document.getElementById('storeAddress').value.trim(),
-      hours:document.getElementById('storeHours').value.trim(),
+      hours:schedule.summary,
+      weeklyHours:schedule.data,
       description:document.getElementById('storeDescription').value.trim()
     };
     if(window.ACCloud?.enabled){
