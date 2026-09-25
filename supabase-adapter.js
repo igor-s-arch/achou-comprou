@@ -71,6 +71,7 @@
     instagram: store.instagram || '',
     address: store.endereco || 'Grajaú - MA',
     hours: store.horario_funcionamento || '',
+    weeklyHours: store.horarios_semanais && typeof store.horarios_semanais==='object' ? store.horarios_semanais : {},
     description: store.descricao || '',
     email: store.email_contato || '', password: '',
     status: store.status || 'aguardando',
@@ -191,6 +192,7 @@
         instagram: fallback.instagram || meta.loja_instagram || '',
         address: fallback.address || meta.loja_endereco || '',
         hours: fallback.hours || meta.loja_horario || '',
+        weeklyHours: fallback.weeklyHours || meta.loja_horarios_semanais || {},
         description: fallback.description || meta.loja_descricao || '',
         plan: normalizePlan(fallback.plan || meta.loja_plano_solicitado || 'gratis')
       };
@@ -229,6 +231,11 @@
         p_inscricao_estadual:draft.stateRegistration
       }).single();
       if(error)return {ok:false,message:errorMessage(error)};
+      if(draft.weeklyHours && typeof draft.weeklyHours==='object' && Object.keys(draft.weeklyHours).length){
+        const weekly=await client.from('lojas').update({horarios_semanais:draft.weeklyHours}).eq('id',data.id).select('*').single();
+        if(weekly.error)return {ok:false,message:errorMessage(weekly.error)};
+        return {ok:true,store:weekly.data};
+      }
       return {ok:true,store:data};
     },
 
@@ -256,7 +263,7 @@
       return {ok:true,user:data.user,profile,needsEmailConfirmation};
     },
 
-    async signUpMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,hours,description,email,password,plan='gratis'}){
+    async signUpMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,hours,weeklyHours={},description,email,password,plan='gratis'}){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const cleanCategories=(Array.isArray(categories)?categories:[category]).filter(Boolean).slice(0,3);
       if(!cleanCategories.length)return {ok:false,message:'Selecione pelo menos uma categoria.'};
@@ -279,6 +286,7 @@
         loja_instagram:instagram||'',
         loja_endereco:address||'',
         loja_horario:hours||'',
+        loja_horarios_semanais:weeklyHours||{},
         loja_descricao:description||'',
         loja_plano_solicitado:normalizedPlan
       };
@@ -290,7 +298,7 @@
       const needsEmailConfirmation=!data.session;
       let store=null;
       if(data.user && data.session){
-        const created=await api.ensureMerchantStore(data.user,{owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,whatsapp,instagram,address,hours,description,plan:normalizedPlan});
+        const created=await api.ensureMerchantStore(data.user,{owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,whatsapp,instagram,address,hours,weeklyHours,description,plan:normalizedPlan});
         if(!created.ok)return created;
         store=created.store;
       }
@@ -333,7 +341,7 @@
     async updateMerchantStore(storeId,patch){
       if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
       const allowed={};
-      const map={name:'nome',category:'categoria_texto',whatsapp:'whatsapp',instagram:'instagram',address:'endereco',hours:'horario_funcionamento',description:'descricao',logoUrl:'logo_url',coverUrl:'capa_url'};
+      const map={name:'nome',category:'categoria_texto',whatsapp:'whatsapp',instagram:'instagram',address:'endereco',hours:'horario_funcionamento',weeklyHours:'horarios_semanais',description:'descricao',logoUrl:'logo_url',coverUrl:'capa_url'};
       for(const [key,column] of Object.entries(map)) if(Object.prototype.hasOwnProperty.call(patch,key)) allowed[column]=patch[key]||null;
       const {data,error}=await client.from('lojas').update(allowed).eq('id',storeId).select('*').single();
       return error?{ok:false,message:errorMessage(error)}:{ok:true,store:data};
