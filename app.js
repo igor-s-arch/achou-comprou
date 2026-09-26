@@ -833,8 +833,10 @@ function home() {
             </div>
             <div class="market-offer-body">
               <div class="market-offer-title">${esc(p.name)}</div>
-              <div class="market-price-row"><strong>${money(price)}</strong>${hasDiscount ? `<span>${money(old)}</span>` : ''}</div>
-              <span class="market-available">${icon('check')} ${o?'Oferta ativa':'Disponível'}</span>
+              <div class="market-price-status-row">
+                <div class="market-price-row"><strong>${money(price)}</strong>${hasDiscount ? `<span>${money(old)}</span>` : ''}</div>
+                <span class="market-available">${icon('check')} ${o?'Oferta ativa':'Disponível'}</span>
+              </div>
               ${availableOptions.length ? `<div class="market-card-options"><b>${optionLabel}</b><div>${availableOptions.map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>` : ''}
               <div class="market-offer-footer">
                 <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')} · ${esc(m.dist||'Grajaú')}</small></div>
