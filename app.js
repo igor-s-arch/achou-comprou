@@ -369,6 +369,14 @@ function publicOffers() {
     .sort((a,b) => compareStorePriority(a.store,b.store)
       || String(b.offer?.createdAt||'').localeCompare(String(a.offer?.createdAt||'')));
 }
+function rankedPublicProducts(){
+  return publicProducts()
+    .map(p=>({product:p,offer:activeOfferFor(p.id),store:storeById(p.storeId)}))
+    .filter(x=>x.store)
+    .sort((a,b)=>compareStorePriority(a.store,b.store)
+      || Number(!!b.offer)-Number(!!a.offer)
+      || String(a.product?.name||'').localeCompare(String(b.product?.name||''),'pt-BR'));
+}
 const COLOR_WORDS = ['preto','preta','branco','branca','rosa','azul','vermelho','vermelha','verde','amarelo','amarela','bege','marrom','cinza','roxo','roxa','laranja','dourado','dourada','prata'];
 const SIZE_WORDS = ['pp','p','m','g','gg','xg','xxg','rn','0-3m','3-6m','6-9m','9-12m'];
 const SEARCH_STOP = new Set(['de','da','do','das','dos','com','para','por','em','ate','até','menos','abaixo','reais','real','r','tamanho','numero','n','nº','cor']);
@@ -631,11 +639,11 @@ function splash() {
 function home() {
   const premiumBanners = publicPremiumBanners();
   const bannerItems = premiumBanners.length ? premiumBanners : [{
-    id:'default-banner', storeId:null, title:'Compre perto de você',
-    message:'Ofertas imperdíveis de lojas da sua cidade, em um só lugar.',
+    id:'default-banner', storeId:null, title:'Ofertas da sua cidade',
+    message:'Produtos e ofertas das lojas da cidade em um só lugar.',
     imageData:'', active:true
   }];
-  const offers = publicOffers();
+  const products = rankedPublicProducts();
   const shops = approvedStores();
   const client = currentClient();
   const unreadNotifications = (db.notifications || []).filter(n => !n.read).length;
@@ -694,8 +702,8 @@ function home() {
               <div class="banner-copy">
                 <span class="banner-label">${bannerStore ? 'LOJA EM DESTAQUE' : 'COMÉRCIO LOCAL'}</span>
                 <small>${bannerStore ? esc(bannerStore.name) : 'Achou, Comprou'}</small>
-                <h2>${esc(banner.title||'Compre perto de você')}</h2>
-                <p>${esc(banner.message||'Ofertas imperdíveis de lojas da sua cidade, em um só lugar.')}</p>
+                <h2>${esc(banner.title||'Ofertas da sua cidade')}</h2>
+                <p>${esc(banner.message||'Produtos e ofertas das lojas da cidade em um só lugar.')}</p>
                 <div class="banner-footer">
                   <span>${icon('pin')} Grajaú - MA</span>
                   ${bannerStore
@@ -728,17 +736,20 @@ function home() {
         `).join('') : '<div class="market-empty-dark">Nenhuma loja em destaque ainda.</div>'}
       </div>
 
-      <div class="market-section-title offers-title">
-        <div class="market-section-icon pin">${icon('pin')}</div>
-        <div><h3>Perto de você</h3><p>Prioridade por plano, pontuação e cliques no WhatsApp</p></div>
-        <button data-search-term="">Ver todas ${icon('arrowRight')}</button>
+      <div class="market-section-title offers-title all-products-title">
+        <div class="market-section-icon">${icon('package')}</div>
+        <div><h3>Todos os produtos</h3><p>Ordenados por plano, pontuação e cliques no WhatsApp</p></div>
+        <button data-search-term="">Ver todos ${icon('arrowRight')}</button>
       </div>
 
-      <div class="market-offer-grid">
-        ${offers.length ? offers.slice(0,12).map(({product:p,offer:o,store:m})=>{
+      <div class="market-offer-grid market-product-grid">
+        ${products.length ? products.map(({product:p,offer:o,store:m})=>{
           const discount=discountFor(p);
           const favorite=isFavorite(p.id);
-          return `<article class="market-offer-card" data-product-id="${p.id}">
+          const price=currentPrice(p);
+          const old=originalPrice(p);
+          const hasDiscount=priceNumber(price)<priceNumber(old);
+          return `<article class="market-offer-card market-product-card" data-product-id="${p.id}">
             <div class="market-offer-media">
               ${productMedia(p,true)}
               ${discount ? `<span class="market-discount">${esc(discount.replace('-',''))} OFF</span>` : ''}
@@ -746,8 +757,8 @@ function home() {
             </div>
             <div class="market-offer-body">
               <div class="market-offer-title">${esc(p.name)}</div>
-              <div class="market-price-row"><strong>${money(o.promo)}</strong>${o.normal ? `<span>${money(o.normal)}</span>` : ''}</div>
-              <span class="market-available">${icon('check')} Oferta ativa</span>
+              <div class="market-price-row"><strong>${money(price)}</strong>${hasDiscount ? `<span>${money(old)}</span>` : ''}</div>
+              <span class="market-available">${icon('check')} ${o?'Oferta ativa':'Disponível'}</span>
               <div class="market-offer-footer">
                 <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')} · ${esc(m.dist||'Grajaú')}</small></div>
                 <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('chat')}</button>
@@ -755,7 +766,7 @@ function home() {
               </div>
             </div>
           </article>`;
-        }).join('') : '<div class="market-empty-products">Nenhuma oferta ativa no momento.</div>'}
+        }).join('') : '<div class="market-empty-products">Nenhum produto ativo no momento.</div>'}
       </div>
     </section>
 
