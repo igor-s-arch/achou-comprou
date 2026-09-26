@@ -3775,3 +3775,106 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     justify-self:start;
   }
 }
+
+/* ===== V60 — ADMIN: VENDAS E RETORNO DAS LOJAS ===== */
+.admin-result-grid-sales{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.admin-result-grid-sales .sales-result{
+  background:linear-gradient(145deg,#151816,#102016)!important;
+  border-color:#294433!important;
+}
+.admin-result-grid-sales .sales-result strong{
+  color:#36cf73!important;
+}
+.admin-executive-card.funnel .admin-funnel-list{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+.admin-ranking-list>button>strong{
+  min-width:64px;
+  text-align:right;
+}
+.admin-report-sales-summary{
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+.admin-report-proof-note{
+  margin:12px 0 16px;
+  padding:12px 14px;
+  border:1px solid #dfe8e2;
+  border-radius:14px;
+  background:#f2faf5;
+  color:#174c2d;
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+}
+.admin-report-proof-note>.ui-icon{
+  width:22px;
+  height:22px;
+}
+.admin-report-proof-note b{
+  display:block;
+  font-size:9px;
+}
+.admin-report-proof-note span{
+  display:block;
+  margin-top:3px;
+  color:#52705f;
+  font-size:7px;
+  line-height:1.4;
+}
+.admin-report-metrics.sales{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+.admin-report-metrics.sales>div:nth-child(2),
+.admin-report-metrics.sales>div:nth-child(3),
+.admin-report-metrics.sales>div:nth-child(4){
+  background:#f1faf4;
+}
+.admin-store-meta.results.sales{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.admin-store-meta.results.sales>div:nth-child(4),
+.admin-store-meta.results.sales>div:nth-child(5),
+.admin-store-meta.results.sales>div:nth-child(6){
+  background:#eef9f2;
+}
+
+@media(max-width:900px){
+  .admin-report-sales-summary{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .admin-report-metrics.sales{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:720px){
+  .admin-result-grid-sales{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .admin-executive-card.funnel .admin-funnel-list{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .admin-executive-card.funnel .admin-funnel-step>i{
+    display:none!important;
+  }
+  .admin-report-sales-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .admin-report-metrics.sales{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .admin-store-meta.results.sales{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:390px){
+  .admin-result-grid-sales{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .admin-executive-card.funnel .admin-funnel-list{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
