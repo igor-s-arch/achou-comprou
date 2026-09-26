@@ -690,15 +690,17 @@ function splash() {
 
 function home() {
   const premiumBanners = publicPremiumBanners();
-  const bannerItems = premiumBanners.length ? premiumBanners : [{
+  const defaultBanner = {
     id:'default-banner',
     storeId:null,
     title:'Ofertas da sua cidade',
     message:'Produtos e ofertas das lojas da cidade em um só lugar.',
     imageData:'',
     videoData:'./Creating_smooth_advertising_bann…_1080p_20260926152920.mp4',
-    active:true
-  }];
+    active:true,
+    isPlatform:true
+  };
+  const bannerItems = [defaultBanner, ...premiumBanners];
   const products = rankedPublicProducts();
   const shops = approvedStores().filter(m=>m.plan!=='gratis');
   const client = currentClient();
@@ -757,11 +759,15 @@ function home() {
                 <button class="market-video-hit" type="button" data-search-term="" aria-label="Ver produtos e ofertas"></button>
               </article>`;
             }
-            const bannerVisual=banner.imageData
-              ? `<div class="banner-media"><img src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Achou, Comprou')}"></div>`
-              : bannerStore?.logoData
-                ? `<div class="banner-media logo"><img src="${esc(bannerStore.logoData)}" alt="Logo ${esc(bannerStore.name)}"></div>`
-                : '<div class="market-default-mark">AC</div>';
+            if(banner.imageData){
+              return `<article class="banner banner-pro banner-slide market-hero-banner market-art-banner" data-banner-index="${index}">
+                <img class="market-art-banner-image" src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Loja em destaque')}">
+                ${bannerStore ? `<button class="market-art-banner-hit" type="button" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>` : ''}
+              </article>`;
+            }
+            const bannerVisual=bannerStore?.logoData
+              ? `<div class="banner-media logo"><img src="${esc(bannerStore.logoData)}" alt="Logo ${esc(bannerStore.name)}"></div>`
+              : '<div class="market-default-mark">AC</div>';
             return `<article class="banner banner-pro banner-slide market-hero-banner" data-banner-index="${index}">
               <div class="banner-copy">
                 <span class="banner-label">${bannerStore ? 'LOJA EM DESTAQUE' : 'COMÉRCIO LOCAL'}</span>
