@@ -2580,24 +2580,77 @@ async function adminSettings(){
 
 async function adminReports(){
   if(!db.session.admin)return adminLogin();
-  let analytics={registeredClients:0,activeVisitors30:0,appOpens30:0,whatsapp30:0,whatsappAll:0,ratingAverage:null,ratingCount:0,stores:{}};
+  let analytics={
+    registeredClients:0,activeVisitors30:0,appOpens30:0,whatsapp30:0,whatsappAll:0,
+    sales30:0,revenue30:0,conversion30:0,averageTicket30:0,
+    ratingAverage:null,ratingCount:0,stores:{}
+  };
   if(window.ACCloud?.enabled){
     const result=await window.ACCloud.adminAnalytics?.();
     if(result?.ok)analytics=result;
   }
+
   const rows=db.merchants.filter(m=>m.status==='aprovada').map(m=>{
     const s=analytics.stores?.[m.id]||{};
     const top=Object.entries(s.productContacts||{}).sort((a,b)=>b[1]-a[1])[0];
     const p=top?db.products.find(x=>x.id===top[0]):null;
     return {m,s,topProduct:p?.name||'',topContacts:top?.[1]||0};
-  }).sort((a,b)=>(b.s.whatsapp30||0)-(a.s.whatsapp30||0)||(b.s.productViews30||0)-(a.s.productViews30||0));
-  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">${adminHeader('Relatórios e resultados','Desempenho real do Achou, Comprou')}
+  }).sort((a,b)=>(b.s.sales30||0)-(a.s.sales30||0)
+    ||(b.s.revenue30||0)-(a.s.revenue30||0)
+    ||(b.s.whatsapp30||0)-(a.s.whatsapp30||0)
+    ||(b.s.productViews30||0)-(a.s.productViews30||0));
+
+  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">
+    ${adminHeader('Relatórios e resultados','Contatos, vendas e retorno gerado pelo Achou, Comprou')}
     <section class="admin-content">
-      <div class="admin-summary-strip four"><div><small>Clientes</small><strong>${analytics.registeredClients||0}</strong></div><div><small>Ativos 30d</small><strong>${analytics.activeVisitors30||0}</strong></div><div><small>WhatsApp 30d</small><strong>${analytics.whatsapp30||0}</strong></div><div><small>Satisfação</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+'★'}</strong></div></div>
+      <div class="admin-summary-strip admin-report-sales-summary">
+        <div><small>Clientes</small><strong>${analytics.registeredClients||0}</strong></div>
+        <div><small>Ativos 30d</small><strong>${analytics.activeVisitors30||0}</strong></div>
+        <div><small>WhatsApp 30d</small><strong>${analytics.whatsapp30||0}</strong></div>
+        <div><small>Vendas confirmadas</small><strong>${analytics.sales30||0}</strong></div>
+        <div><small>Valor vendido</small><strong>${brlNumber(analytics.revenue30||0)}</strong></div>
+        <div><small>Conversão</small><strong>${analytics.conversion30||0}%</strong></div>
+      </div>
+
+      <div class="admin-report-proof-note">
+        ${icon('check')}
+        <div><b>Resultado confirmado pelo lojista</b><span>Cliques no WhatsApp são contatos. Só entram como venda quando a própria loja confirma e informa o valor.</span></div>
+      </div>
+
       <div class="admin-section-head"><div><span>DESEMPENHO DAS LOJAS</span><h2>Resultados dos últimos 30 dias</h2></div></div>
-      <div class="admin-report-list">${rows.length?rows.map((x,i)=>`<article class="admin-report-card"><div class="admin-report-rank">${i+1}</div><div class="admin-report-main"><div class="admin-report-title"><div><b>${esc(x.m.name)}</b><small>${esc(x.m.category||'Loja local')}</small></div><span>${x.s.ratingAverage==null?'Sem avaliações':x.s.ratingAverage.toFixed(1)+' ★ · '+(x.s.ratingCount||0)}</span></div><div class="admin-report-metrics"><div><strong>${x.s.whatsapp30||0}</strong><small>Contatos WhatsApp</small></div><div><strong>${x.s.uniqueVisitors30||0}</strong><small>Pessoas alcançadas</small></div><div><strong>${x.s.productViews30||0}</strong><small>Produtos vistos</small></div><div><strong>${x.s.storeViews30||0}</strong><small>Visitas à loja</small></div></div>${x.topProduct?`<div class="admin-report-highlight">${icon('chat')} Produto com mais interesse: <b>${esc(x.topProduct)}</b> · ${x.topContacts} contato(s)</div>`:''}</div></article>`).join(''):'<div class="notice">Ainda não há lojas aprovadas com dados para o relatório.</div>'}</div>
-      <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLATAFORMA</span><h3>Leitura geral</h3></div></div><div class="admin-report-overview"><p><b>${analytics.appOpens30||0}</b> aberturas registradas nos últimos 30 dias.</p><p><b>${analytics.whatsappAll||0}</b> contatos de WhatsApp registrados desde o início.</p><p><b>${analytics.ratingCount||0}</b> avaliações de satisfação registradas.</p></div></section>
-    </section>${adminNav('reports')}</main>`;
+      <div class="admin-report-list">
+        ${rows.length?rows.map((x,i)=>`<article class="admin-report-card admin-report-card-sales">
+          <div class="admin-report-rank">${i+1}</div>
+          <div class="admin-report-main">
+            <div class="admin-report-title">
+              <div><b>${esc(x.m.name)}</b><small>${esc(x.m.category||'Loja local')} · ${planLabel(x.m.plan)}</small></div>
+              <span>${x.s.ratingAverage==null?'Sem avaliações':Number(x.s.ratingAverage).toFixed(1)+' ★ · '+(x.s.ratingCount||0)}</span>
+            </div>
+            <div class="admin-report-metrics sales">
+              <div><strong>${x.s.whatsapp30||0}</strong><small>Contatos WhatsApp</small></div>
+              <div><strong>${x.s.sales30||0}</strong><small>Vendas confirmadas</small></div>
+              <div><strong>${brlNumber(x.s.revenue30||0)}</strong><small>Valor vendido</small></div>
+              <div><strong>${x.s.conversion30||0}%</strong><small>Conversão</small></div>
+              <div><strong>${brlNumber(x.s.averageTicket30||0)}</strong><small>Ticket médio</small></div>
+              <div><strong>${x.s.productViews30||0}</strong><small>Produtos vistos</small></div>
+            </div>
+            ${x.topProduct?`<div class="admin-report-highlight">${icon('whatsapp')} Produto que mais gerou contato: <b>${esc(x.topProduct)}</b> · ${x.topContacts} contato(s)</div>`:''}
+          </div>
+        </article>`).join(''):'<div class="notice">Ainda não há lojas aprovadas com dados para o relatório.</div>'}
+      </div>
+
+      <section class="admin-panel-card">
+        <div class="admin-panel-head"><div><span>PLATAFORMA</span><h3>Leitura geral</h3></div></div>
+        <div class="admin-report-overview">
+          <p><b>${analytics.appOpens30||0}</b> aberturas registradas nos últimos 30 dias.</p>
+          <p><b>${analytics.whatsappAll||0}</b> contatos de WhatsApp registrados desde o início.</p>
+          <p><b>${analytics.sales30||0}</b> vendas confirmadas nos últimos 30 dias, somando <b>${brlNumber(analytics.revenue30||0)}</b>.</p>
+          <p><b>${analytics.ratingCount||0}</b> avaliações de satisfação registradas.</p>
+        </div>
+      </section>
+    </section>
+    ${adminNav('reports')}
+  </main>`;
   bind();
 }
 
@@ -2621,7 +2674,7 @@ async function adminStores(focusId='') {
 
 function adminStoreCard(store, focusId='', results={}) {
   const satisfaction=results.ratingAverage==null?(store.rating&&store.rating!=='Novo'?store.rating+' ★':'Sem avaliações'):`${Number(results.ratingAverage).toFixed(1)} ★`;
-  return `<article class="admin-store-card ${focusId===store.id?'focus':''}" data-store-card="${store.id}" data-admin-status="${store.status}"><div class="admin-store-card-top"><span class="admin-store-avatar large">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><div class="admin-store-name-row"><h3>${esc(store.name)}</h3>${adminStatusBadge(store.status)}</div><p>${esc(store.category)} · ${esc(store.address || 'Grajaú - MA')}</p><small>${esc(store.email)}</small></div></div><div class="admin-store-meta results"><div><small>Plano</small><b>${planLabel(store.plan)}</b></div><div><small>Satisfação</small><b>${satisfaction}</b></div><div><small>WhatsApp 30d</small><b>${results.whatsapp30||0}</b></div><div><small>Pessoas 30d</small><b>${results.uniqueVisitors30||0}</b></div></div><div class="admin-store-actions">${store.status==='aguardando'?`<button class="primary" data-approve="${store.id}">${icon('check')} Aprovar</button><button data-reject="${store.id}">Reprovar</button>`:''}${store.status==='aprovada'?`<button data-block="${store.id}">Bloquear loja</button><button data-view-store="${store.id}">${icon('eye')} Ver no app</button>`:''}${store.status==='bloqueada'?`<button class="primary" data-reactivate="${store.id}">Reativar</button>`:''}${store.status==='reprovada'?`<button class="primary" data-reactivate="${store.id}">Aprovar agora</button>`:''}</div></article>`;
+  return `<article class="admin-store-card ${focusId===store.id?'focus':''}" data-store-card="${store.id}" data-admin-status="${store.status}"><div class="admin-store-card-top"><span class="admin-store-avatar large">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><div class="admin-store-name-row"><h3>${esc(store.name)}</h3>${adminStatusBadge(store.status)}</div><p>${esc(store.category)} · ${esc(store.address || 'Grajaú - MA')}</p><small>${esc(store.email)}</small></div></div><div class="admin-store-meta results sales"><div><small>Plano</small><b>${planLabel(store.plan)}</b></div><div><small>Satisfação</small><b>${satisfaction}</b></div><div><small>WhatsApp 30d</small><b>${results.whatsapp30||0}</b></div><div><small>Vendas 30d</small><b>${results.sales30||0}</b></div><div><small>Valor vendido</small><b>${brlNumber(results.revenue30||0)}</b></div><div><small>Conversão</small><b>${results.conversion30||0}%</b></div></div><div class="admin-store-actions">${store.status==='aguardando'?`<button class="primary" data-approve="${store.id}">${icon('check')} Aprovar</button><button data-reject="${store.id}">Reprovar</button>`:''}${store.status==='aprovada'?`<button data-block="${store.id}">Bloquear loja</button><button data-view-store="${store.id}">${icon('eye')} Ver no app</button>`:''}${store.status==='bloqueada'?`<button class="primary" data-reactivate="${store.id}">Reativar</button>`:''}${store.status==='reprovada'?`<button class="primary" data-reactivate="${store.id}">Aprovar agora</button>`:''}</div></article>`;
 }
 
 function bindAdminStoreActions(){
