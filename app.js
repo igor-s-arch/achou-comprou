@@ -485,8 +485,9 @@ function searchBadges(query='', filters={}) {
 function availabilitySummary(p) {
   const meta=normalizedProduct(p); const parts=[]; const live=availableVariants(p);
   const detailed = p.stock === 'detalhado' && live.length;
-  const opts = detailed ? [...new Set(live.map(v=>v.option).filter(Boolean))] : (p.type === 'calcado' ? meta.numbers : meta.sizes);
-  const colors = detailed ? [...new Set(live.map(v=>v.color).filter(Boolean))] : meta.colors;
+  const baseOpts = p.type === 'calcado' ? meta.numbers : meta.sizes;
+  const opts = [...new Set([...baseOpts,...live.map(v=>v.option).filter(Boolean)])];
+  const colors = [...new Set([...meta.colors,...live.map(v=>v.color).filter(Boolean)])];
   if (opts.length && p.type === 'calcado') parts.push(`Numerações: ${opts.join(', ')}`);
   else if (opts.length) parts.push(`Tamanhos: ${opts.join(', ')}`);
   if (colors.length) parts.push(`Cores: ${colors.join(', ')}`);
@@ -1518,11 +1519,31 @@ function merchantProducts() {
     <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>CATÁLOGO</span><b>Meus produtos</b></div><button class="merchant-add-small" data-go="productForm">${icon('plus')} Novo</button></div>
     <section class="merchant-sub-body">
       <div class="merchant-summary-card"><div><small>Produtos cadastrados</small><strong>${products.length}</strong></div><div><small>Ativos</small><strong>${activeCount}</strong></div><div><small>Plano</small><strong>${planLabel(m.plan)}</strong></div></div>
-      <div class="merchant-catalog-list">${products.length ? products.map(p => `<article class="merchant-catalog-item"><div class="merchant-catalog-thumb">${productMedia(p, true)}</div><div class="merchant-catalog-copy"><div><span>${categoryLabel(p.type)}</span><h3>${esc(p.name)}</h3></div><strong>${money(p.promo || p.price)}</strong><small class="merchant-mini-status ${p.status === 'ativo' ? 'on' : ''}">${p.status === 'ativo' ? 'Ativo' : 'Pausado'}</small></div><div class="merchant-catalog-actions"><button data-product-id="${p.id}" aria-label="Ver produto">${icon('eye')}</button><button data-toggle-product="${p.id}">${p.status === 'ativo' ? 'Pausar' : 'Ativar'}</button><button class="danger" data-delete-product="${p.id}">Excluir</button></div></article>`).join('') : '<div class="merchant-empty-state"><div>'+icon('package')+'</div><h3>Nenhum produto cadastrado</h3><p>Comece adicionando os produtos que seus clientes procuram.</p><button class="btn btn-yellow" data-go="productForm">Cadastrar primeiro produto</button></div>'}</div>
+      <div class="merchant-catalog-list">${products.length ? products.map(p => {
+        const options=availabilitySummary(p);
+        const photoCount=(Array.isArray(p.images)&&p.images.length)?p.images.length:(p.imageData?1:0);
+        return `<article class="merchant-catalog-item">
+          <div class="merchant-catalog-thumb">${productMedia(p, true)}</div>
+          <div class="merchant-catalog-copy">
+            <div><span>${categoryLabel(p.type)}</span><h3>${esc(p.name)}</h3></div>
+            <strong>${money(p.promo || p.price)}</strong>
+            ${options.length?`<div class="merchant-product-options">${options.slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'<div class="merchant-product-options missing"><span>Tamanhos/numerações ainda não informados</span></div>'}
+            <small class="merchant-photo-count">${icon('image')} ${photoCount} foto${photoCount===1?'':'s'}</small>
+            <small class="merchant-mini-status ${p.status === 'ativo' ? 'on' : ''}">${p.status === 'ativo' ? 'Ativo' : 'Pausado'}</small>
+          </div>
+          <div class="merchant-catalog-actions">
+            <button data-product-id="${p.id}" aria-label="Ver produto">${icon('eye')}</button>
+            <button data-edit-product="${p.id}">Editar</button>
+            <button data-toggle-product="${p.id}">${p.status === 'ativo' ? 'Pausar' : 'Ativar'}</button>
+            <button class="danger" data-delete-product="${p.id}">Excluir</button>
+          </div>
+        </article>`;
+      }).join('') : '<div class="merchant-empty-state"><div>'+icon('package')+'</div><h3>Nenhum produto cadastrado</h3><p>Comece adicionando os produtos que seus clientes procuram.</p><button class="btn btn-yellow" data-go="productForm">Cadastrar primeiro produto</button></div>'}</div>
     </section>
     ${merchantNav('products')}
   </main>`;
   bind();
+  document.querySelectorAll('[data-edit-product]').forEach(btn=>btn.onclick=()=>merchantProductEdit(btn.dataset.editProduct));
   document.querySelectorAll('[data-toggle-product]').forEach(btn => btn.onclick = async () => {
     const prod = db.products.find(x => x.id === btn.dataset.toggleProduct); if (!prod) return;
     const nextActive=prod.status !== 'ativo';
@@ -1534,6 +1555,74 @@ function merchantProducts() {
     if(window.ACCloud?.enabled){btn.disabled=true;const result=await window.ACCloud.deleteProduct(pid);if(!result.ok){btn.disabled=false;alert(result.message||'Não foi possível excluir o produto.');return;}}
     db.products = db.products.filter(x => x.id !== pid); db.offers = db.offers.filter(x => x.productId !== pid); saveDb(); merchantProducts();
   });
+}
+
+function merchantProductEdit(productId){
+  const m=currentMerchant(); if(!m)return merchantLogin();
+  const p=db.products.find(x=>x.id===productId && x.storeId===m.id); if(!p)return merchantProducts();
+  const meta=normalizedProduct(p);
+  const CLOTHING_ADULT=['Único','PP','P','M','G','GG','XG','XXG'];
+  const CLOTHING_KIDS=['RN','1','2','4','6','8','10','12','14','16'];
+  const FOOT_KIDS=Array.from({length:20},(_,i)=>String(i+13));
+  const FOOT_ADULT=Array.from({length:18},(_,i)=>String(i+33));
+  const PIZZA=['Pequena','Média','Grande','Família'];
+  const selected=new Set((p.type==='calcado'?meta.numbers:meta.sizes).map(String));
+  const choices=(values)=>values.map(v=>`<button type="button" class="product-choice-chip ${selected.has(String(v))?'active':''}" data-edit-choice="${esc(v)}">${esc(v)}</button>`).join('');
+  let optionBlock='';
+  if(p.type==='roupa') optionBlock=`<div class="product-choice-subtitle">Adulto</div><div class="product-choice-chips">${choices(CLOTHING_ADULT)}</div><div class="product-choice-subtitle">Infantil</div><div class="product-choice-chips">${choices(CLOTHING_KIDS)}</div>`;
+  else if(p.type==='calcado') optionBlock=`<div class="product-choice-subtitle">Infantil · 13 ao 32</div><div class="product-choice-chips">${choices(FOOT_KIDS)}</div><div class="product-choice-subtitle">Adulto · 33 ao 50</div><div class="product-choice-chips">${choices(FOOT_ADULT)}</div>`;
+  else if(p.type==='pizza') optionBlock=`<div class="product-choice-chips">${choices(PIZZA)}</div>`;
+
+  const initialImages=(Array.isArray(p.images)&&p.images.length?p.images:(p.imageData?[p.imageData]:[]));
+  app.innerHTML=`<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage">
+    <div class="merchant-sub-head"><button class="back" data-go="merchantProducts" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>PRODUTO</span><b>Tamanhos e fotos</b></div></div>
+    <section class="merchant-sub-body">
+      <div class="merchant-edit-product-head"><div class="merchant-edit-thumb">${productMedia(p,true)}</div><div><span>${categoryLabel(p.type)}</span><h2>${esc(p.name)}</h2><p>Atualize o que o cliente verá no produto.</p></div></div>
+      <form class="form-card merchant-product-edit-form" id="merchantProductEditForm">
+        <div class="product-media-field"><label class="media-label">Fotos do produto</label><input class="media-file-input" id="editProductImages" type="file" accept="image/*" multiple><div class="product-multi-preview" id="editProductImagesPreview"></div><small>Até 8 fotos. A primeira será a foto principal.</small></div>
+        ${optionBlock?`<div class="product-choice-field"><div class="product-choice-title"><b>${p.type==='calcado'?'Numerações disponíveis':'Tamanhos disponíveis'}</b><small>Marque tudo que está disponível para o cliente.</small></div>${optionBlock}</div>`:''}
+        ${p.type!=='pizza'? `<label>Cores disponíveis<input id="editProductColors" value="${esc(meta.colors.join(', '))}" placeholder="Preto, Branco, Azul"></label>` : ''}
+        <button class="btn btn-yellow btn-block" type="submit">Salvar alterações</button>
+        <div id="editProductMsg"></div>
+      </form>
+    </section>
+    ${merchantNav('products')}
+  </main>`;
+  bind();
+  const picker=bindMultiImagePicker('editProductImages','editProductImagesPreview',{initial:initialImages,max:8,maxW:1200,maxH:1200,quality:.8});
+  document.querySelectorAll('[data-edit-choice]').forEach(btn=>btn.onclick=()=>btn.classList.toggle('active'));
+  document.getElementById('merchantProductEditForm').onsubmit=async e=>{
+    e.preventDefault();
+    const msg=document.getElementById('editProductMsg');
+    const values=[...document.querySelectorAll('[data-edit-choice].active')].map(x=>x.dataset.editChoice);
+    if(['roupa','calcado','pizza'].includes(p.type)&&!values.length){
+      msg.innerHTML=`<div class="notice error">Marque pelo menos ${p.type==='calcado'?'uma numeração':'um tamanho'}.</div>`;
+      return;
+    }
+    const colors=p.type==='pizza'?[]:splitList(document.getElementById('editProductColors')?.value||'');
+    const payload={
+      productId:p.id,
+      userId:m.ownerId || (await window.ACCloud?.getSession())?.user?.id,
+      type:p.type,
+      sizes:['roupa','pizza'].includes(p.type)?values:[],
+      numbers:p.type==='calcado'?values:[],
+      colors,
+      images:picker.get()
+    };
+    const submit=e.currentTarget.querySelector('button[type="submit"]');
+    if(window.ACCloud?.enabled){
+      submit.disabled=true; msg.innerHTML='<div class="notice">Salvando tamanhos e fotos...</div>';
+      const result=await window.ACCloud.updateProductOptions(payload);
+      submit.disabled=false;
+      if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível salvar.')}</div>`;return;}
+      const i=db.products.findIndex(x=>x.id===p.id); if(i>=0)db.products[i]=result.product;
+    }else{
+      p.sizes=payload.sizes;p.numbers=payload.numbers;p.colors=payload.colors;p.images=payload.images;p.imageData=payload.images[0]||p.imageData;
+    }
+    saveDb();
+    msg.innerHTML='<div class="notice success">Tamanhos e fotos atualizados. O cliente já poderá visualizar.</div>';
+    setTimeout(()=>merchantProductEdit(p.id),550);
+  };
 }
 
 function merchantOffers() {
