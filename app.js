@@ -1599,8 +1599,27 @@ function merchantNav(active = 'dashboard') {
   return `<nav class="merchant-bottom-nav">${items.map(([go, ico, label, key]) => `<button class="${active === key ? 'active' : ''}" data-go="${go}">${icon(ico)}<span>${label}</span></button>`).join('')}</nav>`;
 }
 
-function merchant() {
+async function merchant() {
   const m = currentMerchant(); if (!m) return merchantLogin();
+
+  let dashCounts30={visualizacao_loja:0,visualizacao_produto:0,clique_whatsapp:0,favorito:0};
+  let dashContacts=[];
+  if(window.ACCloud?.enabled){
+    const [statsResult,contactsResult]=await Promise.all([
+      window.ACCloud.merchantStats?.(m.id),
+      window.ACCloud.merchantContacts?.(m.id)
+    ]);
+    if(statsResult?.ok)dashCounts30=statsResult.counts30||dashCounts30;
+    if(contactsResult?.ok)dashContacts=contactsResult.contacts||[];
+  }
+  const dashSince30=Date.now()-30*86400000;
+  const dashContacts30=dashContacts.filter(x=>new Date(x.clickedAt||0).getTime()>=dashSince30);
+  const dashSales30=dashContacts30.filter(x=>x.status==='venda');
+  const dashRevenue30=dashSales30.reduce((sum,x)=>sum+Number(x.value||0),0);
+  const dashPending=dashContacts.filter(x=>x.status==='pendente').length;
+  const dashConversion=dashContacts30.length?Math.round(dashSales30.length/dashContacts30.length*100):0;
+  const dashViews30=(dashCounts30.visualizacao_loja||0)+(dashCounts30.visualizacao_produto||0);
+
   const products = merchantProductsFor(m.id);
   const activeProducts = products.filter(p => p.status === 'ativo');
   const offers = merchantOffersFor(m.id).filter(o => o.active);
@@ -1634,11 +1653,24 @@ function merchant() {
       ${pending}
       <div class="merchant-section-heading"><div><span>VISÃO GERAL</span><h2>Resumo da loja</h2></div><small>${window.ACCloud?.enabled ? 'Dados online' : 'Dados locais'}</small></div>
       <div class="merchant-kpi-grid">
-        <article class="merchant-kpi"><span>${icon('eye')}</span><small>Visualizações</small><strong>0</strong><em>Ainda sem registros</em></article>
-        <article class="merchant-kpi"><span>${icon('chat')}</span><small>WhatsApp</small><strong>0</strong><em>Ainda sem registros</em></article>
+        <article class="merchant-kpi"><span>${icon('eye')}</span><small>Visualizações 30d</small><strong>${dashViews30}</strong><em>Loja + produtos</em></article>
+        <article class="merchant-kpi"><span>${icon('whatsapp')}</span><small>WhatsApp 30d</small><strong>${dashContacts30.length||dashCounts30.clique_whatsapp||0}</strong><em>Interessados recebidos</em></article>
         <article class="merchant-kpi"><span>${icon('package')}</span><small>Produtos ativos</small><strong>${activeProducts.length}</strong><em>${products.length} no total</em></article>
         <article class="merchant-kpi"><span>${icon('flame')}</span><small>Ofertas ativas</small><strong>${offers.length}</strong><em>${m.plan === 'gratis' ? 'Limite de 2/mês' : 'Ilimitadas'}</em></article>
       </div>
+
+      <section class="merchant-result-snapshot">
+        <div class="merchant-result-snapshot-head">
+          <div><span>RESULTADOS PELO ACHOU, COMPROU</span><h3>Contatos que viraram venda</h3></div>
+          <button data-go="stats">Ver detalhes ${icon('arrowRight')}</button>
+        </div>
+        <div class="merchant-result-snapshot-grid">
+          <div><small>Vendas confirmadas</small><strong>${dashSales30.length}</strong><em>últimos 30 dias</em></div>
+          <div><small>Valor vendido</small><strong>${brlNumber(dashRevenue30)}</strong><em>informado pela loja</em></div>
+          <div><small>Conversão</small><strong>${dashConversion}%</strong><em>dos contatos</em></div>
+          <div class="${dashPending?'attention':''}"><small>Aguardando resposta</small><strong>${dashPending}</strong><em>contatos para confirmar</em></div>
+        </div>
+      </section>
 
       <div class="merchant-section-heading quick-heading"><div><span>ATALHOS</span><h2>Ações rápidas</h2></div></div>
       <div class="merchant-quick-grid">
