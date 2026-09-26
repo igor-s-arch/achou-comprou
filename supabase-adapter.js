@@ -675,18 +675,20 @@
 
     async loadPublicCatalog(){
       if(!client)return {ok:false};
-      const [stores,products,variants,offers,banners]=await Promise.all([
+      const [stores,products,variants,offers,banners,ranking]=await Promise.all([
         client.from('lojas').select('*').eq('status','aprovada'),
         client.from('produtos').select('*').eq('ativo',true).eq('disponivel',true),
         client.from('produto_variacoes').select('*').eq('disponivel',true),
         client.from('ofertas').select('*').eq('ativa',true),
-        client.from('banners').select('*').eq('ativo',true)
+        client.from('banners').select('*').eq('ativo',true),
+        client.from('ranking_lojas').select('loja_id,whatsapp_clicks')
       ]);
-      const error=stores.error||products.error||variants.error||offers.error||banners.error;
+      const error=stores.error||products.error||variants.error||offers.error||banners.error||ranking.error;
       if(error)return {ok:false,message:errorMessage(error)};
+      const clicksByStore=Object.fromEntries((ranking.data||[]).map(r=>[r.loja_id,Number(r.whatsapp_clicks||0)]));
       return {
         ok:true,
-        stores:(stores.data||[]).map(localStore),
+        stores:(stores.data||[]).map(row=>({...localStore(row),whatsappClicks:clicksByStore[row.id]||0})),
         products:(products.data||[]).map(p=>localProduct(p,variants.data||[])),
         offers:(offers.data||[]).map(localOffer),
         banners:(banners.data||[]).map(localBanner)
