@@ -329,10 +329,12 @@ function normalizeText(value = '') {
 function storePriority(plan) { return ({ premium_banner: 3, premium: 2, gratis: 1 })[plan] || 0; }
 function storeRatingValue(store){ return Number(String(store?.rating ?? 0).replace(',','.')) || 0; }
 function storeWhatsappValue(store){ return Number(store?.whatsappClicks || 0) || 0; }
+function storeVisitValue(store){ return Number(store?.storeVisits || 0) || 0; }
 function compareStorePriority(a,b){
   return (storePriority(b?.plan)-storePriority(a?.plan))
     || (storeRatingValue(b)-storeRatingValue(a))
     || (storeWhatsappValue(b)-storeWhatsappValue(a))
+    || (storeVisitValue(b)-storeVisitValue(a))
     || String(a?.name||'').localeCompare(String(b?.name||''),'pt-BR');
 }
 function approvedStores() { return db.merchants.filter(m => m.status === 'aprovada').sort(compareStorePriority); }
