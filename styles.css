@@ -991,20 +991,20 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 }
 
 .market-category-row{
-  display:grid;grid-auto-flow:column;grid-auto-columns:64px;gap:9px;overflow-x:auto;
+  display:grid;grid-auto-flow:column;grid-auto-columns:58px;gap:7px;overflow-x:auto;
   padding:12px 0 4px;scrollbar-width:none
 }
 .market-category-row::-webkit-scrollbar{display:none}
 .market-category-row button{
-  min-height:75px;border:1px solid #292b30;background:#121316;color:#fff;border-radius:14px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:7px 4px
+  min-height:66px;border:1px solid #292b30;background:#121316;color:#fff;border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:6px 4px
 }
 .market-category-row button i{font-style:normal;color:#fff;height:25px;display:grid;place-items:center}
-.market-category-row button i .ui-icon{width:23px;height:23px}
+.market-category-row button i .ui-icon{width:20px;height:20px}
 .market-category-row button:nth-child(3) i .ui-icon,
 .market-category-row button:nth-child(4) i .ui-icon,
 .market-category-row button:nth-child(5) i .ui-icon{color:var(--yellow)}
-.market-category-row button span{font-size:8px;color:#f1f1f2}
+.market-category-row button span{font-size:7.5px;color:#f1f1f2}
 
 .marketplace-content{padding:8px 12px 20px!important;background:#070707!important}
 .market-banner-carousel{margin-top:3px!important}
@@ -1071,32 +1071,32 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 .market-section-title>button .ui-icon{width:12px;height:12px}
 
 .market-store-strip{
-  display:grid;grid-auto-flow:column;grid-auto-columns:112px;gap:9px;overflow-x:auto;
+  display:grid;grid-auto-flow:column;grid-auto-columns:96px;gap:8px;overflow-x:auto;
   margin:0 -12px;padding:0 12px 6px;scrollbar-width:none
 }
 .market-store-strip::-webkit-scrollbar{display:none}
 .market-store-tile{
-  min-height:126px;padding:10px 7px;border-radius:14px;border:1px solid #292b30;
+  min-height:108px;padding:8px 6px;border-radius:12px;border:1px solid #292b30;
   background:linear-gradient(180deg,#151619,#101113);color:#fff;
   display:flex;flex-direction:column;align-items:center;text-align:center
 }
 .market-store-logo{
-  width:54px;height:54px;border-radius:13px;background:var(--yellow);color:#111;
-  display:grid;place-items:center;font-size:17px;font-weight:1000;margin-bottom:7px;overflow:hidden
+  width:44px;height:44px;border-radius:10px;background:var(--yellow);color:#111;
+  display:grid;place-items:center;font-size:15px;font-weight:1000;margin-bottom:6px;overflow:hidden
 }
 .market-store-logo.has-logo{background:#fff;padding:2px}
 .market-store-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
 .market-store-tile>b{
-  width:100%;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  width:100%;font-size:8px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .market-store-tile>small{
-  width:100%;margin-top:3px;color:#9a9da3;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  width:100%;margin-top:2px;color:#9a9da3;font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .market-store-tile>em{
-  margin-top:auto;padding-top:7px;color:#c5c7cb;font-size:7px;font-style:normal;
+  margin-top:auto;padding-top:5px;color:#c5c7cb;font-size:6.5px;font-style:normal;
   display:flex;align-items:center;gap:3px
 }
-.market-store-tile>em .ui-icon{width:10px;height:10px;color:var(--yellow)}
+.market-store-tile>em .ui-icon{width:9px;height:9px;color:var(--yellow)}
 .market-empty-dark{color:#999;font-size:10px;padding:18px 4px}
 
 .offers-title{margin-top:22px}
@@ -1176,11 +1176,11 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   .home-marketplace .location-button{padding:0 8px!important;font-size:8.5px!important}
   .home-marketplace .round-action{width:38px;height:38px}
   .marketplace-search{height:52px!important}
-  .market-category-row{grid-auto-columns:60px;gap:7px}
+  .market-category-row{grid-auto-columns:56px;gap:6px}
   .market-hero-banner{min-height:230px!important}
   .market-hero-banner .banner-copy{padding:16px!important}
   .market-hero-banner h2{font-size:24px!important}
-  .market-store-strip{grid-auto-columns:104px}
+  .market-store-strip{grid-auto-columns:92px}
   .market-offer-grid{gap:7px}
   .market-offer-media{height:128px}
   .market-offer-body{padding:8px}
