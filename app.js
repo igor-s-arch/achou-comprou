@@ -923,10 +923,21 @@ function search(q = '') {
   if (cleanQuery) {
     db.recentSearches = [cleanQuery, ...(db.recentSearches || []).filter(x => normalizeText(x) !== normalizeText(cleanQuery))].slice(0, 8);
     saveDb();
-    if(window.ACCloud?.enabled) window.ACCloud.trackEvent('busca',{search:cleanQuery}).catch(()=>{});
   }
   const results = searchProducts(publicState.query, publicState.filters);
   const storeMatches = approvedStores().filter(m => !publicState.query || normalizeText([m.name,m.category,m.description].join(' ')).includes(normalizeText(publicState.query)));
+  if(cleanQuery && window.ACCloud?.enabled){
+    window.ACCloud.trackEvent('busca',{
+      search:cleanQuery,
+      metadata:{
+        results:results.length,
+        store_results:storeMatches.length,
+        category:publicState.filters.category||'',
+        option:publicState.filters.option||'',
+        color:publicState.filters.color||''
+      }
+    }).catch(()=>{});
+  }
   const badges = searchBadges(publicState.query, publicState.filters);
   app.innerHTML = `<main class="app-shell">
     <header class="topbar search-page-top"><div class="search"><button data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><input id="searchQuery" value="${esc(publicState.query)}" placeholder="O que você está procurando?"><button id="repeatSearch" aria-label="Buscar">${icon('search')}</button></div></header>
