@@ -1582,6 +1582,8 @@ function productForm() {
   const sel = document.getElementById('prodCat'), box = document.getElementById('dynamicFields'), stock = document.getElementById('prodStock'), variantSection=document.getElementById('variantSection'), variantRows=document.getElementById('variantRows');
   const CLOTHING_ADULT_SIZES=['Único','PP','P','M','G','GG','XG','XXG'];
   const CLOTHING_KIDS_SIZES=['RN','1','2','4','6','8','10','12','14','16'];
+  const FOOTWEAR_KIDS_NUMBERS=Array.from({length:20},(_,i)=>String(i+13));
+  const FOOTWEAR_ADULT_NUMBERS=Array.from({length:18},(_,i)=>String(i+33));
   const PIZZA_SIZES=['Pequena','Média','Grande','Família'];
   function choiceButtons(values,group='size'){
     return values.map(v=>`<button type="button" class="product-choice-chip" data-choice-group="${group}" data-choice-value="${esc(v)}">${esc(v)}</button>`).join('');
@@ -1602,7 +1604,7 @@ function productForm() {
   function dyn() {
     const map = {
       roupa: `<div class="product-choice-field"><div class="product-choice-title"><b>Tamanhos disponíveis</b><small>Marque todos os tamanhos deste produto.</small></div><div class="product-choice-subtitle">Adulto</div><div class="product-choice-chips">${choiceButtons(CLOTHING_ADULT_SIZES)}</div><div class="product-choice-subtitle">Infantil</div><div class="product-choice-chips">${choiceButtons(CLOTHING_KIDS_SIZES)}</div><input id="prodExtra1" type="hidden"></div><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Branco, Rosa"></label>`,
-      calcado: '<label>Numerações disponíveis<input id="prodExtra1" placeholder="28, 29, 30, 31"></label><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Azul"></label>',
+      calcado: `<div class="product-choice-field"><div class="product-choice-title"><b>Numerações disponíveis</b><small>Marque todas as numerações que você tem.</small></div><div class="product-choice-subtitle">Infantil · 13 ao 32</div><div class="product-choice-chips">${choiceButtons(FOOTWEAR_KIDS_NUMBERS)}</div><div class="product-choice-subtitle">Adulto · 33 ao 50</div><div class="product-choice-chips">${choiceButtons(FOOTWEAR_ADULT_NUMBERS)}</div><input id="prodExtra1" type="hidden"></div><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Azul"></label>`,
       pizza: `<div class="product-choice-field"><div class="product-choice-title"><b>Tamanhos</b><small>Marque os tamanhos vendidos.</small></div><div class="product-choice-chips">${choiceButtons(PIZZA_SIZES)}</div><input id="prodExtra1" type="hidden"></div><label>Sabores / adicionais<input id="prodExtra2" placeholder="Calabresa, Frango, Catupiry"></label>`,
       beleza: '<label>Tipo / volume<input id="prodExtra1" placeholder="Perfume 100 ml"></label><label>Variações<input id="prodExtra2" placeholder="Feminino, Masculino"></label>',
       celular: '<label>Modelo / armazenamento<input id="prodExtra1" placeholder="Modelo / 128 GB / 8 GB RAM"></label><label>Cores<input id="prodExtra2" placeholder="Preto, Branco"></label>',
@@ -1618,10 +1620,14 @@ function productForm() {
       const all=[...CLOTHING_ADULT_SIZES,...CLOTHING_KIDS_SIZES];
       return `<select class="variant-option">${all.map(v=>`<option value="${esc(v)}" ${String(option)===String(v)?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
     }
+    if(sel.value==='calcado'){
+      const all=[...FOOTWEAR_KIDS_NUMBERS,...FOOTWEAR_ADULT_NUMBERS];
+      return `<select class="variant-option">${all.map(v=>`<option value="${esc(v)}" ${String(option)===String(v)?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
+    }
     if(sel.value==='pizza'){
       return `<select class="variant-option">${PIZZA_SIZES.map(v=>`<option value="${esc(v)}" ${String(option)===String(v)?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
     }
-    return `<input class="variant-option" value="${esc(option)}" placeholder="Ex.: ${sel.value==='calcado'?'28':'Opção'}">`;
+    return `<input class="variant-option" value="${esc(option)}" placeholder="Opção">`;
   }
   function addVariantRow(option='',color='',qty=1){ const row=document.createElement('div'); row.className='variation-row'; row.innerHTML=`<label><span class="variation-label">${optionLabel()}</span>${variantOptionControl(option)}</label><label>Cor / opção<input class="variant-color" value="${esc(color)}" placeholder="Ex.: Preto"></label><label>Qtd.<input class="variant-qty" type="number" min="0" value="${Number(qty)||0}"></label><button type="button" class="variant-remove" aria-label="Remover">×</button>`; row.querySelector('.variant-remove').onclick=()=>row.remove(); variantRows.appendChild(row); }
   function refreshVariantLabels(){ variantRows.querySelectorAll('.variation-label').forEach(x=>x.textContent=optionLabel()); }
@@ -1638,6 +1644,10 @@ function productForm() {
     const list1=splitList(ex1), list2=splitList(ex2);
     if(['roupa','pizza'].includes(type) && !list1.length){
       msg.innerHTML='<div class="notice error">Marque pelo menos um tamanho disponível.</div>';
+      return;
+    }
+    if(type==='calcado' && !list1.length){
+      msg.innerHTML='<div class="notice error">Marque pelo menos uma numeração disponível.</div>';
       return;
     }
     const variants=[...document.querySelectorAll('.variation-row')].map(row=>({option:row.querySelector('.variant-option').value.trim(),color:row.querySelector('.variant-color').value.trim(),qty:Number(row.querySelector('.variant-qty').value||0)})).filter(v=>v.option||v.color);
