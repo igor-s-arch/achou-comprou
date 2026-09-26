@@ -1900,3 +1900,52 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     height:350px!important;
   }
 }
+
+/* ===== HOME — FOTO DO PRODUTO INTEIRA, SEM CORTE ===== */
+.home-marketplace .market-offer-media{
+  height:auto!important;
+  aspect-ratio:1 / 1.08!important;
+  min-height:0!important;
+  padding:10px!important;
+  background:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.home-marketplace .market-offer-media .product-photo{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  padding:0!important;
+  background:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.home-marketplace .market-offer-media .product-photo img{
+  display:block!important;
+  width:auto!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  margin:auto!important;
+  background:#fff!important;
+}
+.home-marketplace .market-discount{
+  top:8px!important;
+  left:8px!important;
+}
+.home-marketplace .market-favorite{
+  top:8px!important;
+  right:8px!important;
+}
+@media(max-width:390px){
+  .home-marketplace .market-offer-media{
+    aspect-ratio:1 / 1.05!important;
+    padding:8px!important;
+  }
+}
