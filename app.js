@@ -947,6 +947,11 @@ function product(productId = publicState.productId) {
   const discount = discountFor(p);
   const details = String(p.details || '').split('|').map(x=>x.trim()).filter(Boolean);
   const availability = availabilitySummary(p);
+  const meta = normalizedProduct(p);
+  const liveOptions = availableVariants(p).map(v=>v.option).filter(Boolean);
+  const productOptions = [...new Set([...(p.type==='calcado'?meta.numbers:meta.sizes),...liveOptions])];
+  const optionTitle = p.type==='calcado' ? 'Numerações disponíveis' : 'Tamanhos disponíveis';
+  const photos = [...new Set((Array.isArray(p.images)&&p.images.length?p.images:(p.imageData?[p.imageData]:[])).filter(Boolean))];
   const storeLogo = m.logoData
     ? `<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`
     : icon('store');
@@ -964,7 +969,10 @@ function product(productId = publicState.productId) {
     <section class="product-detail-shell">
       <div class="product-gallery-card">
         ${discount ? `<span class="product-discount-badge">${discount}</span>` : ''}
-        <div class="hero-product product-hero-pro">${productMedia(p)}</div>
+        ${photos.length ? `<div class="product-gallery-layout ${photos.length>1?'has-thumbs':''}">
+          ${photos.length>1?`<div class="product-gallery-thumbs">${photos.map((src,i)=>`<button type="button" class="${i===0?'active':''}" data-product-photo="${i}"><img src="${esc(src)}" alt="Foto ${i+1} de ${esc(p.name)}"></button>`).join('')}</div>`:''}
+          <div class="hero-product product-hero-pro product-gallery-main"><div class="product-photo"><img id="productMainPhoto" src="${esc(photos[0])}" alt="${esc(p.name)}"></div></div>
+        </div>` : `<div class="hero-product product-hero-pro">${productMedia(p)}</div>`}
       </div>
 
       <div class="product-main-card">
@@ -993,7 +1001,8 @@ function product(productId = publicState.productId) {
         <div class="product-info-section">
           <div class="product-section-head"><span>${icon('check')}</span><div><small>DISPONIBILIDADE</small><h3>Pronto para consultar</h3></div></div>
           <span class="product-stock-badge">Disponível</span>
-          ${availability.length ? `<div class="product-option-list">${availability.map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
+          ${productOptions.length && ['roupa','calcado','pizza'].includes(p.type) ? `<div class="client-option-group"><b>${optionTitle}</b><div class="client-option-chips">${productOptions.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>` : ''}
+          ${availability.length ? `<div class="product-option-list">${availability.filter(x=>!x.startsWith('Tamanhos:')&&!x.startsWith('Numerações:')).map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
         </div>
 
         <div class="product-info-section">
@@ -1012,6 +1021,12 @@ function product(productId = publicState.productId) {
   </main>`;
 
   bind();
+  document.querySelectorAll('[data-product-photo]').forEach(btn=>btn.onclick=()=>{
+    const index=Number(btn.dataset.productPhoto||0);
+    const main=document.getElementById('productMainPhoto');
+    if(main&&photos[index])main.src=photos[index];
+    document.querySelectorAll('[data-product-photo]').forEach(x=>x.classList.toggle('active',x===btn));
+  });
   document.getElementById('productBack').onclick = () => publicState.query ? search(publicState.query) : home();
   const toggleFav=async()=>{ if(!currentClient()){ publicState.afterLogin={screen:'product',productId:p.id,favoriteId:p.id}; return clientLogin(); } const ok=await setFavorite(p.id,!fav); if(ok) product(p.id); };
   document.getElementById('favBtn').onclick = toggleFav;
