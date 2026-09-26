@@ -2628,3 +2628,286 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     font-size:7px;
   }
 }
+
+/* ===== PERFIL DA LOJA V56 — FIDELIDADE AO MODELO APROVADO ===== */
+.store-premium-page.app-shell{
+  background:#070808!important;
+  color:#fff!important;
+}
+.store-premium-divider{
+  height:1px;
+  background:#24272b;
+  margin:0;
+}
+.store-premium-page .store-premium-hero{
+  min-height:465px!important;
+  padding:20px 16px 18px!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.store-premium-page .store-premium-hero.has-cover{
+  background-size:cover!important;
+  background-position:center center!important;
+}
+.store-premium-page .store-premium-overlay{
+  background:
+    linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.14) 26%,rgba(0,0,0,.50) 58%,rgba(0,0,0,.92) 86%,#070808 100%)!important;
+}
+.store-premium-page .store-premium-main{
+  max-width:470px;
+  margin:0 auto;
+}
+.store-premium-page .store-premium-logo{
+  width:100px!important;
+  height:100px!important;
+  margin-bottom:14px!important;
+  border:3px solid var(--yellow)!important;
+  outline:3px solid rgba(255,208,0,.32)!important;
+  box-shadow:0 10px 32px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06)!important;
+}
+.store-premium-page .store-premium-logo img{
+  object-fit:contain!important;
+  padding:3px;
+  background:#0a0a0a!important;
+}
+.store-premium-page .store-premium-main h1{
+  font-size:31px!important;
+  font-weight:1000!important;
+  letter-spacing:-.04em!important;
+  line-height:1.02!important;
+  margin:0!important;
+}
+.store-premium-page .store-premium-badge{
+  margin-top:12px!important;
+  min-height:36px!important;
+  padding:0 16px!important;
+  font-size:11px!important;
+  background:rgba(7,8,8,.76)!important;
+  border:1px solid rgba(255,208,0,.78)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)!important;
+}
+.store-premium-page .store-premium-categories{
+  margin-top:12px!important;
+  font-size:12px!important;
+  letter-spacing:.01em!important;
+}
+.store-premium-page .store-premium-address{
+  margin-top:13px!important;
+  min-height:44px!important;
+  padding:10px 12px!important;
+  border-radius:14px!important;
+  background:rgba(27,29,33,.92)!important;
+  border:1px solid #393c42!important;
+  font-size:10.5px!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.18)!important;
+}
+.store-premium-page .store-premium-actions{
+  margin-top:13px!important;
+  gap:8px!important;
+}
+.store-premium-page .store-action{
+  min-height:52px!important;
+  border-radius:14px!important;
+  font-size:10.5px!important;
+  letter-spacing:-.01em!important;
+  box-shadow:0 7px 17px rgba(0,0,0,.22)!important;
+}
+.store-premium-page .store-action .ui-icon{
+  width:20px!important;
+  height:20px!important;
+}
+.store-premium-page .store-action.whatsapp{
+  background:linear-gradient(180deg,#18c66a,#0faa56)!important;
+}
+.store-premium-page .store-action.instagram-pro{
+  background:linear-gradient(135deg,#ff4a67 0%,#d635c9 45%,#7c3dff 100%)!important;
+}
+.store-premium-page .store-action.map{
+  background:linear-gradient(180deg,#ffd91a,#ffc800)!important;
+}
+
+.store-premium-page .store-premium-body{
+  padding:18px 12px 96px!important;
+  background:#070808!important;
+}
+.store-premium-page .store-premium-card{
+  margin-bottom:14px!important;
+  padding:17px!important;
+  border-radius:18px!important;
+  border:1px solid #30343a!important;
+  background:linear-gradient(145deg,#16181b 0%,#0e1012 100%)!important;
+  box-shadow:0 12px 28px rgba(0,0,0,.16)!important;
+}
+.store-premium-page .store-card-heading{
+  gap:11px!important;
+  margin-bottom:13px!important;
+}
+.store-premium-page .store-card-icon{
+  width:42px!important;
+  height:42px!important;
+  border-radius:50%!important;
+  color:var(--yellow)!important;
+  border:1px solid #464a50!important;
+  background:#191b1f!important;
+}
+.store-premium-page .store-card-icon .ui-icon{
+  width:21px!important;
+  height:21px!important;
+}
+.store-premium-page .store-card-heading h2{
+  font-size:19px!important;
+  font-weight:950!important;
+  letter-spacing:-.025em!important;
+}
+.store-premium-page .store-about-pro p{
+  padding-left:53px!important;
+  font-size:11.7px!important;
+  line-height:1.6!important;
+  color:#e7e8ea!important;
+}
+
+.store-premium-page .store-benefit-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+.store-premium-page .store-benefit-item{
+  min-height:96px!important;
+  padding:12px!important;
+  border-radius:14px!important;
+  background:#15171a!important;
+  border:1px solid #292d31!important;
+}
+.store-premium-page .store-benefit-item>span{
+  width:36px!important;
+  height:36px!important;
+}
+.store-premium-page .store-benefit-item>span .ui-icon{
+  width:25px!important;
+  height:25px!important;
+}
+.store-premium-page .store-benefit-item b{
+  font-size:10.2px!important;
+  line-height:1.2!important;
+}
+.store-premium-page .store-benefit-item small{
+  margin-top:4px!important;
+  font-size:8.3px!important;
+  line-height:1.28!important;
+}
+
+.store-premium-page .store-hours-grid{
+  gap:8px!important;
+}
+.store-premium-page .store-hours-item{
+  min-height:92px!important;
+  padding:11px 9px!important;
+  border-radius:14px!important;
+  background:#15171a!important;
+  border:1px solid #292d31!important;
+}
+.store-premium-page .store-hours-item>span .ui-icon{
+  width:23px!important;
+  height:23px!important;
+}
+.store-premium-page .store-hours-item b{
+  font-size:9.5px!important;
+}
+.store-premium-page .store-hours-item small{
+  margin-top:5px!important;
+  font-size:8.5px!important;
+}
+.store-premium-page .store-hours-item.closed small{
+  color:#ff4e55!important;
+}
+
+@media(max-width:420px){
+  .store-premium-page .store-premium-hero{
+    min-height:445px!important;
+    padding:18px 10px 16px!important;
+  }
+  .store-premium-page .store-premium-back,
+  .store-premium-page .store-premium-share{
+    top:14px!important;
+    width:42px!important;
+    height:42px!important;
+  }
+  .store-premium-page .store-premium-back{left:10px!important}
+  .store-premium-page .store-premium-share{right:10px!important}
+  .store-premium-page .store-premium-logo{
+    width:88px!important;
+    height:88px!important;
+  }
+  .store-premium-page .store-premium-main h1{
+    font-size:27px!important;
+  }
+  .store-premium-page .store-premium-badge{
+    min-height:33px!important;
+    font-size:10px!important;
+  }
+  .store-premium-page .store-premium-categories{
+    font-size:10.5px!important;
+  }
+  .store-premium-page .store-premium-address{
+    min-height:42px!important;
+    font-size:9.5px!important;
+  }
+  .store-premium-page .store-action{
+    min-height:47px!important;
+    font-size:8.8px!important;
+    gap:5px!important;
+  }
+  .store-premium-page .store-action .ui-icon{
+    width:18px!important;
+    height:18px!important;
+  }
+  .store-premium-page .store-premium-body{
+    padding:14px 10px 92px!important;
+  }
+  .store-premium-page .store-premium-card{
+    padding:14px!important;
+  }
+  .store-premium-page .store-card-icon{
+    width:38px!important;
+    height:38px!important;
+  }
+  .store-premium-page .store-card-heading h2{
+    font-size:17px!important;
+  }
+  .store-premium-page .store-about-pro p{
+    padding-left:0!important;
+    font-size:10.6px!important;
+  }
+  .store-premium-page .store-benefit-item{
+    min-height:88px!important;
+    padding:10px!important;
+    grid-template-columns:30px minmax(0,1fr)!important;
+  }
+  .store-premium-page .store-benefit-item>span{
+    width:30px!important;
+    height:30px!important;
+  }
+  .store-premium-page .store-benefit-item>span .ui-icon{
+    width:21px!important;
+    height:21px!important;
+  }
+  .store-premium-page .store-benefit-item b{
+    font-size:9px!important;
+  }
+  .store-premium-page .store-benefit-item small{
+    font-size:7.3px!important;
+  }
+  .store-premium-page .store-hours-item{
+    min-height:82px!important;
+    padding:8px 6px!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    text-align:center!important;
+    gap:5px!important;
+  }
+  .store-premium-page .store-hours-item b{
+    font-size:8px!important;
+  }
+  .store-premium-page .store-hours-item small{
+    font-size:7.2px!important;
+  }
+}
