@@ -645,9 +645,13 @@ function splash() {
 function home() {
   const premiumBanners = publicPremiumBanners();
   const bannerItems = premiumBanners.length ? premiumBanners : [{
-    id:'default-banner', storeId:null, title:'Ofertas da sua cidade',
+    id:'default-banner',
+    storeId:null,
+    title:'Ofertas da sua cidade',
     message:'Produtos e ofertas das lojas da cidade em um só lugar.',
-    imageData:'', active:true
+    imageData:'',
+    videoData:'./Creating_smooth_advertising_bann…_1080p_20260926152920.mp4',
+    active:true
   }];
   const products = rankedPublicProducts();
   const shops = approvedStores().filter(m=>m.plan!=='gratis');
@@ -699,6 +703,14 @@ function home() {
         <div class="banner-carousel-track" id="homeBannerTrack">
           ${bannerItems.map((banner,index)=>{
             const bannerStore=storeById(banner.storeId);
+            if(banner.videoData){
+              return `<article class="banner banner-pro banner-slide market-hero-banner market-video-banner" data-banner-index="${index}">
+                <video class="market-home-banner-video" autoplay muted loop playsinline preload="metadata" aria-label="Banner Achou, Comprou">
+                  <source src="${esc(banner.videoData)}" type="video/mp4">
+                </video>
+                <button class="market-video-hit" type="button" data-search-term="" aria-label="Ver produtos e ofertas"></button>
+              </article>`;
+            }
             const bannerVisual=banner.imageData
               ? `<div class="banner-media"><img src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Achou, Comprou')}"></div>`
               : bannerStore?.logoData
