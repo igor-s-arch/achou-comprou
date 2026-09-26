@@ -892,3 +892,18 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   .product-action-bar button{height:50px;border-radius:12px;font-size:10px}
   .product-favorite-action span{display:none}
 }
+
+/* ===== MOSTRAR / OCULTAR SENHA ===== */
+.password-field{position:relative;width:100%}
+.password-field input{width:100%;padding-right:48px!important}
+.password-toggle{
+  position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  width:36px;height:36px;border:0;border-radius:10px;
+  background:transparent;color:#7a7d83;display:grid;place-items:center;
+  cursor:pointer
+}
+.password-toggle:hover{background:#f2f3f5;color:#111}
+.password-toggle.showing{background:#fff4bd;color:#7a6300}
+.password-toggle .ui-icon{width:18px;height:18px}
+.admin-login-card .password-toggle{color:#81858c}
+.admin-login-card .password-toggle:hover{background:#f2f3f5;color:#111}
