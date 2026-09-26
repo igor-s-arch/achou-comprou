@@ -830,7 +830,7 @@ function home() {
           const optionSource=(p.stock==='detalhado'&&live.length)?live.map(v=>v.option).filter(Boolean):baseOptions;
           const availableOptions=[...new Set(optionSource.map(String))];
           const optionLabel=p.type==='calcado'?'Num.':'Tam.';
-          return `<article class="market-offer-card market-product-card" data-product-id="${p.id}">
+          return `<article class="market-offer-card market-product-card market-product-card-v2" data-product-id="${p.id}">
             <div class="market-offer-media">
               ${productMedia(p,true)}
               <span class="market-discount market-offer-badge">OFERTA${discount ? ` · ${esc(discount.replace('-',''))} OFF` : ''}</span>
@@ -842,10 +842,10 @@ function home() {
                 <div class="market-price-row"><strong>${money(price)}</strong>${hasDiscount ? `<span>${money(old)}</span>` : ''}</div>
                 <span class="market-available">${icon('check')} ${o?'Oferta ativa':'Disponível'}</span>
               </div>
-              ${availableOptions.length ? `<div class="market-card-options"><b>${optionLabel}</b><div>${availableOptions.map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>` : ''}
+              ${availableOptions.length ? `<div class="market-card-options market-card-options-v2"><div>${availableOptions.map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>` : ''}
               <div class="market-offer-footer">
-                <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')} · ${esc(m.dist||'Grajaú')}</small></div>
-                <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('chat')}</button>
+                <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')}</small></div>
+                <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('whatsapp')}</button>
                 <span class="market-go">${icon('arrowRight')}</span>
               </div>
             </div>
