@@ -1324,3 +1324,113 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     padding:8px!important;
   }
 }
+
+/* ===== RESULTADOS DA BUSCA — 2 PRODUTOS LADO A LADO ===== */
+.search-product-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+.search-product-grid>.empty{
+  grid-column:1/-1;
+}
+.search-result-card{
+  display:flex!important;
+  flex-direction:column!important;
+  min-width:0;
+  padding:8px!important;
+  gap:8px!important;
+  border-radius:14px!important;
+}
+.search-result-card .thumb{
+  width:100%;
+  aspect-ratio:1/1.05;
+  min-height:0;
+  border-radius:11px!important;
+  background:#fff!important;
+}
+.search-result-card .thumb .product-photo{
+  width:100%;
+  height:100%;
+  padding:5px!important;
+  background:#fff!important;
+}
+.search-result-card .thumb .product-photo img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+.search-result-info{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  min-width:0;
+}
+.search-result-card .tag{
+  font-size:7px!important;
+  padding:3px 5px!important;
+  border-radius:6px!important;
+}
+.search-result-card h4{
+  width:100%;
+  margin:5px 0 4px!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+  min-height:27px;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.search-result-card .price{
+  font-size:15px!important;
+  line-height:1.05;
+}
+.search-result-card .old{
+  font-size:7px!important;
+  margin-top:2px;
+}
+.search-result-card .availability-line{
+  width:100%;
+  margin-top:5px;
+  font-size:6.5px!important;
+  line-height:1.25;
+  color:#60636a;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.search-result-card .store{
+  width:100%;
+  margin-top:6px!important;
+  font-size:7.5px!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.search-result-card .dist{
+  width:100%;
+  margin-top:3px!important;
+  font-size:6.5px!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.search-result-card .dist .ui-icon{
+  width:10px!important;
+  height:10px!important;
+}
+.search-result-card .btn{
+  width:100%;
+  margin-top:7px!important;
+  padding:8px 6px!important;
+  border-radius:9px!important;
+  font-size:8px!important;
+}
+@media(min-width:700px){
+  .search-product-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
