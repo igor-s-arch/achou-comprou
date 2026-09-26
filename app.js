@@ -819,16 +819,22 @@ function home() {
           const price=currentPrice(p);
           const old=originalPrice(p);
           const hasDiscount=priceNumber(price)<priceNumber(old);
+          const meta=normalizedProduct(p);
+          const live=availableVariants(p);
+          const baseOptions=p.type==='calcado'?meta.numbers:(['roupa','pizza'].includes(p.type)?meta.sizes:[]);
+          const availableOptions=[...new Set([...baseOptions,...live.map(v=>v.option).filter(Boolean)].map(String))];
+          const optionLabel=p.type==='calcado'?'Num.':'Tam.';
           return `<article class="market-offer-card market-product-card" data-product-id="${p.id}">
             <div class="market-offer-media">
               ${productMedia(p,true)}
-              ${discount ? `<span class="market-discount">${esc(discount.replace('-',''))} OFF</span>` : ''}
+              <span class="market-discount market-offer-badge">OFERTA${discount ? ` · ${esc(discount.replace('-',''))} OFF` : ''}</span>
               <button class="market-favorite ${favorite?'active':''}" type="button" data-home-fav="${p.id}" aria-label="Favoritar">${icon('heart')}</button>
             </div>
             <div class="market-offer-body">
               <div class="market-offer-title">${esc(p.name)}</div>
               <div class="market-price-row"><strong>${money(price)}</strong>${hasDiscount ? `<span>${money(old)}</span>` : ''}</div>
               <span class="market-available">${icon('check')} ${o?'Oferta ativa':'Disponível'}</span>
+              ${availableOptions.length ? `<div class="market-card-options"><b>${optionLabel}</b><div>${availableOptions.map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>` : ''}
               <div class="market-offer-footer">
                 <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')} · ${esc(m.dist||'Grajaú')}</small></div>
                 <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('chat')}</button>
