@@ -327,7 +327,15 @@ function normalizeText(value = '') {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 function storePriority(plan) { return ({ premium_banner: 3, premium: 2, gratis: 1 })[plan] || 0; }
-function approvedStores() { return db.merchants.filter(m => m.status === 'aprovada').sort((a,b) => storePriority(b.plan) - storePriority(a.plan)); }
+function storeRatingValue(store){ return Number(String(store?.rating ?? 0).replace(',','.')) || 0; }
+function storeWhatsappValue(store){ return Number(store?.whatsappClicks || 0) || 0; }
+function compareStorePriority(a,b){
+  return (storePriority(b?.plan)-storePriority(a?.plan))
+    || (storeRatingValue(b)-storeRatingValue(a))
+    || (storeWhatsappValue(b)-storeWhatsappValue(a))
+    || String(a?.name||'').localeCompare(String(b?.name||''),'pt-BR');
+}
+function approvedStores() { return db.merchants.filter(m => m.status === 'aprovada').sort(compareStorePriority); }
 function storeById(id) { return db.merchants.find(m => m.id === id) || null; }
 function publicPremiumBanners() {
   const now=Date.now();
@@ -355,7 +363,11 @@ function discountFor(product) {
   return `-${Math.round((1 - promo / normal) * 100)}%`;
 }
 function publicOffers() {
-  return publicProducts().map(p => ({ product: p, offer: activeOfferFor(p.id), store: storeById(p.storeId) })).filter(x => x.offer && x.store).sort((a,b) => storePriority(b.store.plan) - storePriority(a.store.plan));
+  return publicProducts()
+    .map(p => ({ product: p, offer: activeOfferFor(p.id), store: storeById(p.storeId) }))
+    .filter(x => x.offer && x.store)
+    .sort((a,b) => compareStorePriority(a.store,b.store)
+      || String(b.offer?.createdAt||'').localeCompare(String(a.offer?.createdAt||'')));
 }
 const COLOR_WORDS = ['preto','preta','branco','branca','rosa','azul','vermelho','vermelha','verde','amarelo','amarela','bege','marrom','cinza','roxo','roxa','laranja','dourado','dourada','prata'];
 const SIZE_WORDS = ['pp','p','m','g','gg','xg','xxg','rn','0-3m','3-6m','6-9m','9-12m'];
@@ -585,9 +597,10 @@ function bindImagePicker(inputId, previewId, options = {}) {
 }
 
 function nav(active = 'home') {
-  return `<nav class="bottom-nav">
+  return `<nav class="bottom-nav marketplace-bottom-nav">
     <button class="nav-item ${active === 'home' ? 'active' : ''}" data-go="home">${icon('home')}<span>Início</span></button>
     <button class="nav-item ${active === 'search' ? 'active' : ''}" data-go="search">${icon('search')}<span>Buscar</span></button>
+    <button class="nav-item ${active === 'categories' ? 'active' : ''}" data-go="categories">${icon('grid')}<span>Categorias</span></button>
     <button class="nav-item ${active === 'fav' ? 'active' : ''}" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
     <button class="nav-item ${active === 'profile' ? 'active' : ''}" data-go="profile">${icon('user')}<span>Perfil</span></button>
   </nav>`;
@@ -619,19 +632,26 @@ function home() {
   const premiumBanners = publicPremiumBanners();
   const bannerItems = premiumBanners.length ? premiumBanners : [{
     id:'default-banner', storeId:null, title:'Compre perto de você',
-    message:'Produtos, ofertas e lojas da sua cidade em um só lugar.',
+    message:'Ofertas imperdíveis de lojas da sua cidade, em um só lugar.',
     imageData:'', active:true
   }];
   const offers = publicOffers();
   const shops = approvedStores();
   const client = currentClient();
   const unreadNotifications = (db.notifications || []).filter(n => !n.read).length;
+  const quickSearches = ['Churrasco','Tênis','Celular','Pizzaria','Farmácia'];
   const cats = [
-    ['shirt', 'Moda', 'moda'], ['bag', 'Calçados', 'calcado'], ['food', 'Alimentação', 'alimentacao'], ['beauty', 'Beleza', 'beleza'], ['health', 'Saúde', 'saude'],
-    ['home', 'Casa', 'casa'], ['phone', 'Tecnologia', 'tecnologia'], ['car', 'Automotivo', 'automotivo'], ['tools', 'Serviços', 'servicos'], ['grid', 'Ver todas', '']
+    ['shirt','Moda','moda'],
+    ['bag','Calçados','calcado'],
+    ['food','Alimentação','alimentacao'],
+    ['beauty','Beleza','beleza'],
+    ['health','Saúde','saude'],
+    ['home','Casa','casa'],
+    ['grid','Mais','']
   ];
-  app.innerHTML = `<main class="app-shell home-professional">
-    <header class="topbar home-topbar">
+
+  app.innerHTML = `<main class="app-shell home-professional home-marketplace">
+    <header class="topbar home-topbar marketplace-topbar">
       <div class="brand-row home-brand-row">
         ${logo()}
         <div class="home-head-actions">
@@ -640,15 +660,28 @@ function home() {
           <button class="round-action home-profile-action ${client?.avatar ? 'has-photo' : ''}" data-go="profile" aria-label="Meu perfil">${client?.avatar ? `<img src="${esc(client.avatar)}" alt="Foto de perfil">` : icon('user')}</button>
         </div>
       </div>
-      <div class="search home-search"><span class="search-leading">${icon('search')}</span><input id="q" placeholder="O que você está procurando?"><button id="searchBtn" aria-label="Filtros">${icon('sliders')}</button></div>
-      <button class="quick-query" data-search-term="tênis infantil número 28"><span>Busca rápida</span> Tênis infantil nº 28 ${icon('arrowRight')}</button>
+
+      <div class="search home-search marketplace-search">
+        <span class="search-leading">${icon('search')}</span>
+        <input id="q" placeholder="O que você está procurando?">
+        <button id="searchBtn" aria-label="Buscar">${icon('sliders')}</button>
+      </div>
+
+      <div class="market-quick-row">
+        <b>BUSCAS RÁPIDAS</b>
+        <div class="market-quick-scroll">${quickSearches.map(term=>`<button data-search-term="${esc(term)}">${esc(term)}</button>`).join('')}</div>
+      </div>
+
+      <div class="market-category-row">
+        ${cats.map(([ico,label,term])=>term
+          ? `<button data-search-term="${term}"><i>${icon(ico)}</i><span>${label}</span></button>`
+          : `<button data-go="categories"><i>${icon(ico)}</i><span>${label}</span></button>`
+        ).join('')}
+      </div>
     </header>
 
-    <section class="content home-content">
-      <div class="home-section-head"><div><span>CATEGORIAS</span><h3>O que você procura hoje?</h3></div><button data-go="categories">Ver todas</button></div>
-      <div class="cats cats-pro">${cats.map(([i, t, term]) => t === 'Ver todas' ? `<button class="cat" data-go="categories"><i>${icon(i)}</i><span>${t}</span></button>` : `<button class="cat" data-search-term="${term}"><i>${icon(i)}</i><span>${t}</span></button>`).join('')}</div>
-
-      <section class="banner-carousel" id="homeBannerCarousel" aria-label="Destaques da cidade">
+    <section class="content home-content marketplace-content">
+      <section class="banner-carousel market-banner-carousel" id="homeBannerCarousel" aria-label="Destaques da cidade">
         <div class="banner-carousel-track" id="homeBannerTrack">
           ${bannerItems.map((banner,index)=>{
             const bannerStore=storeById(banner.storeId);
@@ -656,49 +689,105 @@ function home() {
               ? `<div class="banner-media"><img src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Achou, Comprou')}"></div>`
               : bannerStore?.logoData
                 ? `<div class="banner-media logo"><img src="${esc(bannerStore.logoData)}" alt="Logo ${esc(bannerStore.name)}"></div>`
-                : '<div class="banner-mark">AC</div>';
-            return `<article class="banner banner-pro banner-slide" data-banner-index="${index}">
+                : '<div class="market-default-mark">AC</div>';
+            return `<article class="banner banner-pro banner-slide market-hero-banner" data-banner-index="${index}">
               <div class="banner-copy">
-                <span class="banner-label">${bannerStore ? 'PREMIUM + BANNER' : 'DESTAQUE DA CIDADE'}</span>
-                <small>${bannerStore ? esc(bannerStore.name) : 'Comércio local'}</small>
+                <span class="banner-label">${bannerStore ? 'LOJA EM DESTAQUE' : 'COMÉRCIO LOCAL'}</span>
+                <small>${bannerStore ? esc(bannerStore.name) : 'Achou, Comprou'}</small>
                 <h2>${esc(banner.title||'Compre perto de você')}</h2>
-                <p>${esc(banner.message||'Produtos, ofertas e lojas da sua cidade em um só lugar.')}</p>
+                <p>${esc(banner.message||'Ofertas imperdíveis de lojas da sua cidade, em um só lugar.')}</p>
                 <div class="banner-footer">
                   <span>${icon('pin')} Grajaú - MA</span>
-                  ${bannerStore ? `<button class="banner-cta" type="button" data-store-id="${bannerStore.id}">Ver destaque ${icon('arrowRight')}</button>` : '<b>Comércio local</b>'}
+                  ${bannerStore
+                    ? `<button class="banner-cta" type="button" data-store-id="${bannerStore.id}">Ver oferta ${icon('arrowRight')}</button>`
+                    : `<button class="banner-cta" type="button" data-search-term="">Ver ofertas ${icon('arrowRight')}</button>`
+                  }
                 </div>
               </div>
               ${bannerVisual}
             </article>`;
           }).join('')}
         </div>
-        ${bannerItems.length>1?`<div class="banner-carousel-dots" aria-label="Navegação dos banners">${bannerItems.map((_,i)=>`<button type="button" class="${i===0?'active':''}" data-banner-dot="${i}" aria-label="Mostrar banner ${i+1}"></button>`).join('')}</div>`:''}
+        ${bannerItems.length>1?`<div class="banner-carousel-dots">${bannerItems.map((_,i)=>`<button type="button" class="${i===0?'active':''}" data-banner-dot="${i}" aria-label="Mostrar banner ${i+1}"></button>`).join('')}</div>`:''}
       </section>
 
-      <div class="home-section-head"><div><span>OFERTAS</span><h3>Perto de você</h3></div><button data-search-term="">Ver todas</button></div>
-      <div class="offers home-offers">${offers.length ? offers.slice(0,8).map(({product:p, offer:o, store:m}) => `<article class="card home-product-card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="product-price-row"><span class="price">${money(o.promo)}</span>${o.normal ? `<span class="old">${money(o.normal)}</span>` : ''}</div><div class="store">${esc(m.name)}</div><div class="dist">${icon('pin')} ${esc(m.dist || 'Grajaú')}</div></div></article>`).join('') : '<div class="empty">Nenhuma oferta ativa no momento.</div>'}</div>
+      <div class="market-section-title stores-first">
+        <div class="market-section-icon">${icon('store')}</div>
+        <div><h3>Lojas em destaque</h3><p>Comércio da sua cidade</p></div>
+        <button data-search-term="">Ver todas ${icon('arrowRight')}</button>
+      </div>
 
-      <div class="home-section-head shops-head"><div><span>LOJAS EM DESTAQUE</span><h3>Descubra lojas da cidade</h3></div><button data-search-term="">Ver todas</button></div>
-      <div class="featured-stores-track">${shops.length ? shops.slice(0,8).map((m) => {
-        const premium = m.plan !== 'gratis';
-        return `<button class="featured-store-card" data-store-id="${m.id}">
-          <div class="featured-store-cover ${m.coverData ? 'has-image' : ''}" ${m.coverData ? `style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.58)),url('${m.coverData}')"` : ''}>
-            <span class="featured-store-city">Grajaú · MA</span>
-            ${premium ? `<span class="featured-store-badge">${m.plan === 'premium_banner' ? 'Premium + Banner' : 'Premium'}</span>` : ''}
-            <div class="featured-store-monogram ${m.logoData ? 'with-logo' : ''}">${m.logoData ? `<img src="${m.logoData}" alt="Logo ${esc(m.name)}">` : esc(m.name.slice(0,1).toUpperCase())}</div>
-          </div>
-          <div class="featured-store-body">
-            <div class="featured-store-title-row"><div><b>${esc(m.name)}</b><small>${esc(m.category)}</small></div>${icon('arrowRight','featured-store-arrow')}</div>
-            <div class="featured-store-meta"><span>${icon('star')} ${esc(m.rating || 'Novo')}</span><span>${icon('pin')} ${esc(m.dist || 'Grajaú')}</span></div>
-          </div>
-        </button>`;
-      }).join('') : '<div class="empty">Nenhuma loja aprovada ainda.</div>'}</div>
+      <div class="market-store-strip">
+        ${shops.length ? shops.slice(0,8).map(m=>`
+          <button class="market-store-tile" data-store-id="${m.id}">
+            <span class="market-store-logo ${m.logoData?'has-logo':''}">${m.logoData ? `<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">` : esc((m.name||'L').slice(0,2).toUpperCase())}</span>
+            <b>${esc(m.name)}</b>
+            <small>${esc(m.category||'Comércio local')}</small>
+            <em>${icon('star')} ${esc(m.rating||'Novo')}</em>
+          </button>
+        `).join('') : '<div class="market-empty-dark">Nenhuma loja em destaque ainda.</div>'}
+      </div>
+
+      <div class="market-section-title offers-title">
+        <div class="market-section-icon pin">${icon('pin')}</div>
+        <div><h3>Perto de você</h3><p>Prioridade por plano, pontuação e cliques no WhatsApp</p></div>
+        <button data-search-term="">Ver todas ${icon('arrowRight')}</button>
+      </div>
+
+      <div class="market-offer-grid">
+        ${offers.length ? offers.slice(0,12).map(({product:p,offer:o,store:m})=>{
+          const discount=discountFor(p);
+          const favorite=isFavorite(p.id);
+          return `<article class="market-offer-card" data-product-id="${p.id}">
+            <div class="market-offer-media">
+              ${productMedia(p,true)}
+              ${discount ? `<span class="market-discount">${esc(discount.replace('-',''))} OFF</span>` : ''}
+              <button class="market-favorite ${favorite?'active':''}" type="button" data-home-fav="${p.id}" aria-label="Favoritar">${icon('heart')}</button>
+            </div>
+            <div class="market-offer-body">
+              <div class="market-offer-title">${esc(p.name)}</div>
+              <div class="market-price-row"><strong>${money(o.promo)}</strong>${o.normal ? `<span>${money(o.normal)}</span>` : ''}</div>
+              <span class="market-available">${icon('check')} Oferta ativa</span>
+              <div class="market-offer-footer">
+                <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')} · ${esc(m.dist||'Grajaú')}</small></div>
+                <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('chat')}</button>
+                <span class="market-go">${icon('arrowRight')}</span>
+              </div>
+            </div>
+          </article>`;
+        }).join('') : '<div class="market-empty-products">Nenhuma oferta ativa no momento.</div>'}
+      </div>
     </section>
+
     ${nav('home')}
   </main>`;
+
   bind();
+
   document.getElementById('searchBtn').onclick = () => search(document.getElementById('q').value);
   document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(e.target.value); });
+
+  document.querySelectorAll('[data-home-wa]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const p=db.products.find(x=>x.id===btn.dataset.homeWa);
+    const m=p?storeById(p.storeId):null;
+    const url=p&&m?whatsappUrl(m,p):'';
+    if(!url)return;
+    if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,productId:p.id,metadata:{source:'home',product_name:p.name}}).catch(()=>{});
+    window.open(url,'_blank');
+  });
+
+  document.querySelectorAll('[data-home-fav]').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const productId=btn.dataset.homeFav;
+    if(!currentClient()){
+      publicState.afterLogin={screen:'product',productId,favoriteId:productId};
+      clientLogin();
+      return;
+    }
+    const ok=await setFavorite(productId,!isFavorite(productId));
+    if(ok)home();
+  });
 
   clearInterval(window.__achouBannerTimer);
   const bannerTrack=document.getElementById('homeBannerTrack');
