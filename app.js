@@ -547,7 +547,12 @@ const icons = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   arrowLeft: '<path d="m15 18-6-6 6-6"/>',
   arrowRight: '<path d="m9 18 6-6-6-6"/>',
-  share: '<circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/>'
+  share: '<circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/>',
+  percent: '<circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/><path d="M6 18 18 6"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/>',
+  navigation: '<path d="m21 3-8.5 18-2.2-7.3L3 11.5 21 3Z"/>',
+  whatsapp: '<path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.6A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="M8.4 7.8c.4 3.4 2.4 5.7 5.8 7l1.5-1.8-2.2-1-1 1c-1.3-.6-2.4-1.7-3-3l1-1-1-2.2-1.1 1Z"/>'
 };
 
 function icon(name, cls = 'ui-icon') {
@@ -1070,18 +1075,126 @@ async function store(storeId = publicState.storeId) {
     const mine=await window.ACCloud.getMyStoreRating?.(m.id);
     if(mine?.ok && mine.rating) myRating=Number(mine.rating.nota||0);
   }
+
+  const categoryPriority=['Moda','Calçados','Acessórios','Beleza','Alimentação','Saúde','Casa','Tecnologia','Automotivo','Serviços','Outros'];
+  const categories=[...new Set((Array.isArray(m.categories)&&m.categories.length?m.categories:[m.category]).filter(Boolean))]
+    .sort((a,b)=>{
+      const ai=categoryPriority.indexOf(a), bi=categoryPriority.indexOf(b);
+      return (ai<0?999:ai)-(bi<0?999:bi);
+    });
+  const categoryText=categories.join(' · ') || 'Comércio local';
+
+  const stripEmoji=value=>String(value||'').replace(/\p{Extended_Pictographic}/gu,'').replace(/\uFE0F/g,'').replace(/\s+/g,' ').trim();
+  const rawLines=String(m.description||'').split(/\n+/).map(stripEmoji).filter(Boolean);
+  const isBenefitLine=line=>/10x|10 vezes|credi[aá]rio|desconto|pagando antes|parcele/i.test(line);
+  const aboutLines=rawLines.filter(line=>!isBenefitLine(line));
+  let aboutText=aboutLines.slice(0,2).join(' ');
+  if(!aboutText) aboutText=stripEmoji(m.description)||`${m.name} é uma loja local em Grajaú.`;
+  if(aboutText.length<105){
+    const categoryPhrase=categories.slice(0,3).map(x=>x.toLowerCase()).join(', ');
+    aboutText += ` Aqui você encontra ${categoryPhrase||'produtos e ofertas'} e muito mais, com atendimento local e facilidade para comprar.`;
+  }
+
+  const descText=stripEmoji(m.description);
+  const advantages=[];
+  if(/10x|10 vezes/i.test(descText)) advantages.push({icon:'card',title:'Parcele em até 10x',text:'Mais facilidade para suas compras'});
+  if(/credi[aá]rio pr[oó]prio/i.test(descText)) advantages.push({icon:'package',title:'Crediário próprio',text:'Compre agora e pague no seu ritmo'});
+  const discountMatch=descText.match(/(\d+)\s*%\s*(?:de\s*)?desconto/i);
+  if(discountMatch) advantages.push({icon:'percent',title:`${discountMatch[1]}% de desconto`,text:'Confira as condições informadas pela loja'});
+  advantages.push({icon:'pin',title:'Loja física em Grajaú/MA',text:'Atendimento perto de você'});
+  if(advantages.length<4 && m.whatsapp) advantages.push({icon:'whatsapp',title:'Atendimento direto',text:'Fale com a loja pelo WhatsApp'});
+  if(advantages.length<4) advantages.push({icon:'star',title:'Comércio local',text:'Produtos e ofertas da sua cidade'});
+
+  const weekly=m.weeklyHours&&typeof m.weeklyHours==='object'?m.weeklyHours:{};
+  const dayValue=key=>{
+    const d=weekly[key];
+    if(!d)return null;
+    if(d.closed)return {text:'Fechado',closed:true};
+    if(d.open&&d.close)return {text:`${d.open} – ${d.close}`,closed:false};
+    return {text:'Consulte a loja',closed:false};
+  };
+  const weekdayKeys=['seg','ter','qua','qui','sex'];
+  const weekdayValues=weekdayKeys.map(dayValue);
+  const sameWeekdays=weekdayValues.every(v=>v&&weekdayValues[0]&&v.text===weekdayValues[0].text&&v.closed===weekdayValues[0].closed);
+  const hourCards=[];
+  if(sameWeekdays) hourCards.push({label:'Seg a Sex',...weekdayValues[0]});
+  else {
+    const labels={seg:'Segunda',ter:'Terça',qua:'Quarta',qui:'Quinta',sex:'Sexta'};
+    weekdayKeys.forEach((key,i)=>{if(weekdayValues[i])hourCards.push({label:labels[key],...weekdayValues[i]});});
+  }
+  const sat=dayValue('sab'), sun=dayValue('dom');
+  if(sat)hourCards.push({label:'Sábado',...sat});
+  if(sun)hourCards.push({label:'Domingo',...sun});
+  if(!hourCards.length && m.hours)hourCards.push({label:'Horário',text:m.hours,closed:false});
+
   const ratingBox = client
     ? `<div class="store-rating-card"><div><span>AVALIAÇÃO</span><h3>Como foi sua experiência?</h3><p>Sua nota ajuda outros clientes e mostra o resultado da loja.</p></div><div class="store-rating-stars">${[1,2,3,4,5].map(n=>`<button class="${myRating>=n?'active':''}" data-store-rating="${n}" aria-label="${n} estrelas">${icon('star')}</button>`).join('')}</div><small id="storeRatingMsg">${myRating ? `Sua avaliação atual: ${myRating} estrela${myRating===1?'':'s'}.` : 'Toque nas estrelas para avaliar.'}</small></div>`
     : `<div class="store-rating-card compact"><div><span>AVALIAÇÃO</span><h3>Avalie esta loja</h3><p>Entre como cliente para registrar sua satisfação.</p></div><button class="btn btn-outline" data-go="clientLogin">Entrar para avaliar</button></div>`;
-  app.innerHTML = `<main class="app-shell">
-    <section class="store-hero ${m.coverData ? 'has-cover' : ''}" ${m.coverData ? `style="--store-cover:url('${m.coverData}')"` : ''}><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><div class="store-icon ${m.logoData ? 'with-logo' : ''}">${m.logoData ? `<img src="${m.logoData}" alt="Logo ${esc(m.name)}">` : icon('store')}</div><h1>${esc(m.name)}</h1><div class="rating-row">${icon('star')} ${esc(m.rating || 'Novo')} ${full ? '<span>Loja em destaque</span>' : '<span>Perfil básico</span>'}</div><div class="store-meta">${icon('pin')} ${esc(m.address || 'Grajaú - MA')} <span>•</span> ${esc(m.dist || 'Grajaú')}</div><div class="store-buttons"><button class="btn btn-green" id="storeWa">${icon('chat')} WhatsApp</button>${full && m.instagram ? '<button class="btn instagram" id="storeInstagram">Instagram</button>' : ''}<button class="btn btn-yellow" id="storeMap">${icon('pin')} Como chegar</button></div></section>
-    <section class="content">${full ? `<div class="store-about"><h3>Sobre a loja</h3><p>${esc(m.description || 'Comércio local em Grajaú.')}</p>${m.hours ? `<small>Horário: ${esc(m.hours)}</small>` : ''}</div>` : ''}${ratingBox}<div class="section-title"><h3>Produtos</h3><a>${products.length} cadastrados</a></div><div class="offers">${products.length ? products.map(p => `<article class="card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="price">${money(currentPrice(p))}</div>${currentPrice(p)!==originalPrice(p) ? `<div class="old">${money(originalPrice(p))}</div>` : ''}</div></article>`).join('') : '<div class="empty">A loja ainda não publicou produtos.</div>'}</div></section>
+
+  app.innerHTML = `<main class="app-shell store-premium-page">
+    <section class="store-premium-hero ${m.coverData?'has-cover':''}" ${m.coverData?`style="--store-cover:url('${m.coverData}')"`:''}>
+      <div class="store-premium-overlay"></div>
+      <button class="store-premium-back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button>
+      <button class="store-premium-share" id="storeShare" aria-label="Compartilhar">${icon('share')}</button>
+      <div class="store-premium-main">
+        <div class="store-premium-logo ${m.logoData?'has-logo':''}">${m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:icon('store')}</div>
+        <h1>${esc(m.name)}</h1>
+        <div class="store-premium-badge">${icon('star')} <span>${full?'Loja em destaque':'Comércio local'}</span></div>
+        <div class="store-premium-categories">${esc(categoryText)}</div>
+        <button class="store-premium-address" id="storeAddress">${icon('pin')}<span>${esc(m.address||'Grajaú - MA')}</span>${icon('arrowRight')}</button>
+        <div class="store-premium-actions">
+          <button class="store-action whatsapp" id="storeWa">${icon('whatsapp')}<span>WhatsApp</span></button>
+          ${full&&m.instagram?`<button class="store-action instagram-pro" id="storeInstagram">${icon('instagram')}<span>Instagram</span></button>`:''}
+          <button class="store-action map" id="storeMap">${icon('navigation')}<span>Como chegar</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="store-premium-body">
+      ${full?`
+      <article class="store-premium-card store-about-pro">
+        <div class="store-card-heading"><span class="store-card-icon">${icon('store')}</span><h2>Sobre a loja</h2></div>
+        <p>${esc(aboutText)}</p>
+      </article>
+
+      <article class="store-premium-card">
+        <div class="store-card-heading"><span class="store-card-icon">${icon('star')}</span><h2>Vantagens</h2></div>
+        <div class="store-benefit-grid">
+          ${advantages.slice(0,4).map(item=>`<div class="store-benefit-item"><span>${icon(item.icon)}</span><div><b>${esc(item.title)}</b><small>${esc(item.text)}</small></div></div>`).join('')}
+        </div>
+      </article>
+
+      <article class="store-premium-card">
+        <div class="store-card-heading"><span class="store-card-icon">${icon('clock')}</span><h2>Horário de funcionamento</h2></div>
+        <div class="store-hours-grid">
+          ${hourCards.map(item=>`<div class="store-hours-item ${item.closed?'closed':''}"><span>${icon('calendar')}</span><div><b>${esc(item.label)}</b><small>${esc(item.text)}</small></div></div>`).join('')}
+        </div>
+      </article>
+      `:''}
+
+      ${ratingBox}
+
+      <div class="section-title store-products-title"><h3>Produtos</h3><a>${products.length} cadastrados</a></div>
+      <div class="offers store-products-grid">${products.length ? products.map(p => `<article class="card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="price">${money(currentPrice(p))}</div>${currentPrice(p)!==originalPrice(p) ? `<div class="old">${money(originalPrice(p))}</div>` : ''}</div></article>`).join('') : '<div class="empty">A loja ainda não publicou produtos.</div>'}</div>
+    </section>
+
     ${nav('home')}
   </main>`;
+
   bind();
+
+  const openMap=()=>{if(m.address)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address)}`,'_blank');};
   document.getElementById('storeWa').onclick=()=>{ const url=whatsappUrl(m,null); if(url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,metadata:{source:'loja'}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
   if(document.getElementById('storeInstagram')) document.getElementById('storeInstagram').onclick=()=>{ const handle=String(m.instagram||'').replace('@','').trim(); if(handle) window.open(`https://instagram.com/${handle}`,'_blank'); };
-  document.getElementById('storeMap').onclick=()=>{ if(m.address) window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address)}`,'_blank'); };
+  document.getElementById('storeMap').onclick=openMap;
+  document.getElementById('storeAddress').onclick=openMap;
+  document.getElementById('storeShare').onclick=async()=>{
+    const shareData={title:m.name,text:`Conheça ${m.name} no Achou, Comprou`,url:location.href};
+    try{
+      if(navigator.share)await navigator.share(shareData);
+      else if(navigator.clipboard){await navigator.clipboard.writeText(location.href);alert('Link da loja copiado.');}
+    }catch(_){}
+  };
   document.querySelectorAll('[data-store-rating]').forEach(btn=>btn.onclick=async()=>{
     const note=Number(btn.dataset.storeRating||0);
     const msg=document.getElementById('storeRatingMsg');
