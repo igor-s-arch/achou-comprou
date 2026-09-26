@@ -372,7 +372,7 @@ function publicOffers() {
 function rankedPublicProducts(){
   return publicProducts()
     .map(p=>({product:p,offer:activeOfferFor(p.id),store:storeById(p.storeId)}))
-    .filter(x=>x.store)
+    .filter(x=>x.store && x.store.plan!=='gratis')
     .sort((a,b)=>compareStorePriority(a.store,b.store)
       || Number(!!b.offer)-Number(!!a.offer)
       || String(a.product?.name||'').localeCompare(String(b.product?.name||''),'pt-BR'));
@@ -462,7 +462,13 @@ function searchProducts(query = '', filters = {}) {
     const store = storeById(p.storeId);
     const haystack = normalizeText([p.name,p.brand,p.details,p.type,categoryLabel(p.type),store?.name,store?.category].filter(Boolean).join(' '));
     return !intent.tokens.length || intent.tokens.every(t => haystack.includes(t));
-  }).sort((a,b) => productSearchScore(b,query,intent)-productSearchScore(a,query,intent));
+  }).sort((a,b) => {
+    const storeA=storeById(a.storeId);
+    const storeB=storeById(b.storeId);
+    return compareStorePriority(storeA,storeB)
+      || (productSearchScore(b,query,intent)-productSearchScore(a,query,intent))
+      || String(a.name||'').localeCompare(String(b.name||''),'pt-BR');
+  });
 }
 function searchBadges(query='', filters={}) {
   const i = parseSearchIntent(query);
@@ -644,7 +650,7 @@ function home() {
     imageData:'', active:true
   }];
   const products = rankedPublicProducts();
-  const shops = approvedStores();
+  const shops = approvedStores().filter(m=>m.plan!=='gratis');
   const client = currentClient();
   const unreadNotifications = (db.notifications || []).filter(n => !n.read).length;
   const quickSearches = ['Churrasco','Tênis','Celular','Pizzaria','Farmácia'];
