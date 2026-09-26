@@ -121,6 +121,7 @@
   const localBanner = b => ({
     id:b.id, storeId:b.loja_id, productId:b.produto_id || null, offerId:b.oferta_id || null,
     title:b.titulo || '', message:b.mensagem || '', imageData:b.imagem_url || '',
+    videoData:b.video_url || '',
     start:b.inicio || '', end:b.fim || '', order:Number(b.ordem || 0),
     active:b.ativo !== false, createdAt:b.created_at || ''
   });
@@ -156,6 +157,29 @@
     } catch(err){
       return {ok:false,message:errorMessage(err)};
     }
+  }
+
+  async function uploadBannerFile(file,userId){
+    if(!client||!file)return {ok:true,url:'',kind:''};
+    const type=String(file.type||'').toLowerCase();
+    const allowedImages=['image/jpeg','image/png','image/webp'];
+    const allowedVideos=['video/mp4','video/webm','video/quicktime'];
+    if(![...allowedImages,...allowedVideos].includes(type)){
+      return {ok:false,message:'Envie uma imagem JPG/PNG/WEBP ou vídeo MP4/WEBM/MOV.'};
+    }
+    if(Number(file.size||0)>20*1024*1024){
+      return {ok:false,message:'O banner deve ter no máximo 20 MB.'};
+    }
+    const extMap={
+      'image/jpeg':'jpg','image/png':'png','image/webp':'webp',
+      'video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'
+    };
+    const ext=extMap[type]||'bin';
+    const path=`${userId||'admin'}/banner-${Date.now()}-${Math.random().toString(16).slice(2,8)}.${ext}`;
+    const {error}=await client.storage.from('banners').upload(path,file,{contentType:type,upsert:false});
+    if(error)return {ok:false,message:errorMessage(error)};
+    const {data}=client.storage.from('banners').getPublicUrl(path);
+    return {ok:true,url:data?.publicUrl||'',kind:type.startsWith('video/')?'video':'image'};
   }
 
   function analyticsVisitorId(){
@@ -629,7 +653,7 @@
       return {ok:true,store:data};
     },
 
-    async publishBanner({storeId,title,message,imageData='',endDate=''}) {
+    async publishBanner({storeId,title,message,imageData='',mediaFile=null,endDate=''}) {
       if(!client)return {ok:false,message:'Backend não configurado.'};
 
       const storeCheck=await client.from('lojas').select('id,status,plano_id').eq('id',storeId).maybeSingle();
@@ -639,11 +663,21 @@
       }
 
       const session=await api.getSession();
-      let imageUrl=imageData||'';
-      if(String(imageUrl).startsWith('data:')){
-        const uploaded=await uploadDataUrl('banners',session?.user?.id||'admin',imageUrl,'banner');
+      let imageUrl='';
+      let videoUrl='';
+
+      if(mediaFile){
+        const uploaded=await uploadBannerFile(mediaFile,session?.user?.id||'admin');
         if(!uploaded.ok)return uploaded;
-        imageUrl=uploaded.url;
+        if(uploaded.kind==='video')videoUrl=uploaded.url;
+        else imageUrl=uploaded.url;
+      }else{
+        imageUrl=imageData||'';
+        if(String(imageUrl).startsWith('data:')){
+          const uploaded=await uploadDataUrl('banners',session?.user?.id||'admin',imageUrl,'banner');
+          if(!uploaded.ok)return uploaded;
+          imageUrl=uploaded.url;
+        }
       }
 
       // Mantém somente um banner ativo por loja, mas permite várias lojas no carrossel.
@@ -655,6 +689,7 @@
         titulo:title,
         mensagem:message||null,
         imagem_url:imageUrl||null,
+        video_url:videoUrl||null,
         inicio:new Date().toISOString(),
         fim:endDate ? `${endDate}T23:59:59` : null,
         ativo:true
