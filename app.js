@@ -2447,10 +2447,10 @@ function adminBanners() {
           <label>Título<input id="bannerTitle" maxlength="60" value="Oferta especial perto de você"></label>
           <label>Mensagem<input id="bannerMessage" maxlength="100" value="Veja as novidades desta loja no Achou, Comprou."></label>
           <div class="product-media-field">
-            <label class="media-label">Arte do banner (opcional)</label>
-            <input class="media-file-input" id="bannerImageFile" type="file" accept="image/jpeg,image/png,image/webp">
-            <button class="media-picker cover admin-banner-image-picker" type="button" id="bannerImagePreview"></button>
-            <small>Se não enviar uma arte, o sistema usa a identidade visual da loja.</small>
+            <label class="media-label">Banner da loja · imagem ou vídeo</label>
+            <input class="media-file-input" id="bannerMediaFile" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime">
+            <button class="media-picker cover admin-banner-image-picker admin-banner-media-picker" type="button" id="bannerMediaPreview"></button>
+            <small>JPG, PNG, WEBP, MP4, WEBM ou MOV · até 20 MB. Vídeos ficam sem som e tocam automaticamente.</small>
           </div>
           <label>Exibir até (opcional)<input id="bannerEndDate" type="date"></label>
           <div class="admin-form-actions"><button class="btn btn-yellow" type="submit">Adicionar ao carrossel</button></div>
@@ -2474,7 +2474,42 @@ function adminBanners() {
   bind();
   if (!eligible.length) return;
 
-  const bannerImagePicker=bindImagePicker('bannerImageFile','bannerImagePreview',{maxW:1400,maxH:700,quality:.82,emptyTitle:'Adicionar arte',emptyText:'Imagem horizontal'});
+  const bannerMediaInput=document.getElementById('bannerMediaFile');
+  const bannerMediaPreview=document.getElementById('bannerMediaPreview');
+  let bannerMediaFile=null;
+  let bannerPreviewUrl='';
+  const renderBannerMediaPreview=()=>{
+    if(bannerPreviewUrl){try{URL.revokeObjectURL(bannerPreviewUrl);}catch(_){} bannerPreviewUrl='';}
+    if(!bannerMediaFile){
+      bannerMediaPreview.innerHTML='<span>'+icon('image')+'</span><b>Adicionar imagem ou vídeo</b><small>Horizontal · até 20 MB</small>';
+      return;
+    }
+    bannerPreviewUrl=URL.createObjectURL(bannerMediaFile);
+    if(String(bannerMediaFile.type||'').startsWith('video/')){
+      bannerMediaPreview.innerHTML='<video src="'+esc(bannerPreviewUrl)+'" muted autoplay loop playsinline></video><i>VÍDEO</i>';
+    }else{
+      bannerMediaPreview.innerHTML='<img src="'+esc(bannerPreviewUrl)+'" alt="Prévia do banner"><i>IMAGEM</i>';
+    }
+  };
+  renderBannerMediaPreview();
+  bannerMediaPreview.onclick=()=>bannerMediaInput.click();
+  bannerMediaInput.onchange=()=>{
+    const selected=bannerMediaInput.files?.[0]||null;
+    if(!selected){bannerMediaFile=null;renderBannerMediaPreview();return;}
+    const allowed=['image/jpeg','image/png','image/webp','video/mp4','video/webm','video/quicktime'];
+    if(!allowed.includes(String(selected.type||'').toLowerCase())){
+      bannerMediaInput.value='';bannerMediaFile=null;renderBannerMediaPreview();
+      alert('Use JPG, PNG, WEBP, MP4, WEBM ou MOV.');
+      return;
+    }
+    if(selected.size>20*1024*1024){
+      bannerMediaInput.value='';bannerMediaFile=null;renderBannerMediaPreview();
+      alert('O banner deve ter no máximo 20 MB.');
+      return;
+    }
+    bannerMediaFile=selected;
+    renderBannerMediaPreview();
+  };
 
   document.getElementById('bannerForm').onsubmit=async e=>{
     e.preventDefault();
@@ -2484,7 +2519,8 @@ function adminBanners() {
       storeId:document.getElementById('bannerStore').value,
       title:document.getElementById('bannerTitle').value.trim(),
       message:document.getElementById('bannerMessage').value.trim(),
-      imageData:bannerImagePicker.get(),
+      imageData:'',
+      mediaFile:bannerMediaFile,
       endDate:document.getElementById('bannerEndDate').value
     };
     if(!payload.title){msg.innerHTML='<div class="notice error">Informe um título para o banner.</div>';return;}
