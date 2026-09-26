@@ -2234,25 +2234,81 @@ function adminStatusBadge(status) {
 
 async function admin() {
   if (!db.session.admin) return adminLogin();
-  let analytics={registeredClients:0,activeVisitors30:0,whatsapp30:0,ratingAverage:null,ratingCount:0,stores:{}};
+
+  let analytics={
+    registeredClients:0,activeVisitors30:0,appOpens30:0,searches30:0,productViews30:0,
+    storeViews30:0,favorites30:0,whatsapp30:0,whatsappAll:0,
+    ratingAverage:null,ratingCount:0,topSearches:[],noResultSearches:[],stores:{}
+  };
+
   if(window.ACCloud?.enabled){
     const [analyticsResult]=await Promise.all([
       window.ACCloud.adminAnalytics?.(),
-      loadAdminBranding()
+      loadAdminBranding(),
+      syncCloudAdminData(),
+      syncAdminPayments()
     ]);
     if(analyticsResult?.ok)analytics=analyticsResult;
   }
+
   const pending = db.merchants.filter(s => s.status === 'aguardando').length;
   const approved = db.merchants.filter(s => s.status === 'aprovada').length;
-  const paid = db.merchants.filter(s => s.plan !== 'gratis' && s.status === 'aprovada').length;
+  const paidStores = db.merchants.filter(s => s.plan !== 'gratis' && s.status === 'aprovada');
+  const paid = paidStores.length;
   const activeOffers = db.offers.filter(o => o.active).length;
-  const banner = db.banners.find(b => b.active);
+  const activeBanners = (db.banners||[]).filter(b=>b.active).length;
+  const banner = (db.banners||[]).find(b => b.active);
   const bannerStore = banner ? storeById(banner.storeId) : null;
+  const payments=db.payments||[];
+
+  const monthStart=new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0,0,0,0);
+  const receivedMonth=payments
+    .filter(p=>p.status==='pago' && p.method==='pix' && new Date(p.confirmedAt||p.paidAt||p.createdAt||0)>=monthStart)
+    .reduce((sum,p)=>sum+Number(p.value||0),0);
+  const recurringMonthly=paidStores.reduce((sum,m)=>sum+planPrice(m.plan),0);
+  const paymentReview=payments.filter(p=>p.status==='em_analise').length;
+  const waitingPix=payments.filter(p=>p.status==='aguardando').length;
+  const now=Date.now();
+  const expiringSoon=paidStores.filter(m=>{
+    if(!m.planExpiresAt)return false;
+    const diff=new Date(m.planExpiresAt).getTime()-now;
+    return diff>=0 && diff<=7*86400000;
+  }).length;
+
   const planMix = {
     gratis: db.merchants.filter(s=>s.plan==='gratis').length,
     premium: db.merchants.filter(s=>s.plan==='premium').length,
     premium_banner: db.merchants.filter(s=>s.plan==='premium_banner').length
   };
+
+  const alerts=[];
+  if(pending)alerts.push({icon:'store',tone:'warn',title:`${pending} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação`,text:'Revise os cadastros para liberar a publicação.',go:'adminStores'});
+  if(paymentReview)alerts.push({icon:'card',tone:'money',title:`${paymentReview} ${paymentReview===1?'pagamento aguardando':'pagamentos aguardando'} conferência`,text:'Há comprovante PIX esperando sua análise.',go:'adminPlans'});
+  if(expiringSoon)alerts.push({icon:'clock',tone:'danger',title:`${expiringSoon} ${expiringSoon===1?'plano vence':'planos vencem'} em até 7 dias`,text:'Antecipe o contato de renovação com os lojistas.',go:'adminPlans'});
+  if(!alerts.length)alerts.push({icon:'check',tone:'ok',title:'Tudo em dia',text:'Nenhuma pendência importante para resolver agora.',go:''});
+
+  const ranking=db.merchants
+    .filter(m=>m.status==='aprovada')
+    .map(m=>({m,s:analytics.stores?.[m.id]||{}}))
+    .sort((a,b)=>(b.s.whatsapp30||0)-(a.s.whatsapp30||0)
+      ||(b.s.productViews30||0)-(a.s.productViews30||0)
+      ||(b.s.uniqueVisitors30||0)-(a.s.uniqueVisitors30||0)
+      ||(b.s.ratingAverage||0)-(a.s.ratingAverage||0))
+    .slice(0,5);
+
+  const topSearches=(analytics.topSearches||[]).slice(0,6);
+  const noResultSearches=(analytics.noResultSearches||[]).slice(0,4);
+  const maxSearch=Math.max(1,...topSearches.map(x=>Number(x.count||0)));
+  const funnel=[
+    {label:'Aberturas',value:analytics.appOpens30||0,icon:'eye'},
+    {label:'Buscas',value:analytics.searches30||0,icon:'search'},
+    {label:'Produtos vistos',value:analytics.productViews30||0,icon:'package'},
+    {label:'WhatsApp',value:analytics.whatsapp30||0,icon:'whatsapp'}
+  ];
+  const contactRate=analytics.productViews30?Math.round((analytics.whatsapp30||0)/analytics.productViews30*100):0;
+
   const recent = db.merchants.slice().reverse().slice(0,4);
   const logoSrc=adminBranding.logoUrl||'./assets/logo-achou-comprou.png';
   const initials=String(adminBranding.name||'Administrador').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'AC';
@@ -2283,14 +2339,28 @@ async function admin() {
         <small>${esc(adminBranding.role||'Administrador')}</small>
       </div>
     </header>
+
     <section class="admin-content">
-      <div class="admin-alert ${pending ? 'show' : ''}">${icon('clock')}<div><b>${pending || 'Nenhuma'} ${pending===1?'loja aguardando':'lojas aguardando'} aprovação</b><span>${pending ? 'Revise os novos cadastros para liberar a publicação.' : 'Todos os cadastros estão em dia.'}</span></div>${pending ? '<button data-go="adminStores">Revisar</button>' : ''}</div>
+      <div class="admin-section-head executive-head"><div><span>CENTRAL DE CONTROLE</span><h2>Precisa da sua atenção</h2></div><span class="admin-live-dot"><i></i> Dados online</span></div>
+      <div class="admin-attention-grid">
+        ${alerts.map(a=>`<button class="admin-attention-card ${a.tone}" ${a.go?`data-go="${a.go}"`:''}><span class="admin-attention-icon">${icon(a.icon)}</span><div><b>${esc(a.title)}</b><small>${esc(a.text)}</small></div>${a.go?icon('arrowRight','admin-attention-arrow'):''}</button>`).join('')}
+      </div>
+
       <div class="admin-kpi-grid">
         <article><span>${icon('store')}</span><small>Lojas aprovadas</small><strong>${approved}</strong><em>${db.merchants.length} cadastradas</em></article>
         <article><span>${icon('package')}</span><small>Produtos</small><strong>${db.products.length}</strong><em>${activeOffers} ofertas ativas</em></article>
         <article><span>${icon('card')}</span><small>Planos pagos</small><strong>${paid}</strong><em>${paid ? Math.round(paid/Math.max(approved,1)*100) : 0}% das aprovadas</em></article>
-        <article><span>${icon('image')}</span><small>Banner principal</small><strong>${bannerStore ? 'Ativo' : '—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha'}</em></article>
+        <article><span>${icon('image')}</span><small>Banners ativos</small><strong>${activeBanners||'—'}</strong><em>${bannerStore ? esc(bannerStore.name) : 'Sem campanha ativa'}</em></article>
       </div>
+
+      <div class="admin-section-head"><div><span>FINANCEIRO</span><h2>Receita e assinaturas</h2></div><button class="admin-link-btn" data-go="adminPlans">Abrir pagamentos</button></div>
+      <div class="admin-finance-grid">
+        <article class="primary"><span>${icon('card')}</span><small>Recebido no mês</small><strong>${brlNumber(receivedMonth)}</strong><em>PIX confirmado</em></article>
+        <article><span>${icon('chart')}</span><small>Receita mensal ativa</small><strong>${brlNumber(recurringMonthly)}</strong><em>valor dos planos ativos</em></article>
+        <article><span>${icon('clock')}</span><small>Aguardando conferência</small><strong>${paymentReview}</strong><em>${waitingPix} aguardando PIX</em></article>
+        <article><span>${icon('bell')}</span><small>Vencem em 7 dias</small><strong>${expiringSoon}</strong><em>renovações para acompanhar</em></article>
+      </div>
+
       <div class="admin-section-head"><div><span>RESULTADOS DO APP</span><h2>Últimos 30 dias</h2></div><button class="admin-link-btn" data-go="adminReports">Ver relatório</button></div>
       <div class="admin-result-grid">
         <article><small>Clientes cadastrados</small><strong>${analytics.registeredClients||0}</strong><span>sem contar lojistas</span></article>
@@ -2298,11 +2368,38 @@ async function admin() {
         <article><small>Contatos WhatsApp</small><strong>${analytics.whatsapp30||0}</strong><span>cliques enviados às lojas</span></article>
         <article><small>Satisfação média</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+' ★'}</strong><span>${analytics.ratingCount||0} avaliações</span></article>
       </div>
+
+      <div class="admin-executive-grid">
+        <section class="admin-executive-card funnel">
+          <div class="admin-executive-head"><div><span>FUNIL</span><h3>Caminho até o WhatsApp</h3></div><b>${contactRate}%</b></div>
+          <div class="admin-funnel-list">
+            ${funnel.map((x,i)=>`<div class="admin-funnel-step"><span>${icon(x.icon)}</span><div><b>${x.value}</b><small>${x.label}</small></div>${i<funnel.length-1?'<i></i>':''}</div>`).join('')}
+          </div>
+          <p>Conversão aproximada de visualizações de produto em clique no WhatsApp: <b>${contactRate}%</b>.</p>
+        </section>
+
+        <section class="admin-executive-card ranking">
+          <div class="admin-executive-head"><div><span>RANKING</span><h3>Lojas com mais interesse</h3></div><button data-go="adminReports">Completo</button></div>
+          <div class="admin-ranking-list">
+            ${ranking.length?ranking.map((x,i)=>`<button data-admin-store="${x.m.id}"><em>${i+1}</em><span class="admin-ranking-logo">${x.m.logoData?`<img src="${esc(x.m.logoData)}" alt="">`:esc((x.m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-ranking-copy"><b>${esc(x.m.name)}</b><small>${x.s.whatsapp30||0} WhatsApp · ${x.s.productViews30||0} produtos vistos</small></span><strong>${x.s.ratingAverage==null?'—':Number(x.s.ratingAverage).toFixed(1)+'★'}</strong></button>`).join(''):'<div class="admin-insight-empty">Ainda não há dados suficientes para o ranking.</div>'}
+          </div>
+        </section>
+
+        <section class="admin-executive-card searches">
+          <div class="admin-executive-head"><div><span>DEMANDA</span><h3>Buscas mais realizadas</h3></div><b>${analytics.searches30||0}</b></div>
+          <div class="admin-search-insights">
+            ${topSearches.length?topSearches.map((x,i)=>`<div><span><b>${esc(x.term)}</b><small>${x.count} busca${x.count===1?'':'s'}</small></span><i><u style="width:${Math.max(8,Number(x.count||0)/maxSearch*100)}%"></u></i></div>`).join(''):'<div class="admin-insight-empty">As buscas dos clientes começarão a aparecer aqui.</div>'}
+          </div>
+          ${noResultSearches.length?`<div class="admin-no-result-searches"><span>OPORTUNIDADES</span><p>Buscas sem resultado: ${noResultSearches.map(x=>`<b>${esc(x.term)} (${x.count})</b>`).join(' · ')}</p></div>`:''}
+        </section>
+      </div>
+
       <section class="admin-growth-card">
         <div class="admin-growth-icon">${icon('chart')}</div>
-        <div><span>DESEMPENHO DA PLATAFORMA</span><h3>Os resultados do app estão <b>crescendo!</b></h3><p>Acompanhe contatos, usuários ativos e o desempenho de cada lojista.</p><button data-go="adminReports">Ver relatório completo ${icon('arrowRight')}</button></div>
+        <div><span>DESEMPENHO DA PLATAFORMA</span><h3>Decisões com <b>dados reais</b></h3><p>Acompanhe demanda, contatos, receita e o desempenho de cada lojista.</p><button data-go="adminReports">Ver relatório completo ${icon('arrowRight')}</button></div>
         <div class="admin-growth-bars"><i></i><i></i><i></i><i></i></div>
       </section>
+
       <div class="admin-section-head"><div><span>ATALHOS</span><h2>Gestão rápida</h2></div></div>
       <div class="admin-quick-grid">
         <button data-go="adminStores"><span>${icon('check')}</span><b>Aprovar lojas</b><small>Cadastros e bloqueios</small>${icon('arrowRight','admin-arrow')}</button>
@@ -2311,12 +2408,23 @@ async function admin() {
         <button data-go="adminBanners"><span>${icon('image')}</span><b>Banner principal</b><small>Destaque da Home</small>${icon('arrowRight','admin-arrow')}</button>
         <button data-go="adminCatalog"><span>${icon('package')}</span><b>Produtos e ofertas</b><small>Visão geral do catálogo</small>${icon('arrowRight','admin-arrow')}</button>
       </div>
+
       <section class="admin-panel-card"><div class="admin-panel-head"><div><span>LOJAS</span><h3>Cadastros recentes</h3></div><button data-go="adminStores">Ver todas</button></div><div class="admin-store-list">${recent.map(m=>`<button data-admin-store="${m.id}"><span class="admin-store-avatar">${esc((m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-store-copy"><b>${esc(m.name)}</b><small>${esc(m.category)} · ${planLabel(m.plan)}</small></span>${adminStatusBadge(m.status)}</button>`).join('')}</div></section>
+
       <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Grátis</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section>
+
       <button class="admin-logout-link" id="adminLogout">Sair da administração</button>
-    </section>${adminNav('dashboard')}</main>`;
+    </section>
+    ${adminNav('dashboard')}
+  </main>`;
+
   bind();
-  document.getElementById('adminLogout').onclick = async () => { if(window.ACCloud?.enabled) await window.ACCloud.signOut(); db.session.admin = false; saveDb(); profile(); };
+  document.getElementById('adminLogout').onclick = async () => {
+    if(window.ACCloud?.enabled) await window.ACCloud.signOut();
+    db.session.admin = false;
+    saveDb();
+    profile();
+  };
   document.querySelectorAll('[data-admin-store]').forEach(b => b.onclick = () => adminStores(b.dataset.adminStore));
 }
 
