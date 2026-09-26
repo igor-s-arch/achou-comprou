@@ -1086,21 +1086,21 @@ async function store(storeId = publicState.storeId) {
 
   const stripEmoji=value=>String(value||'').replace(/\p{Extended_Pictographic}/gu,'').replace(/\uFE0F/g,'').replace(/\s+/g,' ').trim();
   const rawLines=String(m.description||'').split(/\n+/).map(stripEmoji).filter(Boolean);
-  const isBenefitLine=line=>/10x|10 vezes|credi[aá]rio|desconto|pagando antes|parcele/i.test(line);
+  const isBenefitLine=line=>/10x|10 vezes|credi[aá]rio|desconto|pagando antes|parcele|ditando moda/i.test(line);
   const aboutLines=rawLines.filter(line=>!isBenefitLine(line));
-  let aboutText=aboutLines.slice(0,2).join(' ');
-  if(!aboutText) aboutText=stripEmoji(m.description)||`${m.name} é uma loja local em Grajaú.`;
-  if(aboutText.length<105){
-    const categoryPhrase=categories.slice(0,3).map(x=>x.toLowerCase()).join(', ');
-    aboutText += ` Aqui você encontra ${categoryPhrase||'produtos e ofertas'} e muito mais, com atendimento local e facilidade para comprar.`;
+  const categoryPhrase=categories.slice(0,3).map(x=>x.toLowerCase()).join(', ');
+  let aboutText=aboutLines[0] || stripEmoji(m.description) || `${m.name} é uma loja local em Grajaú.`;
+  if(!/aqui você encontra/i.test(aboutText)){
+    aboutText += ` Aqui você encontra ${categoryPhrase||'produtos e ofertas'} e muito mais, com facilidade no pagamento e atendimento local.`;
   }
+  aboutText=aboutText.replace(/\s+/g,' ').trim();
 
   const descText=stripEmoji(m.description);
   const advantages=[];
   if(/10x|10 vezes/i.test(descText)) advantages.push({icon:'card',title:'Parcele em até 10x',text:'Mais facilidade para suas compras'});
   if(/credi[aá]rio pr[oó]prio/i.test(descText)) advantages.push({icon:'package',title:'Crediário próprio',text:'Compre agora e pague no seu ritmo'});
   const discountMatch=descText.match(/(\d+)\s*%\s*(?:de\s*)?desconto/i);
-  if(discountMatch) advantages.push({icon:'percent',title:`${discountMatch[1]}% de desconto`,text:'Confira as condições informadas pela loja'});
+  if(discountMatch) advantages.push({icon:'percent',title:`${discountMatch[1]}% de desconto`,text:/pagando antes/i.test(descText)?'Pagando antes do vencimento':'Confira as condições da loja'});
   advantages.push({icon:'pin',title:'Loja física em Grajaú/MA',text:'Atendimento perto de você'});
   if(advantages.length<4 && m.whatsapp) advantages.push({icon:'whatsapp',title:'Atendimento direto',text:'Fale com a loja pelo WhatsApp'});
   if(advantages.length<4) advantages.push({icon:'star',title:'Comércio local',text:'Produtos e ofertas da sua cidade'});
@@ -1150,6 +1150,7 @@ async function store(storeId = publicState.storeId) {
       </div>
     </section>
 
+    <div class="store-premium-divider"></div>
     <section class="store-premium-body">
       ${full?`
       <article class="store-premium-card store-about-pro">
