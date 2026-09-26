@@ -97,7 +97,9 @@
     const colors = [...new Set(ownVariants.map(v => v.color).filter(Boolean))];
     return {
       id:p.id, storeId:p.loja_id, type:p.tipo || 'outro', art:artFor(p.tipo),
-      imageData:p.foto_principal_url || '', name:p.nome || 'Produto', brand:p.marca || '',
+      imageData:p.foto_principal_url || '',
+      images:(Array.isArray(p.fotos)?p.fotos.filter(Boolean):[]).length ? p.fotos.filter(Boolean) : (p.foto_principal_url ? [p.foto_principal_url] : []),
+      name:p.nome || 'Produto', brand:p.marca || '',
       price:brMoneyString(p.preco_normal), promo:p.preco_promocional == null ? '' : brMoneyString(p.preco_promocional),
       details:p.descricao || '',
       colors:(Array.isArray(p.cores)&&p.cores.length?p.cores:colors),
@@ -718,14 +720,20 @@
       };
     },
 
-    async createProduct({storeId,userId,type,name,brand,price,promo,details,stock,imageData,sizes=[],numbers=[],colors=[],variants=[]}){
+    async createProduct({storeId,userId,type,name,brand,price,promo,details,stock,imageData,images=[],sizes=[],numbers=[],colors=[],variants=[]}){
       if(!client||!storeId||!userId)return {ok:false,message:'Backend não configurado.'};
-      let imageUrl=imageData||'';
-      if(String(imageUrl).startsWith('data:')){
-        const uploaded=await uploadDataUrl('produtos',userId,imageUrl,'produto');
-        if(!uploaded.ok)return uploaded;
-        imageUrl=uploaded.url;
+      const incoming=[...(Array.isArray(images)?images:[]),imageData].filter(Boolean);
+      const unique=[...new Set(incoming)].slice(0,8);
+      const imageUrls=[];
+      for(let i=0;i<unique.length;i++){
+        const item=unique[i];
+        if(String(item).startsWith('data:')){
+          const uploaded=await uploadDataUrl('produtos',userId,item,`produto-${i+1}`);
+          if(!uploaded.ok)return uploaded;
+          if(uploaded.url)imageUrls.push(uploaded.url);
+        }else imageUrls.push(item);
       }
+      const imageUrl=imageUrls[0]||'';
       const normal=numberFromBR(price);
       const promoNumber=numberFromBR(promo);
       if(normal===null)return {ok:false,message:'Informe um preço válido.'};
@@ -746,7 +754,7 @@
         disponivel:true,
         ativo:true,
         foto_principal_url:imageUrl||null,
-        fotos:imageUrl?[imageUrl]:[]
+        fotos:imageUrls
       };
       const inserted=await client.from('produtos').insert(payload).select('*').single();
       if(inserted.error)return {ok:false,message:errorMessage(inserted.error)};
@@ -769,6 +777,35 @@
         return {ok:true,product:localProduct(p,variantInsert.data||[])};
       }
       return {ok:true,product:localProduct(p,[])};
+    },
+
+    async updateProductOptions({productId,userId,type,sizes=[],numbers=[],colors=[],images=[]}){
+      if(!client||!productId||!userId)return {ok:false,message:'Backend não configurado.'};
+      const current=await client.from('produtos').select('*').eq('id',productId).single();
+      if(current.error)return {ok:false,message:errorMessage(current.error)};
+      const incoming=(Array.isArray(images)?images:[]).filter(Boolean).slice(0,8);
+      const imageUrls=[];
+      for(let i=0;i<incoming.length;i++){
+        const item=incoming[i];
+        if(String(item).startsWith('data:')){
+          const uploaded=await uploadDataUrl('produtos',userId,item,`produto-${i+1}`);
+          if(!uploaded.ok)return uploaded;
+          if(uploaded.url)imageUrls.push(uploaded.url);
+        }else imageUrls.push(item);
+      }
+      const patch={
+        tamanhos:Array.isArray(sizes)?sizes:[],
+        numeracoes:Array.isArray(numbers)?numbers:[],
+        cores:Array.isArray(colors)?colors:[],
+        fotos:imageUrls,
+        foto_principal_url:imageUrls[0]||current.data.foto_principal_url||null,
+        updated_at:new Date().toISOString()
+      };
+      const updated=await client.from('produtos').update(patch).eq('id',productId).select('*').single();
+      if(updated.error)return {ok:false,message:errorMessage(updated.error)};
+      const variants=await client.from('produto_variacoes').select('*').eq('produto_id',productId);
+      if(variants.error)return {ok:false,message:errorMessage(variants.error)};
+      return {ok:true,product:localProduct(updated.data,variants.data||[])};
     },
 
     async setProductActive(productId,active){
