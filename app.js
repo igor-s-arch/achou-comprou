@@ -2009,35 +2009,122 @@ async function stats() {
   let counts={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0};
   let counts30={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0};
   let byProduct={}, whatsappByProduct={}, uniqueVisitors30=0, ratingAverage=null, ratingCount=0;
+  let contacts=[];
+
   if(window.ACCloud?.enabled){
-    const result=await window.ACCloud.merchantStats(m.id);
-    if(result.ok){
-      counts=result.counts||counts;
-      counts30=result.counts30||counts30;
-      byProduct=result.byProduct||{};
-      whatsappByProduct=result.whatsappByProduct||{};
-      uniqueVisitors30=result.uniqueVisitors30||0;
-      ratingAverage=result.ratingAverage;
-      ratingCount=result.ratingCount||0;
+    const [statsResult,contactsResult]=await Promise.all([
+      window.ACCloud.merchantStats(m.id),
+      window.ACCloud.merchantContacts?.(m.id)
+    ]);
+    if(statsResult?.ok){
+      counts=statsResult.counts||counts;
+      counts30=statsResult.counts30||counts30;
+      byProduct=statsResult.byProduct||{};
+      whatsappByProduct=statsResult.whatsappByProduct||{};
+      uniqueVisitors30=statsResult.uniqueVisitors30||0;
+      ratingAverage=statsResult.ratingAverage;
+      ratingCount=statsResult.ratingCount||0;
     }
+    if(contactsResult?.ok)contacts=contactsResult.contacts||[];
   }
+
+  const since30=Date.now()-30*86400000;
+  const contacts30=contacts.filter(x=>new Date(x.clickedAt||0).getTime()>=since30);
+  const sales30=contacts30.filter(x=>x.status==='venda');
+  const revenue30=sales30.reduce((sum,x)=>sum+Number(x.value||0),0);
+  const conversion30=contacts30.length?Math.round(sales30.length/contacts30.length*100):0;
+  const avgTicket=sales30.length?revenue30/sales30.length:0;
+  const pendingContacts=contacts.filter(x=>x.status==='pendente').length;
+
   const products=merchantProductsFor(m.id);
   const ranked=products.map(p=>({p,n:byProduct[p.id]||0})).sort((a,b)=>b.n-a.n).slice(0,5);
-  const contacts=products.map(p=>({p,n:whatsappByProduct[p.id]||0})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
+  const contactProducts=products.map(p=>({p,n:whatsappByProduct[p.id]||0})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
   const max=Math.max(1,...ranked.map(x=>x.n));
-  const contactMax=Math.max(1,...contacts.map(x=>x.n));
-  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()}"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Estatísticas</b></div>
-  <div class="report-period"><b>Resultados dos últimos 30 dias</b><span>Use estes números para acompanhar o retorno do Achou, Comprou.</span></div>
-  <div class="metric-grid">
-    ${metric('user','Pessoas alcançadas',String(uniqueVisitors30),'Visitantes únicos')}
-    ${metric('chat','Contatos no WhatsApp',String(counts30.clique_whatsapp||0),'Últimos 30 dias')}
-    ${metric('eye','Visualizações da loja',String(counts30.visualizacao_loja||0),'Últimos 30 dias')}
-    ${metric('star','Satisfação',ratingAverage==null?'—':`${ratingAverage.toFixed(1)} ★`,ratingCount?`${ratingCount} avaliação(ões)`:'Ainda sem avaliações')}
-  </div>
-  <div class="chart-card"><div class="section-title compact-title"><h3>Produtos que mais geraram contatos</h3><span>WhatsApp</span></div>${contacts.length?contacts.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/contactMax*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não houve contato de WhatsApp em um produto específico.</div>'}</div>
-  <div class="chart-card"><div class="section-title compact-title"><h3>Produtos mais vistos</h3><span>Desde o início</span></div>${ranked.length?ranked.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/max*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não há visualizações de produtos registradas.</div>'}</div>
-  ${merchantNav('dashboard')}</main>`;
+  const contactMax=Math.max(1,...contactProducts.map(x=>x.n));
+  const recentContacts=contacts.slice(0,12);
+
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-stats-page">
+    <div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Resultados da loja</b></div>
+
+    <div class="report-period"><b>Resultados dos últimos 30 dias</b><span>Visualizações, contatos e vendas confirmadas pelo Achou, Comprou.</span></div>
+
+    <div class="metric-grid merchant-sales-metrics">
+      ${metric('user','Pessoas alcançadas',String(uniqueVisitors30),'Visitantes únicos')}
+      ${metric('whatsapp','Contatos no WhatsApp',String(contacts30.length||counts30.clique_whatsapp||0),'Interessados enviados à loja')}
+      ${metric('check','Vendas confirmadas',String(sales30.length),`${conversion30}% dos contatos`)}
+      ${metric('card','Valor vendido',brlNumber(revenue30),sales30.length?`Ticket médio ${brlNumber(avgTicket)}`:'Aguardando confirmações')}
+    </div>
+
+    <section class="merchant-sales-summary">
+      <div class="merchant-sales-summary-head">
+        <div><span>RESULTADO REAL</span><h2>Do interesse até a venda</h2><p>Confirme abaixo quais contatos realmente viraram venda.</p></div>
+        <div class="merchant-sales-conversion"><strong>${conversion30}%</strong><small>conversão</small></div>
+      </div>
+      <div class="merchant-sales-flow">
+        <div><span>${icon('eye')}</span><b>${counts30.visualizacao_produto||0}</b><small>Produtos vistos</small></div>
+        <i>${icon('arrowRight')}</i>
+        <div><span>${icon('whatsapp')}</span><b>${contacts30.length||counts30.clique_whatsapp||0}</b><small>Contatos</small></div>
+        <i>${icon('arrowRight')}</i>
+        <div><span>${icon('check')}</span><b>${sales30.length}</b><small>Vendas</small></div>
+      </div>
+    </section>
+
+    <section class="merchant-contact-results">
+      <div class="section-title compact-title">
+        <div><h3>Contatos recebidos</h3><small>${pendingContacts} aguardando confirmação</small></div>
+        <span>WhatsApp</span>
+      </div>
+      <div class="merchant-contact-list">
+        ${recentContacts.length?recentContacts.map(contact=>{
+          const p=contact.productId?db.products.find(x=>x.id===contact.productId):null;
+          const date=contact.clickedAt?new Date(contact.clickedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+          const statusLabel=contact.status==='venda'?'Venda confirmada':contact.status==='nao_venda'?'Não virou venda':'Aguardando';
+          return `<article class="merchant-contact-card ${contact.status}">
+            <div class="merchant-contact-main">
+              <span class="merchant-contact-icon">${icon(contact.status==='venda'?'check':contact.status==='nao_venda'?'arrowLeft':'whatsapp')}</span>
+              <div><b>${esc(p?.name||'Contato geral com a loja')}</b><small>Cliente veio pelo Achou, Comprou · ${esc(date)}</small></div>
+              <em class="${contact.status}">${statusLabel}</em>
+            </div>
+            ${contact.status==='pendente'?`<div class="merchant-sale-actions">
+              <label>Valor da venda <input inputmode="decimal" data-sale-value="${contact.id}" placeholder="Ex.: 129,90"></label>
+              <button class="sale-yes" data-sale-confirm="${contact.id}">${icon('check')} Virou venda</button>
+              <button class="sale-no" data-sale-no="${contact.id}">Não virou venda</button>
+            </div>`:`<div class="merchant-contact-result">
+              <span>${contact.status==='venda'?`Valor confirmado: <b>${brlNumber(contact.value||0)}</b>`:'Contato encerrado sem venda.'}</span>
+              <button data-sale-reset="${contact.id}">Corrigir resultado</button>
+            </div>`}
+          </article>`;
+        }).join(''):'<div class="notice">Ainda não há contatos de WhatsApp registrados. Quando um cliente clicar para falar com sua loja, ele aparecerá aqui.</div>'}
+      </div>
+    </section>
+
+    <div class="chart-card"><div class="section-title compact-title"><h3>Produtos que mais geraram contatos</h3><span>WhatsApp</span></div>${contactProducts.length?contactProducts.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/contactMax*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não houve contato de WhatsApp em um produto específico.</div>'}</div>
+
+    <div class="chart-card"><div class="section-title compact-title"><h3>Produtos mais vistos</h3><span>Desde o início</span></div>${ranked.length?ranked.map(x=>`<div class="bar"><span>${esc(x.p.name)}</span><i style="width:${Math.max(4,x.n/max*92)}%"></i><b>${x.n}</b></div>`).join(''):'<div class="notice">Ainda não há visualizações de produtos registradas.</div>'}</div>
+
+    ${merchantNav('dashboard')}
+  </main>`;
+
   bind();
+
+  const updateContact=async(id,status,value=null)=>{
+    if(!window.ACCloud?.enabled){alert('Esse recurso precisa do sistema online.');return;}
+    const result=await window.ACCloud.updateWhatsappContact(id,status,value);
+    if(!result.ok){alert(result.message||'Não foi possível atualizar o contato.');return;}
+    stats();
+  };
+
+  document.querySelectorAll('[data-sale-confirm]').forEach(btn=>btn.onclick=()=>{
+    const id=btn.dataset.saleConfirm;
+    const raw=document.querySelector(`[data-sale-value="${id}"]`)?.value||'';
+    const value=Number(String(raw).replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,''));
+    if(!value||value<=0){alert('Informe o valor da venda para confirmar.');return;}
+    updateContact(id,'venda',value);
+  });
+  document.querySelectorAll('[data-sale-no]').forEach(btn=>btn.onclick=()=>updateContact(btn.dataset.saleNo,'nao_venda'));
+  document.querySelectorAll('[data-sale-reset]').forEach(btn=>btn.onclick=()=>{
+    if(confirm('Deseja corrigir esse resultado? O contato voltará para aguardando confirmação.'))updateContact(btn.dataset.saleReset,'pendente');
+  });
 }
 
 async function plans() {
