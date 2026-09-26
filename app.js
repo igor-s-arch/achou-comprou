@@ -94,7 +94,7 @@ function currentMerchant() { return db.merchants.find(m => m.id === db.session.m
 function currentClient() { return (db.clients || []).find(c => c.id === db.session.clientId) || null; }
 function isFavorite(productId) { const c=currentClient(); return !!(c && Array.isArray(c.favorites) && c.favorites.includes(productId)); }
 function saveFavorite(productId, active) { const c=currentClient(); if(!c) return false; c.favorites=Array.isArray(c.favorites)?c.favorites:[]; c.favorites=active ? Array.from(new Set([...c.favorites, productId])) : c.favorites.filter(id=>id!==productId); saveDb(); return true; }
-async function finishClientAccess(clientId) { db.session.clientId=clientId; await syncCloudFavorites(clientId); const pending=publicState.afterLogin; if(pending?.favoriteId) await setFavorite(pending.favoriteId,true); publicState.afterLogin=null; saveDb(); if(pending?.screen==='product' && pending.productId) return product(pending.productId); if(pending?.screen==='favorites') return favorites(); profile(); }
+async function finishClientAccess(clientId) { db.session.admin=false; db.session.merchantId=null; db.session.clientId=clientId; await syncCloudFavorites(clientId); const pending=publicState.afterLogin; if(pending?.favoriteId) await setFavorite(pending.favoriteId,true); publicState.afterLogin=null; saveDb(); if(pending?.screen==='product' && pending.productId) return product(pending.productId); if(pending?.screen==='favorites') return favorites(); profile(); }
 function id(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2,8)}`; }
 function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function planLabel(plan) { return ({gratis:'Grátis', premium:'Premium', premium_banner:'Premium + Banner'})[plan] || 'Grátis'; }
@@ -1060,7 +1060,7 @@ function merchantLogin() {
   bind();
   document.getElementById('fillMerchantDemo')?.addEventListener('click',()=>{document.getElementById('merchantEmail').value='lojista@exemplo.com';document.getElementById('merchantPassword').value='123456';});
   document.getElementById('merchantForgot').onclick=async()=>{const email=document.getElementById('merchantEmail').value.trim().toLowerCase();const msg=document.getElementById('loginMsg');if(!email){msg.innerHTML='<div class="notice error">Digite seu e-mail para recuperar a senha.</div>';return;}if(window.ACCloud?.enabled){try{localStorage.setItem('achou_recovery_target','merchant')}catch(_){}const result=await window.ACCloud.resetPassword(email);msg.innerHTML=result.ok?'<div class="notice success">Enviamos as instruções. Abra o link do e-mail para definir uma nova senha.</div>':`<div class="notice error">${esc(result.message||'Não foi possível enviar o e-mail.')}</div>`;return;}msg.innerHTML='<div class="notice success">A recuperação será enviada por e-mail quando o backend estiver conectado.</div>';};
-  document.getElementById('merchantLoginForm').onsubmit = async e => { e.preventDefault(); const email = document.getElementById('merchantEmail').value.trim().toLowerCase(); const password = document.getElementById('merchantPassword').value; const msg=document.getElementById('loginMsg'); if(window.ACCloud?.enabled){msg.innerHTML='<div class="notice">Entrando...</div>';const result=await window.ACCloud.signInMerchant(email,password);if(!result.ok){if(result.needsMerchantSetup){publicState.merchantExistingAccount={user:result.user,profile:result.profile,email};publicState.merchantPlanIntent='';merchantRegister();return;}msg.innerHTML=`<div class="notice error">${esc(result.message||'E-mail ou senha inválidos.')}</div>`;return;}publicState.merchantExistingAccount=null;upsertCloudMerchant(result.store,result.user);db.session.merchantId=result.store.id;await syncCloudMerchantCatalog(result.store.id);saveDb();syncPublicStoreState();merchant();return;} const found = db.merchants.find(m => m.email.toLowerCase() === email && m.password === password); if (!found) { msg.innerHTML = '<div class="notice error">E-mail ou senha inválidos.</div>'; return; } db.session.merchantId = found.id; saveDb(); merchant(); };
+  document.getElementById('merchantLoginForm').onsubmit = async e => { e.preventDefault(); const email = document.getElementById('merchantEmail').value.trim().toLowerCase(); const password = document.getElementById('merchantPassword').value; const msg=document.getElementById('loginMsg'); if(window.ACCloud?.enabled){msg.innerHTML='<div class="notice">Entrando...</div>';const result=await window.ACCloud.signInMerchant(email,password);if(!result.ok){if(result.needsMerchantSetup){publicState.merchantExistingAccount={user:result.user,profile:result.profile,email};publicState.merchantPlanIntent='';merchantRegister();return;}msg.innerHTML=`<div class="notice error">${esc(result.message||'E-mail ou senha inválidos.')}</div>`;return;}publicState.merchantExistingAccount=null;upsertCloudMerchant(result.store,result.user);db.session.admin=false;db.session.clientId=null;db.session.merchantId=result.store.id;await syncCloudMerchantCatalog(result.store.id);saveDb();syncPublicStoreState();merchant();return;} const found = db.merchants.find(m => m.email.toLowerCase() === email && m.password === password); if (!found) { msg.innerHTML = '<div class="notice error">E-mail ou senha inválidos.</div>'; return; } db.session.merchantId = found.id; saveDb(); merchant(); };
 }
 
 function merchantRegister() {
@@ -1214,6 +1214,7 @@ function merchantPlanOnboarding() {
       }
       if(result.store&&result.user){
         upsertCloudMerchant(result.store,result.user);
+        db.session.admin=false;
         db.session.merchantId=result.store.id;
         db.session.clientId=null;
         saveDb();
@@ -2210,28 +2211,55 @@ async function bootstrapCloudSession(){
   if(!window.ACCloud?.enabled)return;
   window.ACCloud.trackAppOpen?.().catch(()=>{});
   await syncCloudPublicCatalog();
+
   const session=await window.ACCloud.getSession();
-  if(!session?.user){db.session.clientId=null;db.session.merchantId=null;db.session.admin=false;saveDb();return;}
-  const profile=await window.ACCloud.getProfile(session.user.id);
-  const adminAllowed=db.session.admin ? await window.ACCloud.isCurrentUserAdmin?.() : false;
-  if(profile?.tipo==='admin' || adminAllowed){
-    db.session.admin=true;db.session.clientId=null;db.session.merchantId=null;await syncCloudAdminData();await syncAdminPayments();
-  } else if(profile?.tipo==='comerciante'){
+  if(!session?.user){
+    db.session.clientId=null;
+    db.session.merchantId=null;
     db.session.admin=false;
-    let store=await window.ACCloud.getMerchantStore(session.user.id);
-    if(!store){
-      const ensured=await window.ACCloud.ensureMerchantStore(session.user);
-      if(ensured.ok) store=ensured.store;
-    }
-    if(store){upsertCloudMerchant(store,session.user);db.session.merchantId=store.id;db.session.clientId=null;await syncCloudMerchantCatalog(store.id);}
-  } else if(profile?.tipo==='cliente'){
-    db.session.admin=false;
-    upsertCloudClient(profile,session.user);
-    db.session.clientId=session.user.id;db.session.merchantId=null;
-    await syncCloudFavorites(session.user.id);
+    saveDb();
+    return;
   }
+
+  const user=session.user;
+  const profile=await window.ACCloud.getProfile(user.id);
+
+  // O modo salvo no navegador define qual área o usuário escolheu.
+  if(db.session.admin){
+    const adminAllowed=await window.ACCloud.isCurrentUserAdmin?.();
+    if(adminAllowed){
+      db.session.clientId=null;
+      db.session.merchantId=null;
+      await syncCloudAdminData();
+      await syncAdminPayments();
+      saveDb();
+      return;
+    }
+    db.session.admin=false;
+  }
+
+  const store=await window.ACCloud.getMerchantStore(user.id);
+
+  if(db.session.merchantId && store){
+    db.session.admin=false;
+    db.session.clientId=null;
+    db.session.merchantId=store.id;
+    upsertCloudMerchant(store,user);
+    await syncCloudMerchantCatalog(store.id);
+    saveDb();
+    return;
+  }
+
+  // Todo usuário comum também pode usar o lado cliente,
+  // mesmo que possua uma loja vinculada.
+  db.session.admin=false;
+  db.session.merchantId=null;
+  db.session.clientId=user.id;
+  upsertCloudClient(profile,user);
+  await syncCloudFavorites(user.id);
   saveDb();
 }
+
 let adminDeviceResizeTimer=0;
 window.addEventListener('resize',()=>{
   clearTimeout(adminDeviceResizeTimer);
