@@ -2071,3 +2071,110 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     font-size:6.5px;
   }
 }
+
+/* ===== HOME — CARD COMPACTO APROVADO ===== */
+.home-marketplace .market-product-card .market-offer-body{
+  padding:7px 8px 8px!important;
+}
+.home-marketplace .market-product-card .market-offer-title{
+  min-height:0!important;
+  margin:0!important;
+  font-size:9.5px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+  -webkit-line-clamp:2;
+}
+.home-marketplace .market-product-card .market-price-status-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-top:5px;
+}
+.home-marketplace .market-product-card .market-price-row{
+  margin-top:0!important;
+  gap:4px!important;
+  flex-wrap:nowrap!important;
+  min-width:0;
+}
+.home-marketplace .market-product-card .market-price-row strong{
+  font-size:17px!important;
+  line-height:1!important;
+  white-space:nowrap;
+}
+.home-marketplace .market-product-card .market-price-row span{
+  font-size:6.7px!important;
+  white-space:nowrap;
+}
+.home-marketplace .market-product-card .market-available{
+  flex:0 0 auto;
+  margin-top:0!important;
+  padding:3px 5px!important;
+  font-size:6.2px!important;
+  white-space:nowrap;
+}
+.home-marketplace .market-product-card .market-available .ui-icon{
+  width:8px!important;
+  height:8px!important;
+}
+.home-marketplace .market-product-card .market-card-options{
+  margin-top:5px!important;
+  gap:4px!important;
+}
+.home-marketplace .market-product-card .market-card-options>b{
+  font-size:6.4px!important;
+}
+.home-marketplace .market-product-card .market-card-options span{
+  min-width:22px!important;
+  min-height:22px!important;
+  padding:0 5px!important;
+  border-radius:6px!important;
+  font-size:6.5px!important;
+}
+.home-marketplace .market-product-card .market-offer-footer{
+  grid-template-columns:minmax(0,1fr) 30px 25px!important;
+  gap:5px!important;
+  margin-top:6px!important;
+  padding-top:6px!important;
+}
+.home-marketplace .market-product-card .market-offer-store b{
+  font-size:7.3px!important;
+}
+.home-marketplace .market-product-card .market-offer-store small{
+  margin-top:1px!important;
+  font-size:6.1px!important;
+}
+.home-marketplace .market-product-card .market-whatsapp{
+  width:30px!important;
+  height:30px!important;
+}
+.home-marketplace .market-product-card .market-whatsapp .ui-icon{
+  width:15px!important;
+  height:15px!important;
+}
+.home-marketplace .market-product-card .market-go{
+  width:25px!important;
+  height:25px!important;
+}
+.home-marketplace .market-product-card .market-go .ui-icon{
+  width:11px!important;
+  height:11px!important;
+}
+@media(max-width:390px){
+  .home-marketplace .market-product-card .market-offer-body{
+    padding:6px 7px 7px!important;
+  }
+  .home-marketplace .market-product-card .market-offer-title{
+    font-size:9px!important;
+  }
+  .home-marketplace .market-product-card .market-price-row strong{
+    font-size:15.5px!important;
+  }
+  .home-marketplace .market-product-card .market-price-row span{
+    font-size:6.2px!important;
+  }
+  .home-marketplace .market-product-card .market-available{
+    font-size:5.8px!important;
+    padding:3px 4px!important;
+  }
+}
