@@ -2016,3 +2016,58 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   display:block;
   object-fit:cover;
 }
+
+/* ===== HOME — OFERTA + TAMANHOS/NUMERAÇÕES NOS CARDS ===== */
+.market-offer-badge{
+  max-width:calc(100% - 54px);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  letter-spacing:.02em;
+}
+.market-card-options{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:6px;
+  align-items:center;
+  margin-top:7px;
+  min-width:0;
+}
+.market-card-options>b{
+  font-size:7px;
+  color:#55585e;
+  white-space:nowrap;
+}
+.market-card-options>div{
+  display:flex;
+  gap:4px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  min-width:0;
+  padding-bottom:1px;
+}
+.market-card-options>div::-webkit-scrollbar{display:none}
+.market-card-options span{
+  flex:0 0 auto;
+  min-width:24px;
+  min-height:23px;
+  padding:0 6px;
+  border-radius:7px;
+  border:1px solid #e0e2e5;
+  background:#f7f8f9;
+  color:#22252a;
+  font-size:7px;
+  font-weight:850;
+  display:grid;
+  place-items:center;
+}
+@media(max-width:390px){
+  .market-card-options{gap:4px;margin-top:6px}
+  .market-card-options>b{font-size:6.5px}
+  .market-card-options span{
+    min-width:22px;
+    min-height:21px;
+    padding:0 5px;
+    font-size:6.5px;
+  }
+}
