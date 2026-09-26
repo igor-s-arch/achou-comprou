@@ -822,7 +822,8 @@ function home() {
           const meta=normalizedProduct(p);
           const live=availableVariants(p);
           const baseOptions=p.type==='calcado'?meta.numbers:(['roupa','pizza'].includes(p.type)?meta.sizes:[]);
-          const availableOptions=[...new Set([...baseOptions,...live.map(v=>v.option).filter(Boolean)].map(String))];
+          const optionSource=(p.stock==='detalhado'&&live.length)?live.map(v=>v.option).filter(Boolean):baseOptions;
+          const availableOptions=[...new Set(optionSource.map(String))];
           const optionLabel=p.type==='calcado'?'Num.':'Tam.';
           return `<article class="market-offer-card market-product-card" data-product-id="${p.id}">
             <div class="market-offer-media">
