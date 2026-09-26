@@ -1958,7 +1958,7 @@ async function merchantPayment(paymentId) {
         <div class="payment-section-title"><span>1</span><div><b>Faça o PIX</b><small>Valor exato: ${brlNumber(payment.value)}</small></div></div>
         ${cfg.pixKey?`
           <div class="pix-qr-wrap">
-            <div class="pix-qr-box"><canvas id="pixQrCanvas" width="220" height="220" aria-label="QR Code PIX"></canvas><small id="pixQrStatus">Aponte a câmera do banco para o QR Code</small></div>
+            <div class="pix-qr-box"><div id="pixQrCanvas" class="pix-qr-render" aria-label="QR Code PIX"></div><small id="pixQrStatus">Aponte a câmera do banco para o QR Code</small></div>
             <div class="pix-copy-card"><small>PIX COPIA E COLA</small><textarea id="pixCopyPaste" readonly aria-label="PIX copia e cola"></textarea><button type="button" id="copyPixPayload">Copiar código PIX</button></div>
           </div>
           <div class="pix-key-box"><small>CHAVE PIX</small><strong id="pixKeyText">${esc(cfg.pixKey)}</strong><button type="button" id="copyPixKey">Copiar chave</button></div>
@@ -1986,12 +1986,24 @@ async function merchantPayment(paymentId) {
   const pixCanvas=document.getElementById('pixQrCanvas');
   const pixQrStatus=document.getElementById('pixQrStatus');
   if(pixCanvas&&pixPayload){
-    if(window.QRCode?.toCanvas){
-      window.QRCode.toCanvas(pixCanvas,pixPayload,{width:220,margin:2,errorCorrectionLevel:'M'},err=>{
-        if(err&&pixQrStatus)pixQrStatus.textContent='Não foi possível gerar o QR Code. Use o PIX copia e cola.';
-      });
-    }else if(pixQrStatus){
-      pixQrStatus.textContent='QR Code indisponível. Use o PIX copia e cola.';
+    try{
+      if(typeof window.QRCode==='function'){
+        pixCanvas.innerHTML='';
+        new window.QRCode(pixCanvas,{
+          text:pixPayload,
+          width:220,
+          height:220,
+          colorDark:'#000000',
+          colorLight:'#ffffff',
+          correctLevel:window.QRCode.CorrectLevel?.M ?? 0
+        });
+        if(pixQrStatus)pixQrStatus.textContent='Aponte a câmera do banco para o QR Code';
+      }else if(pixQrStatus){
+        pixQrStatus.textContent='QR Code indisponível. Use o PIX copia e cola.';
+      }
+    }catch(err){
+      console.error('Falha ao gerar QR Code PIX',err);
+      if(pixQrStatus)pixQrStatus.textContent='Não foi possível gerar o QR Code. Use o PIX copia e cola.';
     }
   }
   document.getElementById('copyPixPayload')?.addEventListener('click',async e=>{
