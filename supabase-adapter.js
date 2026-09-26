@@ -718,7 +718,7 @@
       };
     },
 
-    async createProduct({storeId,userId,type,name,brand,price,promo,details,stock,imageData,variants=[]}){
+    async createProduct({storeId,userId,type,name,brand,price,promo,details,stock,imageData,sizes=[],numbers=[],colors=[],variants=[]}){
       if(!client||!storeId||!userId)return {ok:false,message:'Backend não configurado.'};
       let imageUrl=imageData||'';
       if(String(imageUrl).startsWith('data:')){
@@ -740,9 +740,9 @@
         preco_normal:normal,
         preco_promocional:promoNumber,
         estoque_modo:stock||'simples',
-        tamanhos:Array.isArray(arguments[0]?.sizes)?arguments[0].sizes:[],
-        numeracoes:Array.isArray(arguments[0]?.numbers)?arguments[0].numbers:[],
-        cores:Array.isArray(arguments[0]?.colors)?arguments[0].colors:[],
+        tamanhos:Array.isArray(sizes)?sizes:[],
+        numeracoes:Array.isArray(numbers)?numbers:[],
+        cores:Array.isArray(colors)?colors:[],
         disponivel:true,
         ativo:true,
         foto_principal_url:imageUrl||null,
