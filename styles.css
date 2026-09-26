@@ -3878,3 +3878,94 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+/* ===== V61 — RESUMO DE VENDAS NO PAINEL DO LOJISTA ===== */
+.merchant-result-snapshot{
+  margin:12px 0 15px;
+  padding:14px;
+  border-radius:17px;
+  border:1px solid #24272c;
+  background:linear-gradient(145deg,#151719,#0d0f11);
+  color:#fff;
+}
+.merchant-result-snapshot-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.merchant-result-snapshot-head span{
+  display:block;
+  color:var(--yellow);
+  font-size:6.8px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+.merchant-result-snapshot-head h3{
+  margin:3px 0 0;
+  font-size:15px;
+  letter-spacing:-.02em;
+}
+.merchant-result-snapshot-head button{
+  border:0;
+  background:transparent;
+  color:var(--yellow);
+  font-size:7.5px;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.merchant-result-snapshot-head button .ui-icon{
+  width:13px;
+  height:13px;
+}
+.merchant-result-snapshot-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+}
+.merchant-result-snapshot-grid>div{
+  min-height:82px;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid #292c31;
+  background:#181a1d;
+}
+.merchant-result-snapshot-grid>div.attention{
+  border-color:#574d17;
+  background:#211e0c;
+}
+.merchant-result-snapshot-grid small{
+  display:block;
+  color:#9da1a6;
+  font-size:6.6px;
+}
+.merchant-result-snapshot-grid strong{
+  display:block;
+  margin-top:5px;
+  color:#fff;
+  font-size:16px;
+  line-height:1.05;
+}
+.merchant-result-snapshot-grid>div:nth-child(2) strong,
+.merchant-result-snapshot-grid>div:nth-child(3) strong{
+  color:#39d978;
+}
+.merchant-result-snapshot-grid>div.attention strong{
+  color:var(--yellow);
+}
+.merchant-result-snapshot-grid em{
+  display:block;
+  margin-top:4px;
+  color:#7f8389;
+  font-size:6.2px;
+  font-style:normal;
+}
+
+@media(max-width:520px){
+  .merchant-result-snapshot-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
