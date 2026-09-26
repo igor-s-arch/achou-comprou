@@ -2911,3 +2911,87 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     font-size:7.2px!important;
   }
 }
+
+/* ===== V57 — PRODUTOS DA LOJA E LOJISTA SEM CORTE ===== */
+.store-products-grid .product-img{
+  width:100%!important;
+  height:auto!important;
+  aspect-ratio:1 / 1.04!important;
+  min-height:0!important;
+  padding:8px!important;
+  background:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.store-products-grid .product-img .product-photo{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  padding:0!important;
+  background:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.store-products-grid .product-img .product-photo img{
+  display:block!important;
+  width:auto!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  margin:auto!important;
+  background:#fff!important;
+}
+.store-products-grid .card-body{
+  padding:8px!important;
+}
+.store-products-grid .card-title{
+  line-height:1.2!important;
+  min-height:0!important;
+}
+
+/* Catálogo interno do lojista */
+.merchant-catalog-thumb,
+.merchant-product-thumb,
+.merchant-edit-thumb{
+  background:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.merchant-catalog-thumb .product-photo,
+.merchant-product-thumb .product-photo,
+.merchant-edit-thumb .product-photo{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  padding:3px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:#fff!important;
+}
+.merchant-catalog-thumb .product-photo img,
+.merchant-product-thumb .product-photo img,
+.merchant-edit-thumb .product-photo img{
+  width:auto!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  margin:auto!important;
+  background:#fff!important;
+}
+
+@media(max-width:390px){
+  .store-products-grid .product-img{
+    aspect-ratio:1 / 1.02!important;
+    padding:6px!important;
+  }
+}
