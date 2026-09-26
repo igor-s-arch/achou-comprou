@@ -39,7 +39,7 @@ const DEFAULT_DB = {
   session: { clientId: null, merchantId: null, admin: false }
 };
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||''})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
+function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
 let db = loadDb();
 let adminBranding={
   name:'Igor',
@@ -610,6 +610,49 @@ function bindImagePicker(inputId, previewId, options = {}) {
     preview.classList.remove('loading');
   };
   return { get: () => value, set: v => { value = v || ''; render(); } };
+}
+
+function bindMultiImagePicker(inputId, previewId, options = {}) {
+  const input=document.getElementById(inputId), preview=document.getElementById(previewId);
+  if(!input||!preview)return {get:()=>[],set:()=>{}};
+  const max=Math.max(1,Number(options.max||8));
+  let values=(Array.isArray(options.initial)?options.initial:[]).filter(Boolean).slice(0,max);
+  const render=()=>{
+    preview.innerHTML=`
+      <div class="multi-image-grid">
+        ${values.map((src,i)=>`<div class="multi-image-item ${i===0?'primary':''}"><img src="${src}" alt="Foto ${i+1}"><button type="button" data-remove-image="${i}" aria-label="Remover foto">×</button>${i===0?'<span>PRINCIPAL</span>':''}</div>`).join('')}
+        ${values.length<max?`<button type="button" class="multi-image-add" id="${previewId}Add">${icon('plus')}<b>Adicionar fotos</b><small>${values.length}/${max}</small></button>`:''}
+      </div>`;
+    preview.querySelectorAll('[data-remove-image]').forEach(btn=>btn.onclick=e=>{
+      e.stopPropagation();
+      values.splice(Number(btn.dataset.removeImage),1);
+      render();
+    });
+    const add=preview.querySelector('.multi-image-add');
+    if(add)add.onclick=()=>input.click();
+  };
+  input.multiple=true;
+  input.onchange=async()=>{
+    const files=[...(input.files||[])].slice(0,Math.max(0,max-values.length));
+    if(!files.length)return;
+    preview.classList.add('loading');
+    try{
+      for(const file of files){
+        values.push(await fileToDataUrl(file,options.maxW||1200,options.maxH||1200,options.quality||.78));
+      }
+      values=values.slice(0,max);
+      render();
+    }catch(err){
+      alert(err.message||'Não foi possível processar uma das imagens.');
+    }
+    input.value='';
+    preview.classList.remove('loading');
+  };
+  render();
+  return {
+    get:()=>values.slice(),
+    set:v=>{values=(Array.isArray(v)?v:[]).filter(Boolean).slice(0,max);render();}
+  };
 }
 
 function nav(active = 'home') {
@@ -1576,9 +1619,9 @@ function merchantStore() {
 
 function productForm() {
   const m = currentMerchant(); if (!m) return merchantLogin(); const ownProducts = merchantProductsFor(m.id); if (m.plan === 'gratis' && ownProducts.length >= 2) { app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar produto</b></div><div class="form-card"><div class="notice">Seu plano Grátis permite até 2 produtos. Para cadastrar mais, escolha um plano Premium.</div><button class="btn btn-yellow btn-block" data-go="plans">Ver planos</button></div></main>`; bind(); return; }
-  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar produto</b></div><form class="form-card" id="productFormEl"><div class="form-intro"><span class="section-icon">${icon('package')}</span><div><h2>Informações do produto</h2><p>Cadastre dados que o cliente poderá usar na busca inteligente.</p></div></div><div class="product-media-field"><label class="media-label">Foto principal do produto</label><input class="media-file-input" id="prodImageFile" type="file" accept="image/*"><button class="media-picker product" type="button" id="prodImagePreview"></button><small>Use uma foto clara, preferencialmente com o produto centralizado.</small></div><label>Nome<input id="prodName" required placeholder="Ex.: Tênis infantil"></label><label>Categoria<select id="prodCat"><option value="roupa">Roupa</option><option value="calcado">Calçado</option><option value="pizza">Pizza / Alimentação</option><option value="beleza">Beleza / Perfumaria</option><option value="celular">Celular</option><option value="outro">Outro</option></select></label><label>Marca<input id="prodBrand" placeholder="Marca"></label><div class="two-cols"><label>Preço normal<input id="prodPrice" required placeholder="159,90"></label><label>Preço promocional<input id="prodPromo" placeholder="129,90"></label></div><div id="dynamicFields"></div><label>Controle de estoque<select id="prodStock"><option value="simples">Simples — disponível/indisponível</option><option value="detalhado">Detalhado — por variação</option></select></label><div id="variantSection" class="hidden"><div class="variation-head"><div><b>Variações e quantidade</b><span>Ex.: Nº 28 / Rosa / 2 unidades</span></div><button class="mini-action" id="addVariant" type="button">${icon('plus')} Adicionar</button></div><div id="variantRows"></div></div><label>Descrição<textarea id="prodDescription" placeholder="Descrição do produto"></textarea></label><button class="btn btn-yellow btn-block" type="submit">Salvar produto</button><div id="saveMsg"></div></form></main>`;
+  app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar produto</b></div><form class="form-card" id="productFormEl"><div class="form-intro"><span class="section-icon">${icon('package')}</span><div><h2>Informações do produto</h2><p>Cadastre dados que o cliente poderá usar na busca inteligente.</p></div></div><div class="product-media-field"><label class="media-label">Fotos do produto</label><input class="media-file-input" id="prodImageFile" type="file" accept="image/*" multiple><div class="product-multi-preview" id="prodImagesPreview"></div><small>Adicione até 8 fotos. A primeira será a foto principal.</small></div><label>Nome<input id="prodName" required placeholder="Ex.: Tênis infantil"></label><label>Categoria<select id="prodCat"><option value="roupa">Roupa</option><option value="calcado">Calçado</option><option value="pizza">Pizza / Alimentação</option><option value="beleza">Beleza / Perfumaria</option><option value="celular">Celular</option><option value="outro">Outro</option></select></label><label>Marca<input id="prodBrand" placeholder="Marca"></label><div class="two-cols"><label>Preço normal<input id="prodPrice" required placeholder="159,90"></label><label>Preço promocional<input id="prodPromo" placeholder="129,90"></label></div><div id="dynamicFields"></div><label>Controle de estoque<select id="prodStock"><option value="simples">Simples — disponível/indisponível</option><option value="detalhado">Detalhado — por variação</option></select></label><div id="variantSection" class="hidden"><div class="variation-head"><div><b>Variações e quantidade</b><span>Ex.: Nº 28 / Rosa / 2 unidades</span></div><button class="mini-action" id="addVariant" type="button">${icon('plus')} Adicionar</button></div><div id="variantRows"></div></div><label>Descrição<textarea id="prodDescription" placeholder="Descrição do produto"></textarea></label><button class="btn btn-yellow btn-block" type="submit">Salvar produto</button><div id="saveMsg"></div></form></main>`;
   bind();
-  const productImagePicker = bindImagePicker('prodImageFile','prodImagePreview',{maxW:1000,maxH:1000,quality:.78,emptyTitle:'Adicionar foto',emptyText:'Foto principal do produto'});
+  const productImagePicker = bindMultiImagePicker('prodImageFile','prodImagesPreview',{max:8,maxW:1200,maxH:1200,quality:.8});
   const sel = document.getElementById('prodCat'), box = document.getElementById('dynamicFields'), stock = document.getElementById('prodStock'), variantSection=document.getElementById('variantSection'), variantRows=document.getElementById('variantRows');
   const CLOTHING_ADULT_SIZES=['Único','PP','P','M','G','GG','XG','XXG'];
   const CLOTHING_KIDS_SIZES=['RN','1','2','4','6','8','10','12','14','16'];
@@ -1658,7 +1701,8 @@ function productForm() {
       storeId:m.id,
       userId:m.ownerId || (await window.ACCloud?.getSession())?.user?.id,
       type, art,
-      imageData:productImagePicker.get(),
+      imageData:productImagePicker.get()[0]||'',
+      images:productImagePicker.get(),
       name:document.getElementById('prodName').value.trim(),
       brand:document.getElementById('prodBrand').value.trim(),
       price:document.getElementById('prodPrice').value.trim(),
