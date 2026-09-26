@@ -1063,16 +1063,16 @@
 
     async adminAnalytics(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
-      const session=await api.getSession();
       const [profiles,events,ratings,admins,storeOwners]=await Promise.all([
         client.from('perfis').select('user_id,tipo,created_at'),
-        client.from('eventos').select('tipo,loja_id,produto_id,user_id,metadata,created_at'),
+        client.from('eventos').select('tipo,loja_id,produto_id,user_id,busca,metadata,created_at'),
         client.from('avaliacoes_lojas').select('loja_id,nota,updated_at'),
         client.from('administradores').select('user_id'),
         client.from('lojas').select('owner_id')
       ]);
       const error=profiles.error||events.error||ratings.error||admins.error||storeOwners.error;
       if(error)return {ok:false,message:errorMessage(error)};
+
       const adminIds=new Set((admins.data||[]).map(a=>a.user_id));
       const merchantIds=new Set((storeOwners.data||[]).map(s=>s.owner_id).filter(Boolean));
       const excludedIds=new Set([...adminIds,...merchantIds]);
@@ -1080,36 +1080,65 @@
       const since30=Date.now()-30*86400000;
       const visitors30=new Set();
       const stores={};
-      let whatsapp30=0,whatsappAll=0,appOpens30=0;
+      const searchCounts={};
+      const noResultSearchCounts={};
+      let whatsapp30=0,whatsappAll=0,appOpens30=0,productViews30=0,storeViews30=0,favorites30=0,searches30=0;
+
       const getStore=id=>{
         if(!id)return null;
-        if(!stores[id])stores[id]={storeId:id,storeViews30:0,productViews30:0,whatsapp30:0,whatsappAll:0,visitors30:new Set(),productContacts:{}};
+        if(!stores[id])stores[id]={
+          storeId:id,storeViews30:0,productViews30:0,whatsapp30:0,whatsappAll:0,
+          favorites30:0,visitors30:new Set(),productContacts:{}
+        };
         return stores[id];
       };
+
       (events.data||[]).forEach(r=>{
         if(r.user_id && excludedIds.has(r.user_id))return;
         const ts=new Date(r.created_at||0).getTime();
         const recent=ts>=since30;
         const visitor=r.user_id||r.metadata?.visitor_id;
+
         if(recent&&r.tipo==='app_open'){
           appOpens30++;
           if(visitor)visitors30.add(visitor);
         }
+        if(recent&&r.tipo==='visualizacao_produto')productViews30++;
+        if(recent&&r.tipo==='visualizacao_loja')storeViews30++;
+        if(recent&&r.tipo==='favorito')favorites30++;
         if(r.tipo==='clique_whatsapp'){
           whatsappAll++;
           if(recent)whatsapp30++;
         }
+        if(recent&&r.tipo==='busca'){
+          searches30++;
+          const term=String(r.busca||'').trim();
+          if(term){
+            const key=term.toLocaleLowerCase('pt-BR');
+            if(!searchCounts[key])searchCounts[key]={term,count:0};
+            searchCounts[key].count++;
+            const productResults=Number(r.metadata?.results);
+            const storeResults=Number(r.metadata?.store_results);
+            if(Number.isFinite(productResults)&&Number.isFinite(storeResults)&&productResults+storeResults===0){
+              if(!noResultSearchCounts[key])noResultSearchCounts[key]={term,count:0};
+              noResultSearchCounts[key].count++;
+            }
+          }
+        }
+
         const s=getStore(r.loja_id);
         if(!s)return;
         if(recent&&visitor)s.visitors30.add(visitor);
         if(recent&&r.tipo==='visualizacao_loja')s.storeViews30++;
         if(recent&&r.tipo==='visualizacao_produto')s.productViews30++;
+        if(recent&&r.tipo==='favorito')s.favorites30++;
         if(r.tipo==='clique_whatsapp'){
           s.whatsappAll++;
           if(recent)s.whatsapp30++;
           if(r.produto_id)s.productContacts[r.produto_id]=(s.productContacts[r.produto_id]||0)+1;
         }
       });
+
       const allRatings=(ratings.data||[]).map(r=>Number(r.nota)).filter(Number.isFinite);
       (ratings.data||[]).forEach(r=>{
         const s=getStore(r.loja_id); if(!s)return;
@@ -1124,18 +1153,27 @@
         s.ratingAverage=notes.length?notes.reduce((a,b)=>a+b,0)/notes.length:null;
         delete s.notes;
       });
+
+      const topSearches=Object.values(searchCounts).sort((a,b)=>b.count-a.count||a.term.localeCompare(b.term,'pt-BR')).slice(0,8);
+      const noResultSearches=Object.values(noResultSearchCounts).sort((a,b)=>b.count-a.count||a.term.localeCompare(b.term,'pt-BR')).slice(0,8);
+
       return {
         ok:true,
         registeredClients,
         activeVisitors30:visitors30.size,
         appOpens30,
+        productViews30,
+        storeViews30,
+        favorites30,
+        searches30,
         whatsapp30,
         whatsappAll,
+        topSearches,
+        noResultSearches,
         ratingAverage:allRatings.length?allRatings.reduce((a,b)=>a+b,0)/allRatings.length:null,
         ratingCount:allRatings.length,
         stores
       };
-    }
-  };
+    }  };
   window.ACCloud=api;
 })();
