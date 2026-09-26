@@ -307,11 +307,12 @@
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.auth.signInWithPassword({email,password});
       if(error)return {ok:false,message:errorMessage(error)};
-      const profile=await api.getProfile(data.user.id);
-      if(profile?.tipo==='comerciante'||profile?.tipo==='admin'){
+      const isAdmin=await api.isCurrentUserAdmin();
+      if(isAdmin){
         await client.auth.signOut();
-        return {ok:false,message:'Este acesso não é uma conta de cliente.'};
+        return {ok:false,message:'Use a área administrativa para entrar com esta conta.'};
       }
+      const profile=await api.getProfile(data.user.id);
       return {ok:true,user:data.user,profile};
     },
 
@@ -400,32 +401,26 @@
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.auth.signInWithPassword({email,password});
       if(error)return {ok:false,message:errorMessage(error)};
-      const profile=await api.getProfile(data.user.id);
 
-      if(profile?.tipo==='cliente'){
-        const store=await api.getMerchantStore(data.user.id);
-        if(store){
-          await client.from('perfis').update({tipo:'comerciante'}).eq('user_id',data.user.id);
-          const refreshed=await api.getProfile(data.user.id);
-          return {ok:true,user:data.user,profile:refreshed,store};
-        }
-        return {ok:false,needsMerchantSetup:true,user:data.user,profile,message:'Sua conta de cliente foi encontrada. Conclua os dados da loja para ativar o acesso de lojista.'};
-      }
-
-      if(profile?.tipo!=='comerciante'&&profile?.tipo!=='admin'){
+      const isAdmin=await api.isCurrentUserAdmin();
+      if(isAdmin){
         await client.auth.signOut();
-        return {ok:false,message:'Esta conta não possui acesso de lojista.'};
+        return {ok:false,message:'Use a área administrativa para entrar com esta conta.'};
       }
 
-      let store=await api.getMerchantStore(data.user.id);
-      if(!store && profile?.tipo==='comerciante'){
-        const ensured=await api.ensureMerchantStore(data.user);
-        if(!ensured.ok)return {ok:false,needsMerchantSetup:true,user:data.user,profile,message:'Conclua os dados da loja para acessar o painel.'};
-        store=ensured.store;
-      }
+      const profile=await api.getProfile(data.user.id);
+      const store=await api.getMerchantStore(data.user.id);
+
       if(!store){
-        return {ok:false,needsMerchantSetup:true,user:data.user,profile,message:'Conclua os dados da loja para acessar o painel.'};
+        return {
+          ok:false,
+          needsMerchantSetup:true,
+          user:data.user,
+          profile,
+          message:'Sua conta foi encontrada. Conclua o cadastro da loja para acessar a Área do Lojista.'
+        };
       }
+
       return {ok:true,user:data.user,profile,store};
     },
 
@@ -985,18 +980,19 @@
     async adminAnalytics(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const session=await api.getSession();
-      const [profiles,events,ratings,admins]=await Promise.all([
+      const [profiles,events,ratings,admins,storeOwners]=await Promise.all([
         client.from('perfis').select('user_id,tipo,created_at'),
         client.from('eventos').select('tipo,loja_id,produto_id,user_id,metadata,created_at'),
         client.from('avaliacoes_lojas').select('loja_id,nota,updated_at'),
-        client.from('administradores').select('user_id')
+        client.from('administradores').select('user_id'),
+        client.from('lojas').select('owner_id')
       ]);
-      const error=profiles.error||events.error||ratings.error||admins.error;
+      const error=profiles.error||events.error||ratings.error||admins.error||storeOwners.error;
       if(error)return {ok:false,message:errorMessage(error)};
       const adminIds=new Set((admins.data||[]).map(a=>a.user_id));
-      const merchantIds=new Set((profiles.data||[]).filter(p=>p.tipo==='comerciante').map(p=>p.user_id));
+      const merchantIds=new Set((storeOwners.data||[]).map(s=>s.owner_id).filter(Boolean));
       const excludedIds=new Set([...adminIds,...merchantIds]);
-      const registeredClients=(profiles.data||[]).filter(p=>p.tipo==='cliente'&&!adminIds.has(p.user_id)).length;
+      const registeredClients=(profiles.data||[]).filter(p=>!adminIds.has(p.user_id)&&!merchantIds.has(p.user_id)).length;
       const since30=Date.now()-30*86400000;
       const visitors30=new Set();
       const stores={};
