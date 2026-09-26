@@ -780,24 +780,86 @@ function product(productId = publicState.productId) {
   publicState.productId = p.id; publicState.storeId = m.id;
   const fav = isFavorite(p.id);
   const price = currentPrice(p), old = originalPrice(p);
+  const discount = discountFor(p);
   const details = String(p.details || '').split('|').map(x=>x.trim()).filter(Boolean);
-  app.innerHTML = `<main class="app-shell product-page">
-    <div class="page-head"><button class="back" id="productBack" aria-label="Voltar">${icon('arrowLeft')}</button><b>Produto</b><div class="head-actions"><button id="headFav" aria-label="Favoritar">${icon('heart')}</button><button aria-label="Compartilhar">${icon('share')}</button></div></div>
-    <div class="hero-product">${productMedia(p)}</div>
-    <div class="product-info">
-      <span class="eyebrow">${categoryLabel(p.type)}</span><h1>${esc(p.name)}</h1>
-      <div><span class="big-price">${money(price)}</span> ${price !== old ? `<span class="old">${money(old)}</span>` : ''}</div>
-      <div class="store-box" data-store-id="${m.id}"><div class="store-box-title">${esc(m.name)}</div><div class="store-box-meta">${icon('star')} ${esc(m.rating || 'Novo')} <span>•</span> ${icon('pin')} ${esc(m.dist || 'Grajaú')} de você</div></div>
-      ${p.brand ? `<h3>Marca</h3><p>${esc(p.brand)}</p>` : ''}
-      <h3>Disponibilidade</h3><span class="tag">Disponível</span>${availabilitySummary(p).length ? `<div class="availability-box">${availabilitySummary(p).map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
-      <h3>Detalhes</h3>${details.length ? details.map(d=>`<p>${esc(d)}</p>`).join('') : '<p>Consulte a loja para mais informações.</p>'}
+  const availability = availabilitySummary(p);
+  const storeLogo = m.logoData
+    ? `<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`
+    : icon('store');
+
+  app.innerHTML = `<main class="app-shell product-page product-page-pro">
+    <div class="product-topbar">
+      <button class="product-back" id="productBack" aria-label="Voltar">${icon('arrowLeft')}</button>
+      <div><span>ACHOU, COMPROU</span><b>Detalhes do produto</b></div>
+      <div class="product-top-actions">
+        <button id="headFav" class="${fav?'active':''}" aria-label="Favoritar">${icon('heart')}</button>
+        <button id="productShare" aria-label="Compartilhar">${icon('share')}</button>
+      </div>
     </div>
-    <div class="sticky-actions"><button class="btn btn-green" id="waBtn">${icon('chat')} Falar com a loja</button><button class="btn btn-yellow" id="favBtn">${icon('heart')} ${fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}</button></div>
+
+    <section class="product-detail-shell">
+      <div class="product-gallery-card">
+        ${discount ? `<span class="product-discount-badge">${discount}</span>` : ''}
+        <div class="hero-product product-hero-pro">${productMedia(p)}</div>
+      </div>
+
+      <div class="product-main-card">
+        <div class="product-title-block">
+          <span class="product-category-chip">${categoryLabel(p.type)}</span>
+          <h1>${esc(p.name)}</h1>
+          ${p.brand ? `<span class="product-brand-line">Marca: <b>${esc(p.brand)}</b></span>` : ''}
+        </div>
+
+        <div class="product-price-block">
+          ${price !== old ? `<span class="product-old-price">De ${money(old)}</span>` : ''}
+          <div class="product-price-line"><strong>${money(price)}</strong>${discount ? `<span>${discount} OFF</span>` : ''}</div>
+          <small>Consulte condições e disponibilidade diretamente com a loja.</small>
+        </div>
+
+        <button class="product-store-card" data-store-id="${m.id}">
+          <span class="product-store-logo">${storeLogo}</span>
+          <span class="product-store-copy">
+            <small>VENDIDO POR</small>
+            <b>${esc(m.name)}</b>
+            <em>${icon('star')} ${esc(m.rating || 'Novo')} <i>•</i> ${icon('pin')} ${esc(m.dist || 'Grajaú')}</em>
+          </span>
+          ${icon('arrowRight','product-store-arrow')}
+        </button>
+
+        <div class="product-info-section">
+          <div class="product-section-head"><span>${icon('check')}</span><div><small>DISPONIBILIDADE</small><h3>Pronto para consultar</h3></div></div>
+          <span class="product-stock-badge">Disponível</span>
+          ${availability.length ? `<div class="product-option-list">${availability.map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
+        </div>
+
+        <div class="product-info-section">
+          <div class="product-section-head"><span>${icon('package')}</span><div><small>INFORMAÇÕES</small><h3>Detalhes do produto</h3></div></div>
+          <div class="product-description">
+            ${details.length ? details.map(d=>`<p>${esc(d)}</p>`).join('') : '<p>Consulte a loja para mais informações sobre este produto.</p>'}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="product-action-bar">
+      <button class="product-favorite-action" id="favBtn">${icon('heart')} <span>${fav ? 'Favoritado' : 'Favoritar'}</span></button>
+      <button class="product-whatsapp-action" id="waBtn">${icon('chat')} <span>Falar com a loja</span></button>
+    </div>
   </main>`;
+
   bind();
   document.getElementById('productBack').onclick = () => publicState.query ? search(publicState.query) : home();
   const toggleFav=async()=>{ if(!currentClient()){ publicState.afterLogin={screen:'product',productId:p.id,favoriteId:p.id}; return clientLogin(); } const ok=await setFavorite(p.id,!fav); if(ok) product(p.id); };
-  document.getElementById('favBtn').onclick = toggleFav; document.getElementById('headFav').onclick = toggleFav;
+  document.getElementById('favBtn').onclick = toggleFav;
+  document.getElementById('headFav').onclick = toggleFav;
+  document.getElementById('productShare').onclick = async()=>{
+    const text=`${p.name} — ${money(price)} na ${m.name} | Achou, Comprou`;
+    try{
+      if(navigator.share){await navigator.share({title:p.name,text});return;}
+      await navigator.clipboard.writeText(text);
+      alert('Informações do produto copiadas.');
+    }catch(_){}
+  };
   document.getElementById('waBtn').onclick = () => { const url=whatsappUrl(m,p); if (url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,productId:p.id,metadata:{source:'produto',product_name:p.name}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
   if(window.ACCloud?.enabled) window.ACCloud.trackEvent('visualizacao_produto',{storeId:m.id,productId:p.id}).catch(()=>{});
 }
