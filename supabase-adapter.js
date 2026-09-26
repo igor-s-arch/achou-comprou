@@ -1061,16 +1061,57 @@
       return {ok:true,counts,counts30,byProduct,whatsappByProduct,uniqueVisitors30:visitors30.size,ratingAverage,ratingCount:notes.length};
     },
 
+    async merchantContacts(storeId){
+      if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.from('contatos_whatsapp')
+        .select('id,evento_id,loja_id,produto_id,status,valor,observacao,clicado_em,confirmado_em,created_at,updated_at')
+        .eq('loja_id',storeId)
+        .order('clicado_em',{ascending:false})
+        .limit(100);
+      if(error)return {ok:false,message:errorMessage(error)};
+      const rows=(data||[]).map(r=>({
+        id:r.id,eventId:r.evento_id,storeId:r.loja_id,productId:r.produto_id||'',
+        status:r.status||'pendente',value:r.valor==null?null:Number(r.valor),
+        note:r.observacao||'',clickedAt:r.clicado_em||r.created_at||'',
+        confirmedAt:r.confirmado_em||'',updatedAt:r.updated_at||''
+      }));
+      return {ok:true,contacts:rows};
+    },
+
+    async updateWhatsappContact(contactId,status,value=null,note=''){
+      if(!client||!contactId)return {ok:false,message:'Contato inválido.'};
+      if(!['pendente','venda','nao_venda'].includes(status))return {ok:false,message:'Status inválido.'};
+      const payload={
+        status,
+        valor:status==='venda'?Math.max(0,Number(value||0)):null,
+        observacao:String(note||'').trim()||null,
+        confirmado_em:status==='pendente'?null:new Date().toISOString()
+      };
+      const {data,error}=await client.from('contatos_whatsapp')
+        .update(payload)
+        .eq('id',contactId)
+        .select('id,evento_id,loja_id,produto_id,status,valor,observacao,clicado_em,confirmado_em,created_at,updated_at')
+        .single();
+      if(error)return {ok:false,message:errorMessage(error)};
+      return {ok:true,contact:{
+        id:data.id,eventId:data.evento_id,storeId:data.loja_id,productId:data.produto_id||'',
+        status:data.status||'pendente',value:data.valor==null?null:Number(data.valor),
+        note:data.observacao||'',clickedAt:data.clicado_em||data.created_at||'',
+        confirmedAt:data.confirmado_em||'',updatedAt:data.updated_at||''
+      }};
+    },
+
     async adminAnalytics(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
-      const [profiles,events,ratings,admins,storeOwners]=await Promise.all([
+      const [profiles,events,ratings,admins,storeOwners,sales]=await Promise.all([
         client.from('perfis').select('user_id,tipo,created_at'),
         client.from('eventos').select('tipo,loja_id,produto_id,user_id,busca,metadata,created_at'),
         client.from('avaliacoes_lojas').select('loja_id,nota,updated_at'),
         client.from('administradores').select('user_id'),
-        client.from('lojas').select('owner_id')
+        client.from('lojas').select('owner_id'),
+        client.from('contatos_whatsapp').select('id,loja_id,produto_id,status,valor,clicado_em,confirmado_em')
       ]);
-      const error=profiles.error||events.error||ratings.error||admins.error||storeOwners.error;
+      const error=profiles.error||events.error||ratings.error||admins.error||storeOwners.error||sales.error;
       if(error)return {ok:false,message:errorMessage(error)};
 
       const adminIds=new Set((admins.data||[]).map(a=>a.user_id));
@@ -1083,12 +1124,14 @@
       const searchCounts={};
       const noResultSearchCounts={};
       let whatsapp30=0,whatsappAll=0,appOpens30=0,productViews30=0,storeViews30=0,favorites30=0,searches30=0;
+      let sales30=0,salesAll=0,revenue30=0,revenueAll=0,pendingContacts=0;
 
       const getStore=id=>{
         if(!id)return null;
         if(!stores[id])stores[id]={
           storeId:id,storeViews30:0,productViews30:0,whatsapp30:0,whatsappAll:0,
-          favorites30:0,visitors30:new Set(),productContacts:{}
+          favorites30:0,visitors30:new Set(),productContacts:{},
+          sales30:0,salesAll:0,revenue30:0,revenueAll:0,pendingContacts:0
         };
         return stores[id];
       };
@@ -1139,18 +1182,41 @@
         }
       });
 
+      (sales.data||[]).forEach(r=>{
+        const s=getStore(r.loja_id);
+        const recent=new Date(r.clicado_em||0).getTime()>=since30;
+        if(r.status==='pendente'){
+          pendingContacts++;
+          if(s)s.pendingContacts++;
+        }
+        if(r.status==='venda'){
+          const value=Number(r.valor||0);
+          salesAll++;
+          revenueAll+=value;
+          if(s){s.salesAll++;s.revenueAll+=value;}
+          if(recent){
+            sales30++;
+            revenue30+=value;
+            if(s){s.sales30++;s.revenue30+=value;}
+          }
+        }
+      });
+
       const allRatings=(ratings.data||[]).map(r=>Number(r.nota)).filter(Number.isFinite);
       (ratings.data||[]).forEach(r=>{
         const s=getStore(r.loja_id); if(!s)return;
         if(!s.notes)s.notes=[];
         s.notes.push(Number(r.nota));
       });
+
       Object.values(stores).forEach(s=>{
         s.uniqueVisitors30=s.visitors30.size;
         delete s.visitors30;
         const notes=(s.notes||[]).filter(Number.isFinite);
         s.ratingCount=notes.length;
         s.ratingAverage=notes.length?notes.reduce((a,b)=>a+b,0)/notes.length:null;
+        s.conversion30=s.whatsapp30?Math.round(s.sales30/s.whatsapp30*100):0;
+        s.averageTicket30=s.sales30?s.revenue30/s.sales30:0;
         delete s.notes;
       });
 
@@ -1168,6 +1234,13 @@
         searches30,
         whatsapp30,
         whatsappAll,
+        sales30,
+        salesAll,
+        revenue30,
+        revenueAll,
+        pendingContacts,
+        conversion30:whatsapp30?Math.round(sales30/whatsapp30*100):0,
+        averageTicket30:sales30?revenue30/sales30:0,
         topSearches,
         noResultSearches,
         ratingAverage:allRatings.length?allRatings.reduce((a,b)=>a+b,0)/allRatings.length:null,
