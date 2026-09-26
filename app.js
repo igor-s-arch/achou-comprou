@@ -1580,9 +1580,50 @@ function productForm() {
   bind();
   const productImagePicker = bindImagePicker('prodImageFile','prodImagePreview',{maxW:1000,maxH:1000,quality:.78,emptyTitle:'Adicionar foto',emptyText:'Foto principal do produto'});
   const sel = document.getElementById('prodCat'), box = document.getElementById('dynamicFields'), stock = document.getElementById('prodStock'), variantSection=document.getElementById('variantSection'), variantRows=document.getElementById('variantRows');
-  function dyn() { const map = { roupa: '<label>Tamanhos disponíveis<input id="prodExtra1" placeholder="P, M, G"></label><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Branco, Rosa"></label>', calcado: '<label>Numerações disponíveis<input id="prodExtra1" placeholder="28, 29, 30, 31"></label><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Azul"></label>', pizza: '<label>Tamanhos<input id="prodExtra1" placeholder="Pequena, Média, Grande"></label><label>Sabores / adicionais<input id="prodExtra2" placeholder="Calabresa, Frango, Catupiry"></label>', beleza: '<label>Tipo / volume<input id="prodExtra1" placeholder="Perfume 100 ml"></label><label>Variações<input id="prodExtra2" placeholder="Feminino, Masculino"></label>', celular: '<label>Modelo / armazenamento<input id="prodExtra1" placeholder="Modelo / 128 GB / 8 GB RAM"></label><label>Cores<input id="prodExtra2" placeholder="Preto, Branco"></label>', outro: '<label>Características<input id="prodExtra1" placeholder="Principais características"></label><input id="prodExtra2" type="hidden">' }; box.innerHTML = map[sel.value]; refreshVariantLabels(); }
+  const CLOTHING_ADULT_SIZES=['Único','PP','P','M','G','GG','XG','XXG'];
+  const CLOTHING_KIDS_SIZES=['RN','1','2','4','6','8','10','12','14','16'];
+  const PIZZA_SIZES=['Pequena','Média','Grande','Família'];
+  function choiceButtons(values,group='size'){
+    return values.map(v=>`<button type="button" class="product-choice-chip" data-choice-group="${group}" data-choice-value="${esc(v)}">${esc(v)}</button>`).join('');
+  }
+  function syncMarkedSizes(){
+    const hidden=document.getElementById('prodExtra1');
+    if(!hidden)return;
+    hidden.value=[...box.querySelectorAll('[data-choice-group="size"].active')].map(b=>b.dataset.choiceValue).join(', ');
+  }
+  function bindChoiceButtons(){
+    box.querySelectorAll('[data-choice-group="size"]').forEach(btn=>{
+      btn.onclick=()=>{
+        btn.classList.toggle('active');
+        syncMarkedSizes();
+      };
+    });
+  }
+  function dyn() {
+    const map = {
+      roupa: `<div class="product-choice-field"><div class="product-choice-title"><b>Tamanhos disponíveis</b><small>Marque todos os tamanhos deste produto.</small></div><div class="product-choice-subtitle">Adulto</div><div class="product-choice-chips">${choiceButtons(CLOTHING_ADULT_SIZES)}</div><div class="product-choice-subtitle">Infantil</div><div class="product-choice-chips">${choiceButtons(CLOTHING_KIDS_SIZES)}</div><input id="prodExtra1" type="hidden"></div><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Branco, Rosa"></label>`,
+      calcado: '<label>Numerações disponíveis<input id="prodExtra1" placeholder="28, 29, 30, 31"></label><label>Cores disponíveis<input id="prodExtra2" placeholder="Preto, Azul"></label>',
+      pizza: `<div class="product-choice-field"><div class="product-choice-title"><b>Tamanhos</b><small>Marque os tamanhos vendidos.</small></div><div class="product-choice-chips">${choiceButtons(PIZZA_SIZES)}</div><input id="prodExtra1" type="hidden"></div><label>Sabores / adicionais<input id="prodExtra2" placeholder="Calabresa, Frango, Catupiry"></label>`,
+      beleza: '<label>Tipo / volume<input id="prodExtra1" placeholder="Perfume 100 ml"></label><label>Variações<input id="prodExtra2" placeholder="Feminino, Masculino"></label>',
+      celular: '<label>Modelo / armazenamento<input id="prodExtra1" placeholder="Modelo / 128 GB / 8 GB RAM"></label><label>Cores<input id="prodExtra2" placeholder="Preto, Branco"></label>',
+      outro: '<label>Características<input id="prodExtra1" placeholder="Principais características"></label><input id="prodExtra2" type="hidden">'
+    };
+    box.innerHTML = map[sel.value];
+    bindChoiceButtons();
+    refreshVariantLabels();
+  }
   function optionLabel(){ return sel.value === 'calcado' ? 'Numeração' : sel.value === 'roupa' ? 'Tamanho' : sel.value === 'pizza' ? 'Tamanho' : 'Variação'; }
-  function addVariantRow(option='',color='',qty=1){ const row=document.createElement('div'); row.className='variation-row'; row.innerHTML=`<label><span class="variation-label">${optionLabel()}</span><input class="variant-option" value="${esc(option)}" placeholder="Ex.: ${sel.value==='calcado'?'28':'M'}"></label><label>Cor / opção<input class="variant-color" value="${esc(color)}" placeholder="Ex.: Preto"></label><label>Qtd.<input class="variant-qty" type="number" min="0" value="${Number(qty)||0}"></label><button type="button" class="variant-remove" aria-label="Remover">×</button>`; row.querySelector('.variant-remove').onclick=()=>row.remove(); variantRows.appendChild(row); }
+  function variantOptionControl(option=''){
+    if(sel.value==='roupa'){
+      const all=[...CLOTHING_ADULT_SIZES,...CLOTHING_KIDS_SIZES];
+      return `<select class="variant-option">${all.map(v=>`<option value="${esc(v)}" ${String(option)===String(v)?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
+    }
+    if(sel.value==='pizza'){
+      return `<select class="variant-option">${PIZZA_SIZES.map(v=>`<option value="${esc(v)}" ${String(option)===String(v)?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
+    }
+    return `<input class="variant-option" value="${esc(option)}" placeholder="Ex.: ${sel.value==='calcado'?'28':'Opção'}">`;
+  }
+  function addVariantRow(option='',color='',qty=1){ const row=document.createElement('div'); row.className='variation-row'; row.innerHTML=`<label><span class="variation-label">${optionLabel()}</span>${variantOptionControl(option)}</label><label>Cor / opção<input class="variant-color" value="${esc(color)}" placeholder="Ex.: Preto"></label><label>Qtd.<input class="variant-qty" type="number" min="0" value="${Number(qty)||0}"></label><button type="button" class="variant-remove" aria-label="Remover">×</button>`; row.querySelector('.variant-remove').onclick=()=>row.remove(); variantRows.appendChild(row); }
   function refreshVariantLabels(){ variantRows.querySelectorAll('.variation-label').forEach(x=>x.textContent=optionLabel()); }
   function stockMode(){ variantSection.classList.toggle('hidden',stock.value !== 'detalhado'); if(stock.value==='detalhado' && !variantRows.children.length) addVariantRow(); }
   sel.onchange = dyn; stock.onchange=stockMode; document.getElementById('addVariant').onclick=()=>addVariantRow(); dyn(); stockMode();
@@ -1595,6 +1636,10 @@ function productForm() {
     const ex1 = document.getElementById('prodExtra1')?.value.trim() || '';
     const ex2 = document.getElementById('prodExtra2')?.value.trim() || '';
     const list1=splitList(ex1), list2=splitList(ex2);
+    if(['roupa','pizza'].includes(type) && !list1.length){
+      msg.innerHTML='<div class="notice error">Marque pelo menos um tamanho disponível.</div>';
+      return;
+    }
     const variants=[...document.querySelectorAll('.variation-row')].map(row=>({option:row.querySelector('.variant-option').value.trim(),color:row.querySelector('.variant-color').value.trim(),qty:Number(row.querySelector('.variant-qty').value||0)})).filter(v=>v.option||v.color);
     const colors = type === 'pizza' ? [] : [...new Set([...list2,...variants.map(v=>v.color).filter(Boolean)])];
     const sizes = ['roupa','pizza'].includes(type) ? [...new Set([...list1,...variants.map(v=>v.option).filter(Boolean)])] : [];
