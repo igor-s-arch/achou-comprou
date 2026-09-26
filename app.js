@@ -2325,6 +2325,7 @@ async function admin() {
   let analytics={
     registeredClients:0,activeVisitors30:0,appOpens30:0,searches30:0,productViews30:0,
     storeViews30:0,favorites30:0,whatsapp30:0,whatsappAll:0,
+    sales30:0,salesAll:0,revenue30:0,revenueAll:0,pendingContacts:0,conversion30:0,averageTicket30:0,
     ratingAverage:null,ratingCount:0,topSearches:[],noResultSearches:[],stores:{}
   };
 
@@ -2379,9 +2380,10 @@ async function admin() {
   const ranking=db.merchants
     .filter(m=>m.status==='aprovada')
     .map(m=>({m,s:analytics.stores?.[m.id]||{}}))
-    .sort((a,b)=>(b.s.whatsapp30||0)-(a.s.whatsapp30||0)
+    .sort((a,b)=>(b.s.sales30||0)-(a.s.sales30||0)
+      ||(b.s.revenue30||0)-(a.s.revenue30||0)
+      ||(b.s.whatsapp30||0)-(a.s.whatsapp30||0)
       ||(b.s.productViews30||0)-(a.s.productViews30||0)
-      ||(b.s.uniqueVisitors30||0)-(a.s.uniqueVisitors30||0)
       ||(b.s.ratingAverage||0)-(a.s.ratingAverage||0))
     .slice(0,5);
 
@@ -2392,9 +2394,11 @@ async function admin() {
     {label:'Aberturas',value:analytics.appOpens30||0,icon:'eye'},
     {label:'Buscas',value:analytics.searches30||0,icon:'search'},
     {label:'Produtos vistos',value:analytics.productViews30||0,icon:'package'},
-    {label:'WhatsApp',value:analytics.whatsapp30||0,icon:'whatsapp'}
+    {label:'WhatsApp',value:analytics.whatsapp30||0,icon:'whatsapp'},
+    {label:'Vendas',value:analytics.sales30||0,icon:'check'}
   ];
   const contactRate=analytics.productViews30?Math.round((analytics.whatsapp30||0)/analytics.productViews30*100):0;
+  const saleRate=analytics.whatsapp30?Math.round((analytics.sales30||0)/analytics.whatsapp30*100):0;
 
   const recent = db.merchants.slice().reverse().slice(0,4);
   const logoSrc=adminBranding.logoUrl||'./assets/logo-achou-comprou.png';
@@ -2449,26 +2453,28 @@ async function admin() {
       </div>
 
       <div class="admin-section-head"><div><span>RESULTADOS DO APP</span><h2>Últimos 30 dias</h2></div><button class="admin-link-btn" data-go="adminReports">Ver relatório</button></div>
-      <div class="admin-result-grid">
+      <div class="admin-result-grid admin-result-grid-sales">
         <article><small>Clientes cadastrados</small><strong>${analytics.registeredClients||0}</strong><span>sem contar lojistas</span></article>
         <article><small>Pessoas ativas</small><strong>${analytics.activeVisitors30||0}</strong><span>visitantes únicos</span></article>
-        <article><small>Contatos WhatsApp</small><strong>${analytics.whatsapp30||0}</strong><span>cliques enviados às lojas</span></article>
+        <article><small>Contatos WhatsApp</small><strong>${analytics.whatsapp30||0}</strong><span>interessados enviados às lojas</span></article>
+        <article class="sales-result"><small>Vendas confirmadas</small><strong>${analytics.sales30||0}</strong><span>${saleRate}% dos contatos</span></article>
+        <article class="sales-result"><small>Valor vendido</small><strong>${brlNumber(analytics.revenue30||0)}</strong><span>ticket médio ${brlNumber(analytics.averageTicket30||0)}</span></article>
         <article><small>Satisfação média</small><strong>${analytics.ratingAverage==null?'—':analytics.ratingAverage.toFixed(1)+' ★'}</strong><span>${analytics.ratingCount||0} avaliações</span></article>
       </div>
 
       <div class="admin-executive-grid">
         <section class="admin-executive-card funnel">
-          <div class="admin-executive-head"><div><span>FUNIL</span><h3>Caminho até o WhatsApp</h3></div><b>${contactRate}%</b></div>
+          <div class="admin-executive-head"><div><span>FUNIL DE RESULTADOS</span><h3>Do acesso até a venda</h3></div><b>${saleRate}%</b></div>
           <div class="admin-funnel-list">
             ${funnel.map((x,i)=>`<div class="admin-funnel-step"><span>${icon(x.icon)}</span><div><b>${x.value}</b><small>${x.label}</small></div>${i<funnel.length-1?'<i></i>':''}</div>`).join('')}
           </div>
-          <p>Conversão aproximada de visualizações de produto em clique no WhatsApp: <b>${contactRate}%</b>.</p>
+          <p>Dos produtos vistos, <b>${contactRate}%</b> geraram contato. Dos contatos no WhatsApp, <b>${saleRate}%</b> foram confirmados como venda pelos lojistas.</p>
         </section>
 
         <section class="admin-executive-card ranking">
-          <div class="admin-executive-head"><div><span>RANKING</span><h3>Lojas com mais interesse</h3></div><button data-go="adminReports">Completo</button></div>
+          <div class="admin-executive-head"><div><span>RANKING DE RESULTADOS</span><h3>Lojas que mais venderam</h3></div><button data-go="adminReports">Completo</button></div>
           <div class="admin-ranking-list">
-            ${ranking.length?ranking.map((x,i)=>`<button data-admin-store="${x.m.id}"><em>${i+1}</em><span class="admin-ranking-logo">${x.m.logoData?`<img src="${esc(x.m.logoData)}" alt="">`:esc((x.m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-ranking-copy"><b>${esc(x.m.name)}</b><small>${x.s.whatsapp30||0} WhatsApp · ${x.s.productViews30||0} produtos vistos</small></span><strong>${x.s.ratingAverage==null?'—':Number(x.s.ratingAverage).toFixed(1)+'★'}</strong></button>`).join(''):'<div class="admin-insight-empty">Ainda não há dados suficientes para o ranking.</div>'}
+            ${ranking.length?ranking.map((x,i)=>`<button data-admin-store="${x.m.id}"><em>${i+1}</em><span class="admin-ranking-logo">${x.m.logoData?`<img src="${esc(x.m.logoData)}" alt="">`:esc((x.m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-ranking-copy"><b>${esc(x.m.name)}</b><small>${x.s.sales30||0} vendas · ${x.s.whatsapp30||0} contatos · ${x.s.conversion30||0}% conversão</small></span><strong>${brlNumber(x.s.revenue30||0)}</strong></button>`).join(''):'<div class="admin-insight-empty">Ainda não há vendas confirmadas suficientes para o ranking.</div>'}
           </div>
         </section>
 
