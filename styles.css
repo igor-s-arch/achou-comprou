@@ -4648,3 +4648,57 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     min-height:430px!important;
   }
 }
+
+
+/* ===== V67 — ENCAIXE CORRETO DOS BANNERS NO PC ===== */
+@media(min-width:900px){
+  .home-marketplace .market-banner-carousel{
+    width:calc(100% - 64px)!important;
+    max-width:1320px!important;
+    margin:24px auto 0!important;
+    background:#070707!important;
+    border-radius:24px!important;
+  }
+
+  .home-marketplace .market-hero-banner,
+  .home-marketplace .market-art-banner,
+  .home-marketplace .market-video-banner{
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    aspect-ratio:1.9 / 1!important;
+    border-radius:24px!important;
+    background:#070707!important;
+    overflow:hidden!important;
+  }
+
+  .home-marketplace .market-art-banner-image{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:#070707!important;
+  }
+
+  .home-marketplace .market-home-banner-video{
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+    object-position:center!important;
+  }
+}
+
+@media(min-width:1500px){
+  .home-marketplace .market-banner-carousel{
+    max-width:1380px!important;
+  }
+  .home-marketplace .market-hero-banner,
+  .home-marketplace .market-art-banner,
+  .home-marketplace .market-video-banner,
+  .home-marketplace .market-art-banner-image{
+    min-height:0!important;
+  }
+}
