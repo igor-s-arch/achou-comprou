@@ -18,6 +18,24 @@
     const n = Number(value);
     return Number.isFinite(n) ? n.toFixed(2).replace('.',',') : '';
   };
+  const normalizeCep = value => {
+    const raw=String(value||'').trim();
+    const digits=raw.replace(/\D/g,'').slice(0,8);
+    return digits.length===8 ? `${digits.slice(0,5)}-${digits.slice(5)}` : raw;
+  };
+  const composeStoreAddress = ({street='',number='',neighborhood='',cep='',complement='',address=''}) => {
+    const clean=v=>String(v||'').trim();
+    const rua=clean(street), numero=clean(number), bairro=clean(neighborhood), complemento=clean(complement), cepFmt=normalizeCep(cep);
+    if(!rua && !numero && !bairro && !cepFmt && !complemento) return clean(address);
+    const parts=[];
+    if(rua) parts.push(numero ? `${rua}, ${numero}` : rua);
+    else if(numero) parts.push(numero);
+    if(bairro) parts.push(bairro);
+    if(complemento) parts.push(complemento);
+    if(cepFmt) parts.push(`CEP ${cepFmt}`);
+    parts.push('Grajaú - MA');
+    return parts.join(', ');
+  };
   const authRedirectUrl = () => {
     try {
       if (location.protocol !== 'http:' && location.protocol !== 'https:') return undefined;
@@ -69,7 +87,14 @@
     categories: Array.isArray(store.categorias) && store.categorias.length ? store.categorias : [store.categoria_texto || 'Outros'],
     whatsapp: store.whatsapp || '',
     instagram: store.instagram || '',
-    address: store.endereco || 'Grajaú - MA',
+    street: store.rua || '',
+    number: store.numero || '',
+    neighborhood: store.bairro || '',
+    cep: normalizeCep(store.cep || ''),
+    complement: store.complemento || '',
+    address: composeStoreAddress({
+      street:store.rua,number:store.numero,neighborhood:store.bairro,cep:store.cep,complement:store.complemento,address:store.endereco
+    }) || 'Grajaú - MA',
     hours: store.horario_funcionamento || '',
     weeklyHours: store.horarios_semanais && typeof store.horarios_semanais==='object' ? store.horarios_semanais : {},
     description: store.descricao || '',
@@ -230,6 +255,12 @@
         : Array.isArray(meta.loja_categorias) && meta.loja_categorias.length
           ? meta.loja_categorias
           : [fallback.category || meta.loja_categoria || 'Outros'];
+      const street=fallback.street || meta.loja_rua || '';
+      const number=fallback.number || meta.loja_numero || '';
+      const neighborhood=fallback.neighborhood || meta.loja_bairro || '';
+      const cep=normalizeCep(fallback.cep || meta.loja_cep || '');
+      const complement=fallback.complement || meta.loja_complemento || '';
+      const address=fallback.address || meta.loja_endereco || composeStoreAddress({street,number,neighborhood,cep,complement});
       return {
         owner: fallback.owner || meta.nome || meta.name || '',
         name: fallback.name || meta.loja_nome || '',
@@ -240,7 +271,7 @@
         category: categories[0] || 'Outros',
         whatsapp: fallback.whatsapp || meta.loja_whatsapp || '',
         instagram: fallback.instagram || meta.loja_instagram || '',
-        address: fallback.address || meta.loja_endereco || '',
+        street, number, neighborhood, cep, complement, address,
         hours: fallback.hours || meta.loja_horario || '',
         weeklyHours: fallback.weeklyHours || meta.loja_horarios_semanais || {},
         description: fallback.description || meta.loja_descricao || '',
@@ -281,15 +312,21 @@
         p_inscricao_estadual:draft.stateRegistration
       }).single();
       if(error)return {ok:false,message:errorMessage(error)};
-      if(draft.weeklyHours && typeof draft.weeklyHours==='object' && Object.keys(draft.weeklyHours).length){
-        const weekly=await client.from('lojas').update({horarios_semanais:draft.weeklyHours}).eq('id',data.id).select('*').single();
-        if(weekly.error)return {ok:false,message:errorMessage(weekly.error)};
-        return {ok:true,store:weekly.data};
-      }
-      return {ok:true,store:data};
+      const storePatch={
+        endereco:draft.address||null,
+        rua:draft.street||null,
+        numero:draft.number||null,
+        bairro:draft.neighborhood||null,
+        cep:draft.cep||null,
+        complemento:draft.complement||null
+      };
+      if(draft.weeklyHours && typeof draft.weeklyHours==='object' && Object.keys(draft.weeklyHours).length) storePatch.horarios_semanais=draft.weeklyHours;
+      const updated=await client.from('lojas').update(storePatch).eq('id',data.id).select('*').single();
+      if(updated.error)return {ok:false,message:errorMessage(updated.error)};
+      return {ok:true,store:updated.data};
     },
 
-    async convertClientToMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,hours,weeklyHours={},description,plan='gratis'}){
+    async convertClientToMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,street='',number='',neighborhood='',cep='',complement='',hours,weeklyHours={},description,plan='gratis'}){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const session=await api.getSession();
       const user=session?.user;
@@ -301,7 +338,8 @@
       if(cnpjDigits.length!==14)return {ok:false,message:'Informe um CNPJ válido com 14 números.'};
       if(!legalName)return {ok:false,message:'Informe a razão social.'};
       if(!stateRegistration)return {ok:false,message:'Informe a inscrição estadual ou ISENTO.'};
-      if(!address)return {ok:false,message:'Informe o endereço da loja.'};
+      const fullAddress=address || composeStoreAddress({street,number,neighborhood,cep,complement});
+      if(!fullAddress)return {ok:false,message:'Informe o endereço da loja.'};
 
       const [cidadeId,categoriaId]=await Promise.all([
         getGrajauCityId(),
@@ -315,7 +353,7 @@
         p_categorias:cleanCategories,
         p_whatsapp:whatsapp,
         p_instagram:instagram||'',
-        p_endereco:address,
+        p_endereco:fullAddress,
         p_horario:hours||'',
         p_horarios_semanais:weeklyHours||{},
         p_descricao:description||'',
@@ -326,7 +364,16 @@
         p_inscricao_estadual:stateRegistration
       }).single();
       if(error)return {ok:false,message:errorMessage(error)};
-      return {ok:true,user,store:data,profile:await api.getProfile(user.id)};
+      const structured=await client.from('lojas').update({
+        endereco:fullAddress,
+        rua:street||null,
+        numero:number||null,
+        bairro:neighborhood||null,
+        cep:normalizeCep(cep)||null,
+        complemento:complement||null
+      }).eq('id',data.id).select('*').single();
+      if(structured.error)return {ok:false,message:errorMessage(structured.error)};
+      return {ok:true,user,store:structured.data,profile:await api.getProfile(user.id)};
     },
 
     async signInClient(email,password){
@@ -354,7 +401,7 @@
       return {ok:true,user:data.user,profile,needsEmailConfirmation};
     },
 
-    async signUpMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,hours,weeklyHours={},description,email,password,plan='gratis'}){
+    async signUpMerchant({owner,name,legalName,cnpj,stateRegistration,categories=[],category,whatsapp,instagram,address,street='',number='',neighborhood='',cep='',complement='',hours,weeklyHours={},description,email,password,plan='gratis'}){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const cleanCategories=(Array.isArray(categories)?categories:[category]).filter(Boolean).slice(0,3);
       if(!cleanCategories.length)return {ok:false,message:'Selecione pelo menos uma categoria.'};
@@ -362,7 +409,8 @@
       if(cnpjDigits.length!==14)return {ok:false,message:'Informe um CNPJ válido com 14 números.'};
       if(!legalName)return {ok:false,message:'Informe a razão social.'};
       if(!stateRegistration)return {ok:false,message:'Informe a inscrição estadual ou ISENTO.'};
-      if(!address)return {ok:false,message:'Informe o endereço da loja.'};
+      const fullAddress=address || composeStoreAddress({street,number,neighborhood,cep,complement});
+      if(!fullAddress)return {ok:false,message:'Informe o endereço da loja.'};
       const normalizedPlan=normalizePlan(plan);
 
       // Se o e-mail já existir, tenta usar a mesma conta em vez de criar uma conta duplicada.
@@ -379,7 +427,7 @@
         }
         const converted=await api.convertClientToMerchant({
           owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,
-          whatsapp,instagram,address,hours,weeklyHours,description,plan:normalizedPlan
+          whatsapp,instagram,address:fullAddress,street,number,neighborhood,cep,complement,hours,weeklyHours,description,plan:normalizedPlan
         });
         if(!converted.ok)return converted;
         return {ok:true,user:converted.user,store:converted.store,profile:converted.profile,needsEmailConfirmation:false,convertedExisting:true};
@@ -396,7 +444,12 @@
         loja_categoria:cleanCategories[0]||'Outros',
         loja_whatsapp:whatsapp,
         loja_instagram:instagram||'',
-        loja_endereco:address||'',
+        loja_endereco:fullAddress||'',
+        loja_rua:street||'',
+        loja_numero:number||'',
+        loja_bairro:neighborhood||'',
+        loja_cep:normalizeCep(cep)||'',
+        loja_complemento:complement||'',
         loja_horario:hours||'',
         loja_horarios_semanais:weeklyHours||{},
         loja_descricao:description||'',
@@ -416,7 +469,7 @@
       const needsEmailConfirmation=!data.session;
       let store=null;
       if(data.user && data.session){
-        const created=await api.ensureMerchantStore(data.user,{owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,whatsapp,instagram,address,hours,weeklyHours,description,plan:normalizedPlan});
+        const created=await api.ensureMerchantStore(data.user,{owner,name,legalName,cnpj:cnpjDigits,stateRegistration,categories:cleanCategories,whatsapp,instagram,address:fullAddress,street,number,neighborhood,cep,complement,hours,weeklyHours,description,plan:normalizedPlan});
         if(!created.ok)return created;
         store=created.store;
       }
@@ -464,7 +517,7 @@
     async updateMerchantStore(storeId,patch){
       if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
       const allowed={};
-      const map={name:'nome',category:'categoria_texto',whatsapp:'whatsapp',instagram:'instagram',address:'endereco',hours:'horario_funcionamento',weeklyHours:'horarios_semanais',description:'descricao',logoUrl:'logo_url',coverUrl:'capa_url'};
+      const map={name:'nome',category:'categoria_texto',whatsapp:'whatsapp',instagram:'instagram',address:'endereco',street:'rua',number:'numero',neighborhood:'bairro',cep:'cep',complement:'complemento',hours:'horario_funcionamento',weeklyHours:'horarios_semanais',description:'descricao',logoUrl:'logo_url',coverUrl:'capa_url'};
       for(const [key,column] of Object.entries(map)) if(Object.prototype.hasOwnProperty.call(patch,key)) allowed[column]=patch[key]||null;
       const {data,error}=await client.from('lojas').update(allowed).eq('id',storeId).select('*').single();
       return error?{ok:false,message:errorMessage(error)}:{ok:true,store:data};
