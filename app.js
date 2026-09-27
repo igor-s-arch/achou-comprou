@@ -13,6 +13,24 @@ const state = {
 
 
 const DB_KEY = 'achou_comprou_mvp_v17';
+function formatStoreCep(value=''){
+  const raw=String(value||'').trim();
+  const digits=raw.replace(/\D/g,'').slice(0,8);
+  return digits.length===8 ? `${digits.slice(0,5)}-${digits.slice(5)}` : raw;
+}
+function storeAddressFromParts({street='',number='',neighborhood='',cep='',complement='',fallback=''}) {
+  const clean=v=>String(v||'').trim();
+  const rua=clean(street), numero=clean(number), bairro=clean(neighborhood), complemento=clean(complement), cepFmt=formatStoreCep(cep);
+  if(!rua && !numero && !bairro && !cepFmt && !complemento) return clean(fallback);
+  const parts=[];
+  if(rua) parts.push(numero ? `${rua}, ${numero}` : rua);
+  else if(numero) parts.push(numero);
+  if(bairro) parts.push(bairro);
+  if(complemento) parts.push(complemento);
+  if(cepFmt) parts.push(`CEP ${cepFmt}`);
+  parts.push('Grajaú - MA');
+  return parts.join(', ');
+}
 const DEFAULT_DB = {
   merchants: [
     { id: 'loja-maranhao', owner: 'Lojista Demo', name: 'Maranhão Calçados', category: 'Moda e Calçados', whatsapp: '(99) 99999-9999', instagram: '@maranhaoliveshop.gr', address: 'Grajaú - MA', hours: 'Seg a Sáb, 8h às 18h', description: 'Moda, calçados e acessórios.', email: 'lojista@exemplo.com', password: '123456', status: 'aprovada', plan: 'premium_banner', rating: '4,9', dist: '0,8 km' },
@@ -78,7 +96,10 @@ function upsertCloudMerchant(store,user){
     name:store.nome||'Minha loja', category:store.categoria_texto||'Outros',
     categories:Array.isArray(store.categorias)&&store.categorias.length?store.categorias:[store.categoria_texto||'Outros'],
     whatsapp:store.whatsapp||'',
-    instagram:store.instagram||'', address:store.endereco||'Grajaú - MA', hours:store.horario_funcionamento||'',
+    instagram:store.instagram||'',
+    street:store.rua||'', number:store.numero||'', neighborhood:store.bairro||'', cep:formatStoreCep(store.cep||''), complement:store.complemento||'',
+    address:storeAddressFromParts({street:store.rua,number:store.numero,neighborhood:store.bairro,cep:store.cep,complement:store.complemento,fallback:store.endereco})||'Grajaú - MA',
+    hours:store.horario_funcionamento||'',
     weeklyHours:store.horarios_semanais&&typeof store.horarios_semanais==='object'?store.horarios_semanais:(existing?.weeklyHours||{}),
     description:store.descricao||'', email:user.email||'', password:'', status:store.status||'aguardando',
     storedPlan:store.plano_id||'gratis',
@@ -1404,7 +1425,17 @@ function merchantRegister() {
         <label>CNPJ<input id="regCnpj" required inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"></label>
         <label class="notranslate" translate="no">Inscrição Estadual<input id="regStateRegistration" required placeholder="Número ou ISENTO"></label>
       </div>
-      <label>Endereço completo<input id="regAddress" required placeholder="Rua, número, bairro, cidade - UF"></label>
+      <div class="merchant-form-section"><div><span>LOCALIZAÇÃO</span><h3>Endereço da loja</h3><p>Preencha cada campo para deixar a localização mais exata no aplicativo e no mapa.</p></div></div>
+      <label>Rua<input id="regStreet" required autocomplete="street-address" placeholder="Ex.: Rua São Paulo do Norte"></label>
+      <div class="two-cols">
+        <label>Número<input id="regNumber" required inputmode="numeric" placeholder="Ex.: 40"></label>
+        <label>Bairro<input id="regNeighborhood" required placeholder="Ex.: Centro"></label>
+      </div>
+      <div class="two-cols">
+        <label>CEP<input id="regCep" required inputmode="numeric" maxlength="9" placeholder="65940-000"></label>
+        <label>Complemento <small>(opcional)</small><input id="regComplement" placeholder="Ex.: Próximo à praça"></label>
+      </div>
+      <div class="field-help">Cidade: Grajaú - MA. O endereço completo será montado automaticamente.</div>
 
       <div class="merchant-form-section"><div><span>CATEGORIAS</span><h3>O que sua loja vende?</h3><p>Escolha de 1 a 3 categorias.</p></div><strong id="categoryCounter">0/3</strong></div>
       <div class="merchant-category-picker" id="merchantCategoryPicker">
@@ -1448,6 +1479,11 @@ function merchantRegister() {
     const d=cnpjInput.value.replace(/\D/g,'').slice(0,14);
     cnpjInput.value=d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');
   });
+  const cepInput=document.getElementById('regCep');
+  cepInput.addEventListener('input',()=>{
+    const d=cepInput.value.replace(/\D/g,'').slice(0,8);
+    cepInput.value=d.length>5?`${d.slice(0,5)}-${d.slice(5)}`:d;
+  });
 
   document.getElementById('merchantRegisterForm').onsubmit = e => {
     e.preventDefault();
@@ -1457,6 +1493,12 @@ function merchantRegister() {
     const schedule=collectWeeklyHours('regHours');
     const msg=document.getElementById('regMsg');
     if(!schedule.ok){msg.innerHTML=`<div class="notice error">${esc(schedule.message)}</div>`;return;}
+    const street=document.getElementById('regStreet').value.trim();
+    const number=document.getElementById('regNumber').value.trim();
+    const neighborhood=document.getElementById('regNeighborhood').value.trim();
+    const cep=formatStoreCep(document.getElementById('regCep').value.trim());
+    const complement=document.getElementById('regComplement').value.trim();
+    const address=storeAddressFromParts({street,number,neighborhood,cep,complement});
     const draft={
       owner:document.getElementById('regOwner').value.trim(),
       name:document.getElementById('regName').value.trim(),
@@ -1467,7 +1509,7 @@ function merchantRegister() {
       category:categories[0]||'',
       whatsapp:document.getElementById('regWhatsapp').value.trim(),
       instagram:document.getElementById('regInstagram').value.trim(),
-      address:document.getElementById('regAddress').value.trim(),
+      street, number, neighborhood, cep, complement, address,
       hours:schedule.summary,
       weeklyHours:schedule.data,
       description:document.getElementById('regDescription').value.trim(),
@@ -1485,6 +1527,15 @@ function merchantRegister() {
     }
     if(!draft.stateRegistration){
       msg.innerHTML='<div class="notice error">Informe a inscrição estadual ou digite ISENTO.</div>';
+      return;
+    }
+    if(cep.replace(/\D/g,'').length!==8){
+      msg.innerHTML='<div class="notice error">Informe um CEP válido com 8 números.</div>';
+      cepInput.focus();
+      return;
+    }
+    if(!street || !number || !neighborhood){
+      msg.innerHTML='<div class="notice error">Preencha Rua, Número e Bairro para deixar a localização completa.</div>';
       return;
     }
     if(!window.ACCloud?.enabled && db.merchants.some(m => m.email.toLowerCase() === draft.email)) {
@@ -1847,7 +1898,11 @@ function merchantStore() {
         <label>Nome da loja<input id="storeName" required value="${esc(m.name)}"></label>
         <label>Categoria principal<select id="storeCategory"><option ${m.category==='Moda'?'selected':''}>Moda</option><option ${m.category==='Moda e Calçados'?'selected':''}>Moda e Calçados</option><option ${m.category==='Calçados'?'selected':''}>Calçados</option><option ${m.category==='Alimentação'?'selected':''}>Alimentação</option><option ${m.category==='Beleza'?'selected':''}>Beleza</option><option ${m.category==='Saúde'?'selected':''}>Saúde</option><option ${m.category==='Tecnologia'?'selected':''}>Tecnologia</option><option ${m.category==='Casa'?'selected':''}>Casa</option><option ${m.category==='Automotivo'?'selected':''}>Automotivo</option><option ${m.category==='Serviços'?'selected':''}>Serviços</option><option ${m.category==='Outros'?'selected':''}>Outros</option></select></label>
         <div class="two-cols"><label>WhatsApp<input id="storeWhatsapp" value="${esc(m.whatsapp||'')}" placeholder="(99) 99999-9999"></label><label>Instagram<input id="storeInstagram" value="${esc(m.instagram||'')}" placeholder="@sualoja"></label></div>
-        <label>Endereço<input id="storeAddress" value="${esc(m.address||'')}" placeholder="Rua, número, bairro"></label>
+        <div class="merchant-form-section"><div><span>LOCALIZAÇÃO</span><h3>Endereço da loja</h3><p>Esses dados deixam sua loja mais fácil de encontrar no mapa.</p></div></div>
+        <label>Rua<input id="storeStreet" required value="${esc(m.street||'')}" placeholder="Ex.: Rua São Paulo do Norte"></label>
+        <div class="two-cols"><label>Número<input id="storeNumber" required inputmode="numeric" value="${esc(m.number||'')}" placeholder="Ex.: 40"></label><label>Bairro<input id="storeNeighborhood" required value="${esc(m.neighborhood||'')}" placeholder="Ex.: Centro"></label></div>
+        <div class="two-cols"><label>CEP<input id="storeCep" required inputmode="numeric" maxlength="9" value="${esc(formatStoreCep(m.cep||''))}" placeholder="65940-000"></label><label>Complemento <small>(opcional)</small><input id="storeComplement" value="${esc(m.complement||'')}" placeholder="Ex.: Próximo à praça"></label></div>
+        <div class="field-help">Cidade: Grajaú - MA. O endereço público e o mapa serão atualizados automaticamente.</div>
         <div class="merchant-form-section schedule-heading"><div><span>HORÁRIOS</span><h3>Horário de funcionamento</h3><p>Você pode alterar cada dia separadamente.</p></div></div>
         ${weeklyHoursMarkup('storeHours',m.weeklyHours&&Object.keys(m.weeklyHours).length?m.weeklyHours:defaultWeeklyHours())}
         <label>Descrição<textarea id="storeDescription" placeholder="Conte um pouco sobre a loja">${esc(m.description||'')}</textarea></label>
@@ -1861,19 +1916,31 @@ function merchantStore() {
   const storeLogoPicker = bindImagePicker('storeLogoFile','storeLogoPreview',{initial:m.logoData||'',maxW:520,maxH:520,quality:.82,emptyTitle:'Adicionar logo',emptyText:'Formato quadrado'});
   const storeCoverPicker = bindImagePicker('storeCoverFile','storeCoverPreview',{initial:m.coverData||'',maxW:1200,maxH:650,quality:.76,emptyTitle:'Adicionar capa',emptyText:'Imagem horizontal'});
   bindWeeklyHoursEditor('storeHours');
+  const storeCepInput=document.getElementById('storeCep');
+  storeCepInput.addEventListener('input',()=>{
+    const d=storeCepInput.value.replace(/\D/g,'').slice(0,8);
+    storeCepInput.value=d.length>5?`${d.slice(0,5)}-${d.slice(5)}`:d;
+  });
   document.getElementById('merchantStoreForm').onsubmit=async e=>{
     e.preventDefault();
     const msg=document.getElementById('storeSaveMsg');
     const submit=e.currentTarget.querySelector('button[type="submit"]');
     const schedule=collectWeeklyHours('storeHours');
     if(!schedule.ok){msg.innerHTML=`<div class="notice error">${esc(schedule.message)}</div>`;return;}
+    const street=document.getElementById('storeStreet').value.trim();
+    const number=document.getElementById('storeNumber').value.trim();
+    const neighborhood=document.getElementById('storeNeighborhood').value.trim();
+    const cep=formatStoreCep(document.getElementById('storeCep').value.trim());
+    const complement=document.getElementById('storeComplement').value.trim();
+    if(cep.replace(/\D/g,'').length!==8){msg.innerHTML='<div class="notice error">Informe um CEP válido com 8 números.</div>';storeCepInput.focus();return;}
+    const address=storeAddressFromParts({street,number,neighborhood,cep,complement});
     const patch={
       logoData:storeLogoPicker.get(), coverData:storeCoverPicker.get(),
       name:document.getElementById('storeName').value.trim(),
       category:document.getElementById('storeCategory').value,
       whatsapp:document.getElementById('storeWhatsapp').value.trim(),
       instagram:document.getElementById('storeInstagram').value.trim(),
-      address:document.getElementById('storeAddress').value.trim(),
+      street, number, neighborhood, cep, complement, address,
       hours:schedule.summary,
       weeklyHours:schedule.data,
       description:document.getElementById('storeDescription').value.trim()
