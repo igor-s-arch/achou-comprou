@@ -540,6 +540,79 @@ function whatsappUrl(store, product) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 
+function cartState(){
+  if(!db.cart || typeof db.cart!=='object')db.cart={storeId:null,items:[],note:''};
+  if(!Array.isArray(db.cart.items))db.cart.items=[];
+  db.cart.note=String(db.cart.note||'');
+  if(!db.cart.items.length)db.cart.storeId=null;
+  return db.cart;
+}
+function cartDetailed(){
+  const cart=cartState();
+  return cart.items.map(item=>{
+    const product=db.products.find(p=>p.id===item.productId);
+    if(!product)return null;
+    return {product,qty:Math.max(1,Math.min(99,Number(item.qty)||1)),store:storeById(product.storeId)};
+  }).filter(Boolean);
+}
+function cartCount(){return cartDetailed().reduce((sum,item)=>sum+item.qty,0);}
+function cartTotal(){return cartDetailed().reduce((sum,item)=>sum+(priceNumber(currentPrice(item.product))*item.qty),0);}
+function cartBadge(){
+  const count=cartCount();
+  return count?`<span class="cart-count-badge">${count>99?'99+':count}</span>`:'';
+}
+function addToCart(productId,qty=1){
+  const product=db.products.find(p=>p.id===productId);
+  const store=product?storeById(product.storeId):null;
+  if(!product||!store)return {ok:false,message:'Produto ou loja não disponível.'};
+  const cart=cartState();
+  if(cart.storeId && cart.storeId!==product.storeId && cart.items.length){
+    const currentStore=storeById(cart.storeId);
+    return {ok:false,conflict:true,message:`Sua lista já tem produtos da ${currentStore?.name||'outra loja'}. Para adicionar produtos da ${store.name}, limpe a lista atual primeiro.`};
+  }
+  cart.storeId=product.storeId;
+  const existing=cart.items.find(item=>item.productId===productId);
+  if(existing)existing.qty=Math.min(99,(Number(existing.qty)||1)+Math.max(1,Number(qty)||1));
+  else cart.items.push({productId,qty:Math.max(1,Math.min(99,Number(qty)||1))});
+  saveDb();
+  return {ok:true,message:`${product.name} adicionado à sua lista da ${store.name}.`};
+}
+function updateCartItem(productId,qty){
+  const cart=cartState();
+  const item=cart.items.find(x=>x.productId===productId);
+  if(!item)return;
+  const next=Number(qty)||0;
+  if(next<=0)cart.items=cart.items.filter(x=>x.productId!==productId);
+  else item.qty=Math.max(1,Math.min(99,next));
+  if(!cart.items.length){cart.storeId=null;cart.note='';}
+  saveDb();
+}
+function clearCart(){db.cart={storeId:null,items:[],note:''};saveDb();}
+function cartWhatsappUrl(store,items,note=''){
+  const digits=String(store?.whatsapp||'').replace(/\D/g,'');
+  if(!digits||!items.length)return '';
+  const phone=digits.startsWith('55')?digits:`55${digits}`;
+  const lines=items.map((item,index)=>{
+    const unit=priceNumber(currentPrice(item.product));
+    const subtotal=unit*item.qty;
+    return `${index+1}. *${item.qty}x ${item.product.name}* — ${brlNumber(unit)} cada · ${brlNumber(subtotal)}`;
+  });
+  const total=items.reduce((sum,item)=>sum+priceNumber(currentPrice(item.product))*item.qty,0);
+  const extra=String(note||'').trim();
+  const message=[
+    'Olá! 👋 Vim pelo *Achou, Comprou* e montei uma lista de compras na sua loja:',
+    '',
+    '*MINHA LISTA*',
+    ...lines,
+    '',
+    `*Total estimado: ${brlNumber(total)}*`,
+    extra?`*Observação:* ${extra}`:'',
+    '',
+    'Gostaria de confirmar a disponibilidade desses itens e finalizar o pedido.'
+  ].filter(Boolean).join('\n');
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
 const data = {
   offers: [
     { type: 'shoe', name: 'Tênis Infantil', price: 'R$ 79,90', old: 'R$ 99,90', discount: '-20%', store: 'Maranhão Calçados', dist: '0,8 km' },
@@ -586,7 +659,11 @@ const icons = {
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',
   instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/>',
   navigation: '<path d="m21 3-8.5 18-2.2-7.3L3 11.5 21 3Z"/>',
-  whatsapp: '<path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.6A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="M8.4 7.8c.4 3.4 2.4 5.7 5.8 7l1.5-1.8-2.2-1-1 1c-1.3-.6-2.4-1.7-3-3l1-1-1-2.2-1.1 1Z"/>'
+  whatsapp: '<path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.6A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="M8.4 7.8c.4 3.4 2.4 5.7 5.8 7l1.5-1.8-2.2-1-1 1c-1.3-.6-2.4-1.7-3-3l1-1-1-2.2-1.1 1Z"/>',
+  cart: '<path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/>',
+  book: '<path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/>',
+  minus: '<path d="M5 12h14"/>'
 };
 
 function icon(name, cls = 'ui-icon') {
@@ -599,7 +676,8 @@ function productVisual(type, compact = false) {
     appliance: `<svg viewBox="0 0 120 120" aria-hidden="true"><rect x="26" y="14" width="68" height="92" rx="20" fill="#151515"/><circle cx="60" cy="40" r="9" fill="#f4c400"/><rect x="38" y="58" width="44" height="34" rx="10" fill="#2b2b2b"/><path d="M48 69h24" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`,
     pizza: `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="44" fill="#f0b44c"/><circle cx="60" cy="60" r="35" fill="#d93d2d"/><circle cx="45" cy="42" r="6" fill="#77271f"/><circle cx="73" cy="46" r="6" fill="#77271f"/><circle cx="78" cy="73" r="6" fill="#77271f"/><circle cx="46" cy="76" r="6" fill="#77271f"/><path d="M60 25v70M25 60h70M35 35l50 50M85 35 35 85" stroke="#f6d26a" stroke-width="3"/></svg>`,
     shirt: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M42 24 22 34l9 22 11-5v48h36V51l11 5 9-22-20-10c-5 8-11 12-18 12S47 32 42 24Z" fill="#202020"/><path d="M48 29c3 6 7 9 12 9s9-3 12-9" fill="none" stroke="#f4c400" stroke-width="4"/></svg>`,
-    bag: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M28 42h64l-5 57H33l-5-57Z" fill="#202020"/><path d="M45 43V35a15 15 0 0 1 30 0v8" fill="none" stroke="#f4c400" stroke-width="5"/></svg>`
+    bag: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M28 42h64l-5 57H33l-5-57Z" fill="#202020"/><path d="M45 43V35a15 15 0 0 1 30 0v8" fill="none" stroke="#f4c400" stroke-width="5"/></svg>`,
+    book: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 25c18-7 31-4 42 6v67c-12-9-26-12-42-6V25Z" fill="#ffd000"/><path d="M102 25c-18-7-31-4-42 6v67c12-9 26-12 42-6V25Z" fill="#f2b900"/><path d="M60 31v67" stroke="#171717" stroke-width="4"/><path d="M29 41h20M29 53h20M71 41h20M71 53h20" stroke="#171717" stroke-width="4" stroke-linecap="round"/></svg>`
   };
   return `<div class="product-art ${compact ? 'compact' : ''}">${map[type] || map.bag}</div>`;
 }
