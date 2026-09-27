@@ -842,6 +842,7 @@ function home() {
         <div class="home-head-actions">
           <button class="location-button">${icon('pin')}<span>Grajaú - MA</span><span class="chevron">⌄</span></button>
           <button class="round-action" data-go="notifications" aria-label="Notificações">${icon('bell')}${unreadNotifications ? '<span class="notification-dot" aria-hidden="true"></span>' : ''}</button>
+          <button class="round-action home-cart-action" data-go="shoppingList" aria-label="Minha lista">${icon('cart')}${cartBadge()}</button>
           <button class="round-action home-profile-action ${client?.avatar ? 'has-photo' : ''}" data-go="profile" aria-label="Meu perfil">${client?.avatar ? `<img src="${esc(client.avatar)}" alt="Foto de perfil">` : icon('user')}</button>
         </div>
       </div>
@@ -959,7 +960,10 @@ function home() {
               ${availableOptions.length ? `<div class="market-card-options market-card-options-v2"><div>${availableOptions.map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>` : ''}
               <div class="market-offer-footer">
                 <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')}</small></div>
-                <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('whatsapp')}</button>
+                <div class="market-card-actions">
+                  <button class="market-cart-add" type="button" data-home-cart="${p.id}" aria-label="Adicionar à Minha Lista">${icon('cart')}</button>
+                  <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('whatsapp')}</button>
+                </div>
                 <span class="market-go">${icon('arrowRight')}</span>
               </div>
             </div>
@@ -975,6 +979,15 @@ function home() {
 
   document.getElementById('searchBtn').onclick = () => search(document.getElementById('q').value);
   document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(e.target.value); });
+
+  document.querySelectorAll('[data-home-cart]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const result=addToCart(btn.dataset.homeCart,1);
+    if(!result.ok){alert(result.message);return;}
+    btn.classList.add('added');
+    btn.innerHTML=icon('check');
+    setTimeout(()=>home(),380);
+  });
 
   document.querySelectorAll('[data-home-wa]').forEach(btn=>btn.onclick=e=>{
     e.stopPropagation();
