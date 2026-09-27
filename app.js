@@ -2475,6 +2475,7 @@ async function admin() {
   if(paymentReview)alerts.push({icon:'card',tone:'money',title:`${paymentReview} ${paymentReview===1?'pagamento aguardando':'pagamentos aguardando'} conferência`,text:'Há comprovante PIX esperando sua análise.',go:'adminPlans'});
   if(expiringSoon)alerts.push({icon:'clock',tone:'danger',title:`${expiringSoon} ${expiringSoon===1?'plano vence':'planos vencem'} em até 7 dias`,text:'Antecipe o contato de renovação com os lojistas.',go:'adminPlans'});
   if(!alerts.length)alerts.push({icon:'check',tone:'ok',title:'Tudo em dia',text:'Nenhuma pendência importante para resolver agora.',go:''});
+  const notificationCount=pending+paymentReview+expiringSoon;
 
   const ranking=db.merchants
     .filter(m=>m.status==='aprovada')
@@ -2515,6 +2516,21 @@ async function admin() {
           <img class="admin-brand-logo" src="${esc(logoSrc)}" alt="Achou, Comprou">
           <div class="admin-hero-tools">
             <span class="admin-device-chip">${icon('phone')} <b data-admin-device-label>${adminDeviceLabel()}</b></span>
+            <div class="admin-notification-wrap">
+              <button class="admin-notification-btn ${notificationCount?'has-alerts':''}" id="adminNotificationToggle" type="button" aria-label="Abrir notificações" aria-expanded="false">
+                ${icon('bell')}
+                ${notificationCount?`<b class="admin-notification-badge">${notificationCount>99?'99+':notificationCount}</b>`:''}
+              </button>
+              <div class="admin-notification-panel" id="adminNotificationPanel" hidden>
+                <div class="admin-notification-head">
+                  <div><span>CENTRAL DO ADM</span><strong>Notificações</strong></div>
+                  ${notificationCount?`<b>${notificationCount} pendência${notificationCount===1?'':'s'}</b>`:'<b class="ok">Tudo em dia</b>'}
+                </div>
+                <div class="admin-notification-list">
+                  ${alerts.map(a=>`<button class="admin-notification-item ${a.tone}" ${a.go?`data-go="${a.go}"`:''}><span>${icon(a.icon)}</span><div><b>${esc(a.title)}</b><small>${esc(a.text)}</small></div>${a.go?icon('arrowRight','admin-notification-arrow'):''}</button>`).join('')}
+                </div>
+              </div>
+            </div>
             <button class="admin-settings-btn" data-go="adminSettings" aria-label="Configurações do painel">${icon('settings')}</button>
           </div>
         </div>
@@ -2611,6 +2627,17 @@ async function admin() {
   </main>`;
 
   bind();
+  const notificationToggle=document.getElementById('adminNotificationToggle');
+  const notificationPanel=document.getElementById('adminNotificationPanel');
+  if(notificationToggle&&notificationPanel){
+    notificationToggle.onclick=e=>{
+      e.stopPropagation();
+      const open=notificationPanel.hidden;
+      notificationPanel.hidden=!open;
+      notificationToggle.setAttribute('aria-expanded',String(open));
+    };
+    notificationPanel.onclick=e=>e.stopPropagation();
+  }
   document.getElementById('adminLogout').onclick = async () => {
     if(window.ACCloud?.enabled) await window.ACCloud.signOut();
     db.session.admin = false;
