@@ -5080,3 +5080,325 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   .store-card-cart{font-size:9px;min-height:38px}
   .product-action-bar{grid-template-columns:170px 240px minmax(300px,420px)!important}
 }
+
+
+/* ===== V69 — RELATÓRIOS ADM VISÍVEIS E IMPRIMÍVEIS ===== */
+.admin-report-print-heading{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+  padding:16px 18px;
+  border-radius:16px;
+  background:#111214;
+  color:#fff;
+}
+.admin-report-print-heading span{
+  display:block;
+  color:var(--yellow);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.13em;
+}
+.admin-report-print-heading h1{
+  margin:4px 0 2px;
+  font-size:20px;
+  letter-spacing:-.03em;
+}
+.admin-report-print-heading p{
+  margin:0;
+  color:#a3a6ab;
+  font-size:8px;
+}
+.admin-report-print-heading>div:last-child{
+  text-align:right;
+}
+.admin-report-print-heading>div:last-child small{
+  display:block;
+  color:#a3a6ab;
+  font-size:7px;
+}
+.admin-report-print-heading>div:last-child b{
+  display:block;
+  margin-top:3px;
+  font-size:9px;
+}
+
+.admin-report-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  margin-bottom:12px;
+  padding:12px 14px;
+  border:1px solid #e0e2e5;
+  border-radius:14px;
+  background:#fff;
+}
+.admin-report-toolbar b{
+  display:block;
+  font-size:10px;
+}
+.admin-report-toolbar small{
+  display:block;
+  margin-top:3px;
+  color:#8e9297;
+  font-size:7px;
+}
+.admin-report-toolbar button{
+  flex:none;
+  min-height:40px;
+  padding:0 14px;
+  border:0;
+  border-radius:10px;
+  background:#111214;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:8px;
+  font-weight:900;
+}
+.admin-report-toolbar button .ui-icon{width:16px;height:16px}
+
+.admin-report-finance{
+  margin:0 0 16px;
+}
+.admin-report-finance-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+}
+.admin-report-finance-grid article{
+  min-height:104px;
+  padding:13px;
+  border:1px solid #e0e2e5;
+  border-radius:14px;
+  background:#fff;
+}
+.admin-report-finance-grid small{
+  display:block;
+  color:#8f9298;
+  font-size:6.7px;
+}
+.admin-report-finance-grid strong{
+  display:block;
+  margin-top:8px;
+  color:#111;
+  font-size:18px;
+  letter-spacing:-.025em;
+}
+.admin-report-finance-grid span{
+  display:block;
+  margin-top:4px;
+  color:#7e8288;
+  font-size:7px;
+  line-height:1.3;
+}
+
+.admin-report-table-section{
+  margin-top:18px;
+}
+.admin-report-table-wrap{
+  overflow:auto;
+  border:1px solid #e1e3e6;
+  border-radius:14px;
+  background:#fff;
+}
+.admin-report-table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:900px;
+}
+.admin-report-table th{
+  background:#111214;
+  color:#fff;
+  text-align:left;
+  padding:10px 11px;
+  font-size:7px;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+.admin-report-table td{
+  padding:10px 11px;
+  border-top:1px solid #eceef0;
+  color:#33363b;
+  font-size:8px;
+  white-space:nowrap;
+}
+.admin-report-table td:first-child{white-space:normal;min-width:150px}
+.admin-report-table td b{
+  display:block;
+  color:#111;
+  font-size:8.5px;
+}
+.admin-report-table td small{
+  display:block;
+  margin-top:2px;
+  color:#95989d;
+  font-size:6.5px;
+}
+.admin-report-table tbody tr:nth-child(even){background:#fafbfb}
+
+@media(max-width:720px){
+  .admin-report-print-heading{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .admin-report-print-heading>div:last-child{text-align:left}
+  .admin-report-toolbar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .admin-report-toolbar button{width:100%}
+  .admin-report-finance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media print{
+  @page{
+    size:A4 landscape;
+    margin:10mm;
+  }
+  html,body{
+    background:#fff!important;
+    color:#111!important;
+    width:100%!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+  body *{
+    visibility:hidden!important;
+  }
+  .admin-reports-page .admin-print-report,
+  .admin-reports-page .admin-print-report *{
+    visibility:visible!important;
+  }
+  .admin-reports-page{
+    position:static!important;
+    width:100%!important;
+    max-width:none!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    background:#fff!important;
+    box-shadow:none!important;
+    overflow:visible!important;
+  }
+  .admin-reports-page .admin-print-report{
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    width:100%!important;
+    max-width:none!important;
+    padding:0!important;
+    margin:0!important;
+    background:#fff!important;
+    color:#111!important;
+  }
+  .admin-reports-page .no-print,
+  .admin-reports-page .admin-report-cards-heading,
+  .admin-reports-page .admin-report-card-list,
+  .admin-reports-page .admin-bottom-nav,
+  .admin-reports-page .admin-sub-head{
+    display:none!important;
+  }
+  .admin-report-print-heading{
+    margin:0 0 6mm!important;
+    padding:0 0 4mm!important;
+    border-radius:0!important;
+    border-bottom:2px solid #111!important;
+    background:#fff!important;
+    color:#111!important;
+    break-inside:avoid;
+  }
+  .admin-report-print-heading span,
+  .admin-report-print-heading p,
+  .admin-report-print-heading>div:last-child small{
+    color:#555!important;
+  }
+  .admin-report-print-heading h1{font-size:20pt!important}
+  .admin-summary-strip,
+  .admin-report-finance-grid,
+  .admin-report-proof-note,
+  .admin-panel-card{
+    break-inside:avoid;
+  }
+  .admin-summary-strip{
+    border:1px solid #bbb!important;
+    border-radius:0!important;
+    margin-bottom:4mm!important;
+  }
+  .admin-summary-strip small,
+  .admin-summary-strip strong{
+    color:#111!important;
+  }
+  .admin-report-proof-note{
+    margin:0 0 5mm!important;
+    border:1px solid #bbb!important;
+    border-radius:0!important;
+    background:#fff!important;
+    color:#111!important;
+  }
+  .admin-report-proof-note span{color:#444!important}
+  .admin-report-finance{margin-bottom:5mm!important}
+  .admin-report-finance-grid{
+    grid-template-columns:repeat(4,1fr)!important;
+    gap:2mm!important;
+  }
+  .admin-report-finance-grid article{
+    min-height:0!important;
+    padding:3mm!important;
+    border:1px solid #bbb!important;
+    border-radius:0!important;
+  }
+  .admin-report-finance-grid small,
+  .admin-report-finance-grid strong,
+  .admin-report-finance-grid span{
+    color:#111!important;
+  }
+  .admin-report-table-section{
+    margin-top:5mm!important;
+    break-before:auto;
+  }
+  .admin-report-table-wrap{
+    overflow:visible!important;
+    border:0!important;
+    border-radius:0!important;
+  }
+  .admin-report-table{
+    min-width:0!important;
+    width:100%!important;
+    table-layout:fixed;
+    border-collapse:collapse!important;
+  }
+  .admin-report-table th{
+    padding:2.2mm!important;
+    background:#e7e7e7!important;
+    color:#111!important;
+    border:1px solid #999!important;
+    font-size:7pt!important;
+    white-space:normal!important;
+  }
+  .admin-report-table td{
+    padding:2.2mm!important;
+    border:1px solid #bbb!important;
+    color:#111!important;
+    font-size:7pt!important;
+    white-space:normal!important;
+  }
+  .admin-report-table td b{font-size:7.5pt!important}
+  .admin-report-table td small{color:#444!important;font-size:6.5pt!important}
+  .admin-panel-card{
+    margin-top:5mm!important;
+    border:1px solid #bbb!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    background:#fff!important;
+  }
+  .admin-panel-card *{color:#111!important}
+  .admin-section-head{margin:4mm 0 2mm!important}
+  .admin-section-head span{color:#555!important}
+  .admin-section-head h2{color:#111!important}
+}
