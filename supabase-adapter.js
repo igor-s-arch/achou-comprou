@@ -6,6 +6,14 @@
   }) : null;
   const errorMessage = err => err?.message || 'Não foi possível concluir esta operação.';
   const normalizePlan = plan => ['gratis','premium','premium_banner'].includes(plan) ? plan : 'gratis';
+  const ADMIN_PUSH_VAPID_PUBLIC_KEY='BPOGGmBIWeXv_iO240pzxU7T0BQ41Levqjq9x6zB5LAfhqbQaADR4dw0SEqrUsPRnQkFjM6SXOFF_zNBGh4F5Rw';
+  const urlBase64ToUint8Array = value => {
+    const padding='='.repeat((4-value.length%4)%4);
+    const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
+    const raw=atob(base64);
+    return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+  };
+  const pushSupported = () => typeof window!=='undefined' && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
   const numberFromBR = value => {
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -585,7 +593,82 @@
       if(uploadError)return {ok:false,message:errorMessage(uploadError)};
       const {data,error}=await client.rpc('enviar_comprovante_pagamento',{p_pagamento_id:paymentId,p_comprovante_path:path}).single();
       if(error)return {ok:false,message:errorMessage(error)};
+      try{
+        await client.functions.invoke('notify-admin-plan-payment',{body:{paymentId}});
+      }catch(_){}
       return {ok:true,payment:localPayment(data)};
+    },
+
+    async adminPushStatus(){
+      if(!client)return {ok:false,supported:false,message:'Backend não configurado.'};
+      if(!pushSupported())return {ok:true,supported:false,permission:'unsupported',subscribed:false};
+      try{
+        const registration=await navigator.serviceWorker.ready;
+        const subscription=await registration.pushManager.getSubscription();
+        return {ok:true,supported:true,permission:Notification.permission,subscribed:!!subscription};
+      }catch(error){
+        return {ok:false,supported:true,permission:Notification.permission,subscribed:false,message:errorMessage(error)};
+      }
+    },
+
+    async enableAdminPush(){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      if(!pushSupported())return {ok:false,unsupported:true,message:'Este aparelho não oferece suporte a notificações Push.'};
+      const isAdmin=await api.isCurrentUserAdmin();
+      if(!isAdmin)return {ok:false,message:'Somente o administrador pode ativar estes alertas.'};
+      const session=await api.getSession();
+      const userId=session?.user?.id;
+      if(!userId)return {ok:false,message:'Entre novamente na administração.'};
+
+      let permission=Notification.permission;
+      if(permission==='default')permission=await Notification.requestPermission();
+      if(permission!=='granted'){
+        return {ok:false,denied:true,message:'As notificações estão bloqueadas neste navegador.'};
+      }
+
+      try{
+        const registration=await navigator.serviceWorker.ready;
+        let subscription=await registration.pushManager.getSubscription();
+        if(!subscription){
+          subscription=await registration.pushManager.subscribe({
+            userVisibleOnly:true,
+            applicationServerKey:urlBase64ToUint8Array(ADMIN_PUSH_VAPID_PUBLIC_KEY)
+          });
+        }
+        const serialized=subscription.toJSON();
+        const endpoint=String(serialized.endpoint||subscription.endpoint||'');
+        const keys=serialized.keys||{};
+        if(!endpoint || !keys.p256dh || !keys.auth)return {ok:false,message:'Não foi possível registrar este aparelho.'};
+
+        const {error}=await client.from('admin_push_subscriptions').upsert({
+          user_id:userId,
+          endpoint,
+          p256dh:keys.p256dh,
+          auth_key:keys.auth,
+          user_agent:navigator.userAgent||null,
+          updated_at:new Date().toISOString()
+        },{onConflict:'endpoint'});
+        if(error)return {ok:false,message:errorMessage(error)};
+        return {ok:true,subscribed:true,message:'Alertas ativados neste aparelho.'};
+      }catch(error){
+        return {ok:false,message:errorMessage(error)};
+      }
+    },
+
+    async disableAdminPush(){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      if(!pushSupported())return {ok:true,subscribed:false};
+      try{
+        const registration=await navigator.serviceWorker.ready;
+        const subscription=await registration.pushManager.getSubscription();
+        if(subscription){
+          await client.from('admin_push_subscriptions').delete().eq('endpoint',subscription.endpoint);
+          await subscription.unsubscribe();
+        }
+        return {ok:true,subscribed:false,message:'Alertas desativados neste aparelho.'};
+      }catch(error){
+        return {ok:false,message:errorMessage(error)};
+      }
     },
 
     async loadAdminPayments(){
