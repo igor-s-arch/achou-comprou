@@ -823,7 +823,7 @@ function home() {
   const shops = approvedStores().filter(m=>m.plan!=='gratis');
   const client = currentClient();
   const unreadNotifications = (db.notifications || []).filter(n => !n.read).length;
-  const quickSearches = ['Churrasco','Tênis','Celular','Pizzaria','Farmácia'];
+  const quickSearches = ['Material escolar','Churrasco','Tênis','Celular','Pizzaria','Farmácia'];
   const cats = [
     ['shirt','Moda','moda'],
     ['bag','Calçados','calcado'],
@@ -831,6 +831,7 @@ function home() {
     ['beauty','Beleza','beleza'],
     ['health','Saúde','saude'],
     ['home','Casa','casa'],
+    ['book','Material escolar','material escolar'],
     ['grid','Mais','']
   ];
 
