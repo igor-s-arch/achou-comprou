@@ -489,6 +489,28 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 .admin-settings-btn{width:42px;height:42px;border-radius:13px;border:1px solid rgba(255,208,0,.32);background:rgba(14,15,17,.72);color:#fff;display:grid;place-items:center;backdrop-filter:blur(12px)}
 .admin-settings-btn .ui-icon{width:18px;height:18px}
 .admin-settings-btn:active{transform:translateY(1px)}
+.admin-notification-wrap{position:relative}
+.admin-notification-btn{position:relative;width:42px;height:42px;border-radius:13px;border:1px solid rgba(255,208,0,.32);background:rgba(14,15,17,.72);color:#fff;display:grid;place-items:center;backdrop-filter:blur(12px);cursor:pointer}
+.admin-notification-btn .ui-icon{width:18px;height:18px}
+.admin-notification-btn.has-alerts{border-color:rgba(255,208,0,.72);color:var(--yellow)}
+.admin-notification-badge{position:absolute;right:-5px;top:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#e84048;color:#fff;border:2px solid #111;font-size:8px;font-weight:950;display:grid;place-items:center;line-height:1}
+.admin-notification-panel{position:absolute;z-index:30;top:50px;right:0;width:min(330px,calc(100vw - 28px));background:#101114;border:1px solid #303238;border-radius:16px;box-shadow:0 22px 55px rgba(0,0,0,.46);overflow:hidden;color:#fff}
+.admin-notification-panel[hidden]{display:none}
+.admin-notification-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border-bottom:1px solid #27292d;background:#151619}
+.admin-notification-head span{display:block;color:var(--yellow);font-size:7px;font-weight:950;letter-spacing:.13em}
+.admin-notification-head strong{display:block;margin-top:2px;font-size:14px}
+.admin-notification-head>b{flex:none;padding:5px 7px;border-radius:999px;background:#30260a;color:var(--yellow);font-size:7.5px}
+.admin-notification-head>b.ok{background:#15321f;color:#65dc91}
+.admin-notification-list{display:grid;max-height:330px;overflow:auto}
+.admin-notification-item{width:100%;border:0;border-bottom:1px solid #25272b;background:#111214;color:#fff;padding:12px;display:grid;grid-template-columns:34px minmax(0,1fr) 14px;gap:9px;align-items:center;text-align:left;cursor:pointer}
+.admin-notification-item:last-child{border-bottom:0}
+.admin-notification-item>span{width:34px;height:34px;border-radius:10px;background:#30260a;color:var(--yellow);display:grid;place-items:center}
+.admin-notification-item.money>span,.admin-notification-item.ok>span{background:#14301d;color:#5ed989}
+.admin-notification-item.danger>span{background:#36181c;color:#ff7d85}
+.admin-notification-item>span .ui-icon{width:16px;height:16px}
+.admin-notification-item b{display:block;font-size:9.5px;line-height:1.25}
+.admin-notification-item small{display:block;margin-top:3px;color:#969aa1;font-size:7.5px;line-height:1.35}
+.admin-notification-arrow{width:13px;height:13px;color:#777b82}
 .admin-hero .admin-device-chip{margin:0;min-height:42px;padding:0 12px;border-color:#3a3c42;background:rgba(18,19,22,.74);backdrop-filter:blur(12px);font-size:8px}
 .admin-hero .admin-device-chip .ui-icon{width:14px;height:14px}
 .admin-hero .admin-kicker{font-size:7.5px;letter-spacing:.16em;color:var(--yellow)}
@@ -580,8 +602,9 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   .admin-hero-main{padding:16px 12px 20px}
   .admin-brand-row{margin-bottom:32px}
   .admin-brand-logo{width:118px;max-height:44px}
-  .admin-settings-btn{width:34px;height:34px;border-radius:10px}
-  .admin-settings-btn .ui-icon{width:15px;height:15px}
+  .admin-settings-btn,.admin-notification-btn{width:34px;height:34px;border-radius:10px}
+  .admin-settings-btn .ui-icon,.admin-notification-btn .ui-icon{width:15px;height:15px}
+  .admin-notification-panel{top:42px}
   .admin-hero .admin-device-chip{min-height:34px;padding:0 8px}
   .admin-hero .admin-device-chip b{font-size:6.5px}
   .admin-hero .admin-device-chip .ui-icon{width:12px;height:12px}
