@@ -2427,15 +2427,18 @@ async function admin() {
     sales30:0,salesAll:0,revenue30:0,revenueAll:0,pendingContacts:0,conversion30:0,averageTicket30:0,
     ratingAverage:null,ratingCount:0,topSearches:[],noResultSearches:[],stores:{}
   };
+  let adminPush={supported:false,permission:'unsupported',subscribed:false};
 
   if(window.ACCloud?.enabled){
-    const [analyticsResult]=await Promise.all([
+    const [analyticsResult,,, ,pushResult]=await Promise.all([
       window.ACCloud.adminAnalytics?.(),
       loadAdminBranding(),
       syncCloudAdminData(),
-      syncAdminPayments()
+      syncAdminPayments(),
+      window.ACCloud.adminPushStatus?.()
     ]);
     if(analyticsResult?.ok)analytics=analyticsResult;
+    if(pushResult?.ok)adminPush=pushResult;
   }
 
   const pending = db.merchants.filter(s => s.status === 'aguardando').length;
@@ -2476,6 +2479,9 @@ async function admin() {
   if(expiringSoon)alerts.push({icon:'clock',tone:'danger',title:`${expiringSoon} ${expiringSoon===1?'plano vence':'planos vencem'} em até 7 dias`,text:'Antecipe o contato de renovação com os lojistas.',go:'adminPlans'});
   if(!alerts.length)alerts.push({icon:'check',tone:'ok',title:'Tudo em dia',text:'Nenhuma pendência importante para resolver agora.',go:''});
   const notificationCount=pending+paymentReview+expiringSoon;
+  const pushActive=!!adminPush.subscribed;
+  const pushDenied=adminPush.permission==='denied';
+  const pushUnsupported=!adminPush.supported;
 
   const ranking=db.merchants
     .filter(m=>m.status==='aprovada')
@@ -2525,6 +2531,16 @@ async function admin() {
                 <div class="admin-notification-head">
                   <div><span>CENTRAL DO ADM</span><strong>Notificações</strong></div>
                   ${notificationCount?`<b>${notificationCount} pendência${notificationCount===1?'':'s'}</b>`:'<b class="ok">Tudo em dia</b>'}
+                </div>
+                <div class="admin-push-control">
+                  <button id="adminPushDeviceToggle" type="button" class="${pushActive?'active':''}" ${pushUnsupported||pushDenied?'disabled':''}>
+                    <span>${icon(pushActive?'check':'bell')}</span>
+                    <div>
+                      <b>${pushActive?'Alertas ativos neste aparelho':pushDenied?'Notificações bloqueadas':pushUnsupported?'Push não disponível neste aparelho':'Ativar alertas no celular'}</b>
+                      <small>${pushActive?'Você será avisado mesmo com o painel fechado.':pushDenied?'Libere as notificações nas configurações do navegador.':pushUnsupported?'Em iPhone, instale o app na Tela de Início para usar Push.':'Receba aviso quando chegar comprovante de plano.'}</small>
+                    </div>
+                  </button>
+                  <div class="admin-push-message" id="adminPushMessage"></div>
                 </div>
                 <div class="admin-notification-list">
                   ${alerts.map(a=>`<button class="admin-notification-item ${a.tone}" ${a.go?`data-go="${a.go}"`:''}><span>${icon(a.icon)}</span><div><b>${esc(a.title)}</b><small>${esc(a.text)}</small></div>${a.go?icon('arrowRight','admin-notification-arrow'):''}</button>`).join('')}
@@ -2637,6 +2653,25 @@ async function admin() {
       notificationToggle.setAttribute('aria-expanded',String(open));
     };
     notificationPanel.onclick=e=>e.stopPropagation();
+  }
+  const adminPushButton=document.getElementById('adminPushDeviceToggle');
+  const adminPushMessage=document.getElementById('adminPushMessage');
+  if(adminPushButton&&!adminPushButton.disabled){
+    adminPushButton.onclick=async e=>{
+      e.stopPropagation();
+      adminPushButton.disabled=true;
+      if(adminPushMessage)adminPushMessage.textContent=pushActive?'Desativando alertas...':'Ativando alertas...';
+      const result=pushActive
+        ? await window.ACCloud?.disableAdminPush?.()
+        : await window.ACCloud?.enableAdminPush?.();
+      if(!result?.ok){
+        adminPushButton.disabled=false;
+        if(adminPushMessage)adminPushMessage.textContent=result?.message||'Não foi possível alterar os alertas.';
+        return;
+      }
+      if(adminPushMessage)adminPushMessage.textContent=result.message||'Configuração atualizada.';
+      setTimeout(()=>admin(),650);
+    };
   }
   document.getElementById('adminLogout').onclick = async () => {
     if(window.ACCloud?.enabled) await window.ACCloud.signOut();
