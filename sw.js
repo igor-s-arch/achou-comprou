@@ -1,1 +1,68 @@
-const CACHE='achou-comprou-v63';const APP=['./','./index.html','./styles.css?v=63','./app.js?v=63','./supabase-config.js','./supabase-adapter.js?v=63','./manifest.webmanifest','./assets/logo-achou-comprou.png'];self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP)));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))})
+const CACHE='achou-comprou-v64';
+const APP=[
+  './',
+  './index.html',
+  './styles.css?v=64',
+  './app.js?v=64',
+  './supabase-config.js',
+  './supabase-adapter.js?v=64',
+  './manifest.webmanifest',
+  './assets/logo-achou-comprou.png'
+];
+
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP)));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate',event=>{
+  event.waitUntil(
+    caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch',event=>{
+  if(event.request.method!=='GET')return;
+  event.respondWith(
+    fetch(event.request)
+      .then(response=>{
+        const copy=response.clone();
+        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        return response;
+      })
+      .catch(()=>caches.match(event.request))
+  );
+});
+
+self.addEventListener('push',event=>{
+  let payload={title:'Achou, Comprou',body:'Você tem uma nova notificação.',url:'./',tag:'achou-comprou'};
+  try{
+    if(event.data)payload={...payload,...event.data.json()};
+  }catch(_){}
+  event.waitUntil(
+    self.registration.showNotification(payload.title,{
+      body:payload.body,
+      icon:'./assets/logo-achou-comprou.png',
+      badge:'./assets/logo-achou-comprou.png',
+      tag:payload.tag||'achou-comprou',
+      renotify:true,
+      data:{url:payload.url||'./'}
+    })
+  );
+});
+
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  const target=new URL(event.notification.data?.url||'./',self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>{
+      const existing=clients.find(client=>client.url.startsWith(self.location.origin));
+      if(existing){
+        existing.navigate?.(target);
+        return existing.focus();
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});
