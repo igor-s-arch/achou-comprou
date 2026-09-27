@@ -684,6 +684,7 @@ function bindMultiImagePicker(inputId, previewId, options = {}) {
 
 function nav(active = 'home') {
   return `<nav class="bottom-nav marketplace-bottom-nav">
+    <div class="desktop-site-brand">${logo()}</div>
     <button class="nav-item ${active === 'home' ? 'active' : ''}" data-go="home">${icon('home')}<span>Início</span></button>
     <button class="nav-item ${active === 'search' ? 'active' : ''}" data-go="search">${icon('search')}<span>Buscar</span></button>
     <button class="nav-item ${active === 'categories' ? 'active' : ''}" data-go="categories">${icon('grid')}<span>Categorias</span></button>
@@ -960,7 +961,7 @@ function search(q = '') {
     }).catch(()=>{});
   }
   const badges = searchBadges(publicState.query, publicState.filters);
-  app.innerHTML = `<main class="app-shell">
+  app.innerHTML = `<main class="app-shell search-results-page">
     <header class="topbar search-page-top"><div class="search"><button data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><input id="searchQuery" value="${esc(publicState.query)}" placeholder="O que você está procurando?"><button id="repeatSearch" aria-label="Buscar">${icon('search')}</button></div></header>
     <section class="content">
       <div class="search-toolbar"><div><b>${results.length} produto${results.length === 1 ? '' : 's'} compatível${results.length === 1 ? '' : 'is'}</b><span>A busca considera produto, tamanho, numeração, cor, preço e disponibilidade.</span></div><button class="filter-toggle" id="toggleFilters">${icon('sliders')} Filtros</button></div>
@@ -1249,7 +1250,7 @@ function favorites() {
   }
   const favs=new Set(client.favorites||[]);
   const items = publicProducts().filter(p => favs.has(p.id));
-  app.innerHTML = `<main class="app-shell"><div class="page-head"><b>Meus favoritos</b></div><section class="content"><div class="list">${items.length ? items.map(p => { const m=storeById(p.storeId); return `<article class="result"><div class="thumb">${productMedia(p, true)}</div><div><h4>${esc(p.name)}</h4><div class="price">${money(currentPrice(p))}</div><div class="store">${esc(m?.name || 'Loja')}</div><button class="btn btn-yellow" data-product-id="${p.id}">Abrir produto</button></div></article>`; }).join('') : '<div class="professional-empty favorite-empty"><span>'+icon('heart')+'</span><h3>Nenhum favorito ainda</h3><p>Toque no coração de um produto para guardar aqui.</p><button class="btn btn-yellow" data-go="home">Explorar produtos</button></div>'}</div></section>${nav('fav')}</main>`;
+  app.innerHTML = `<main class="app-shell favorites-page"><div class="page-head"><b>Meus favoritos</b></div><section class="content"><div class="list">${items.length ? items.map(p => { const m=storeById(p.storeId); return `<article class="result"><div class="thumb">${productMedia(p, true)}</div><div><h4>${esc(p.name)}</h4><div class="price">${money(currentPrice(p))}</div><div class="store">${esc(m?.name || 'Loja')}</div><button class="btn btn-yellow" data-product-id="${p.id}">Abrir produto</button></div></article>`; }).join('') : '<div class="professional-empty favorite-empty"><span>'+icon('heart')+'</span><h3>Nenhum favorito ainda</h3><p>Toque no coração de um produto para guardar aqui.</p><button class="btn btn-yellow" data-go="home">Explorar produtos</button></div>'}</div></section>${nav('fav')}</main>`;
   bind();
 }
 
