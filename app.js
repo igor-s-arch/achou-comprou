@@ -1363,6 +1363,142 @@ async function store(storeId = publicState.storeId) {
   if(window.ACCloud?.enabled) window.ACCloud.trackEvent('visualizacao_loja',{storeId:m.id}).catch(()=>{});
 }
 
+function shoppingList() {
+  const cart=cartState();
+  const items=cartDetailed();
+  const store=items[0]?.store || (cart.storeId?storeById(cart.storeId):null);
+  const total=cartTotal();
+  const quantity=cartCount();
+
+  app.innerHTML=`<main class="app-shell utility-page shopping-list-page">
+    <div class="page-head shopping-list-head">
+      <button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button>
+      <b>Minha Lista</b>
+      ${quantity?`<span class="shopping-head-count">${quantity} item${quantity===1?'':'s'}</span>`:''}
+    </div>
+    <section class="utility-content shopping-list-content">
+      <div class="utility-hero shopping-list-hero">
+        <span>${icon('cart')}</span>
+        <div>
+          <small>LISTA DE COMPRAS</small>
+          <h1>${store?`Comprando na ${esc(store.name)}`:'Monte sua lista'}</h1>
+          <p>${store?'Adicione quantos produtos quiser desta mesma loja e envie tudo de uma vez pelo WhatsApp.':'Escolha um produto e toque em “Adicionar à lista”. Os itens precisam ser da mesma loja.'}</p>
+        </div>
+      </div>
+
+      ${items.length?`
+        <div class="shopping-store-lock">
+          <span>${icon('store')}</span>
+          <div><small>ESTA LISTA É EXCLUSIVA DE</small><b>${esc(store?.name||'Loja')}</b></div>
+          <em>1 loja por lista</em>
+        </div>
+
+        <div class="shopping-list-items">
+          ${items.map(item=>{
+            const p=item.product;
+            const unit=priceNumber(currentPrice(p));
+            const subtotal=unit*item.qty;
+            return `<article class="shopping-list-item">
+              <button class="shopping-item-media" data-product-id="${p.id}" aria-label="Abrir ${esc(p.name)}">${productMedia(p,true)}</button>
+              <div class="shopping-item-copy">
+                <small>${esc(categoryLabel(p.type))}</small>
+                <b>${esc(p.name)}</b>
+                <span>${brlNumber(unit)} cada</span>
+                <div class="shopping-qty">
+                  <button type="button" data-cart-minus="${p.id}" aria-label="Diminuir quantidade">${icon('minus')}</button>
+                  <strong>${item.qty}</strong>
+                  <button type="button" data-cart-plus="${p.id}" aria-label="Aumentar quantidade">${icon('plus')}</button>
+                </div>
+              </div>
+              <div class="shopping-item-total">
+                <button type="button" class="shopping-remove" data-cart-remove="${p.id}" aria-label="Remover item">${icon('trash')}</button>
+                <small>Subtotal</small>
+                <b>${brlNumber(subtotal)}</b>
+              </div>
+            </article>`;
+          }).join('')}
+        </div>
+
+        <div class="shopping-note-card">
+          <label>Observação para a loja
+            <textarea id="cartNote" placeholder="Ex.: preciso confirmar cores, modelos ou algum item da lista escolar.">${esc(cart.note||'')}</textarea>
+          </label>
+        </div>
+
+        <div class="shopping-summary-card">
+          <div><span>${icon('cart')}</span><div><small>${quantity} unidade${quantity===1?'':'s'} · ${items.length} produto${items.length===1?'':'s'}</small><b>Total estimado</b></div></div>
+          <strong>${brlNumber(total)}</strong>
+          <p>O preço e a disponibilidade serão confirmados pela loja no WhatsApp.</p>
+          <button class="shopping-send-whatsapp" id="sendCartWhatsapp">${icon('whatsapp')} Enviar lista no WhatsApp</button>
+          <button class="shopping-clear-list" id="clearShoppingList">Limpar minha lista</button>
+        </div>
+      `:`
+        <div class="professional-empty shopping-list-empty">
+          <span>${icon('cart')}</span>
+          <h3>Sua lista está vazia</h3>
+          <p>Escolha produtos de uma loja e vá adicionando. Depois o Achou, Comprou prepara uma única mensagem para o WhatsApp.</p>
+          <button class="btn btn-yellow" data-search-term="material escolar">Procurar material escolar</button>
+          <button class="btn btn-secondary" data-go="home">Ver outros produtos</button>
+        </div>
+      `}
+    </section>
+    ${nav('home')}
+  </main>`;
+
+  bind();
+  if(!items.length)return;
+
+  document.querySelectorAll('[data-cart-minus]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const current=cartState().items.find(x=>x.productId===btn.dataset.cartMinus);
+    updateCartItem(btn.dataset.cartMinus,(Number(current?.qty)||1)-1);
+    shoppingList();
+  });
+  document.querySelectorAll('[data-cart-plus]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const current=cartState().items.find(x=>x.productId===btn.dataset.cartPlus);
+    updateCartItem(btn.dataset.cartPlus,(Number(current?.qty)||1)+1);
+    shoppingList();
+  });
+  document.querySelectorAll('[data-cart-remove]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    updateCartItem(btn.dataset.cartRemove,0);
+    shoppingList();
+  });
+
+  const note=document.getElementById('cartNote');
+  if(note)note.oninput=()=>{cartState().note=note.value;saveDb();};
+
+  document.getElementById('clearShoppingList').onclick=()=>{
+    if(confirm('Limpar todos os produtos da sua lista?')){clearCart();shoppingList();}
+  };
+
+  document.getElementById('sendCartWhatsapp').onclick=()=>{
+    if(note){cartState().note=note.value;saveDb();}
+    const currentItems=cartDetailed();
+    const url=cartWhatsappUrl(store,currentItems,cartState().note);
+    if(!url){alert('A loja ainda não cadastrou um WhatsApp válido.');return;}
+    if(window.ACCloud?.enabled){
+      window.ACCloud.trackEvent('clique_whatsapp',{
+        storeId:store.id,
+        metadata:{
+          source:'minha_lista',
+          cart_item_count:currentItems.length,
+          cart_quantity:currentItems.reduce((sum,item)=>sum+item.qty,0),
+          cart_total:Number(cartTotal().toFixed(2)),
+          cart_items:currentItems.slice(0,30).map(item=>({
+            product_id:item.product.id,
+            name:item.product.name,
+            qty:item.qty,
+            unit_price:priceNumber(currentPrice(item.product))
+          }))
+        }
+      }).catch(()=>{});
+    }
+    window.open(url,'_blank');
+  };
+}
+
 function favorites() {
   const client=currentClient();
   if(!client){
