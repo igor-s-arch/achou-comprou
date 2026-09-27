@@ -1072,19 +1072,26 @@ function search(q = '') {
       <div class="search-toolbar"><div><b>${results.length} produto${results.length === 1 ? '' : 's'} compatível${results.length === 1 ? '' : 'is'}</b><span>A busca considera produto, tamanho, numeração, cor, preço e disponibilidade.</span></div><button class="filter-toggle" id="toggleFilters">${icon('sliders')} Filtros</button></div>
       ${badges.length ? `<div class="smart-badges">${badges.map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
       <div class="filter-panel hidden" id="filterPanel">
-        <label>Categoria<select id="filterCategory"><option value="">Todas</option><option value="roupa">Moda</option><option value="calcado">Calçados</option><option value="pizza">Alimentação</option><option value="beleza">Beleza</option><option value="celular">Tecnologia</option></select></label>
+        <label>Categoria<select id="filterCategory"><option value="">Todas</option><option value="roupa">Moda</option><option value="calcado">Calçados</option><option value="pizza">Alimentação</option><option value="beleza">Beleza</option><option value="celular">Tecnologia</option><option value="escolar">Material escolar</option></select></label>
         <label>Tamanho / nº<input id="filterOption" placeholder="Ex.: M ou 28" value="${esc(publicState.filters.option)}"></label>
         <label>Cor<input id="filterColor" placeholder="Ex.: Preto" value="${esc(publicState.filters.color)}"></label>
         <label>Preço máximo<input id="filterMax" inputmode="decimal" placeholder="Ex.: 100" value="${esc(publicState.filters.maxPrice)}"></label>
         <div class="filter-actions"><button class="btn btn-secondary" id="clearFilters" type="button">Limpar</button><button class="btn btn-yellow" id="applyFilters" type="button">Aplicar filtros</button></div>
       </div>
       <div class="chips"><button class="chip active">Todos (${results.length + storeMatches.length})</button><button class="chip">Produtos (${results.length})</button><button class="chip">Lojas (${storeMatches.length})</button></div>
-      <div class="list search-product-grid">${results.length ? results.map(p => { const m=storeById(p.storeId); const price=currentPrice(p); const old=originalPrice(p); const avail=availabilitySummary(p); return `<article class="result search-result-card"><div class="thumb">${productMedia(p, true)}</div><div class="search-result-info"><span class="tag">Disponível</span><h4>${esc(p.name)}</h4><div class="price">${money(price)}</div>${price !== old ? `<div class="old">${money(old)}</div>` : ''}${avail.length ? `<div class="availability-line">${avail.slice(0,2).map(esc).join(' · ')}</div>` : ''}<div class="store">${esc(m?.name || 'Loja')}</div><div class="dist">${icon('pin')} ${esc(m?.dist || 'Grajaú')} de você</div><button class="btn btn-yellow" data-product-id="${p.id}">Ver produto</button></div></article>`; }).join('') : '<div class="empty"><b>Nenhum produto compatível.</b><span>Tente retirar um filtro ou pesquisar de outra forma.</span></div>'}</div>
+      <div class="list search-product-grid">${results.length ? results.map(p => { const m=storeById(p.storeId); const price=currentPrice(p); const old=originalPrice(p); const avail=availabilitySummary(p); return `<article class="result search-result-card"><div class="thumb">${productMedia(p, true)}</div><div class="search-result-info"><span class="tag">Disponível</span><h4>${esc(p.name)}</h4><div class="price">${money(price)}</div>${price !== old ? `<div class="old">${money(old)}</div>` : ''}${avail.length ? `<div class="availability-line">${avail.slice(0,2).map(esc).join(' · ')}</div>` : ''}<div class="store">${esc(m?.name || 'Loja')}</div><div class="dist">${icon('pin')} ${esc(m?.dist || 'Grajaú')} de você</div><div class="search-result-actions"><button class="btn btn-secondary" type="button" data-search-cart="${p.id}">${icon('cart')} Adicionar</button><button class="btn btn-yellow" data-product-id="${p.id}">Ver produto</button></div></div></article>`; }).join('') : '<div class="empty"><b>Nenhum produto compatível.</b><span>Tente retirar um filtro ou pesquisar de outra forma.</span></div>'}</div>
       ${storeMatches.length ? `<div class="section-title compact-title"><h3>Lojas encontradas</h3></div><div class="shops">${storeMatches.map(m => `<button class="shop" data-store-id="${m.id}"><div class="shop-logo">${esc(m.name.slice(0,1).toUpperCase())}</div><b>${esc(m.name)}</b><small>${esc(m.category)}</small></button>`).join('')}</div>` : ''}
     </section>
     ${nav('search')}
   </main>`;
   bind();
+  document.querySelectorAll('[data-search-cart]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const result=addToCart(btn.dataset.searchCart,1);
+    if(!result.ok){alert(result.message);return;}
+    btn.innerHTML=icon('check')+' Adicionado';
+    btn.disabled=true;
+  });
   const input=document.getElementById('searchQuery');
   const cat=document.getElementById('filterCategory'); if(cat) cat.value=publicState.filters.category || '';
   document.getElementById('repeatSearch').onclick=()=>search(input.value);
@@ -1101,6 +1108,7 @@ function product(productId = publicState.productId) {
   if (!m || m.status !== 'aprovada') return search(publicState.query);
   publicState.productId = p.id; publicState.storeId = m.id;
   const fav = isFavorite(p.id);
+  const inCart = cartState().items.some(item=>item.productId===p.id);
   const price = currentPrice(p), old = originalPrice(p);
   const discount = discountFor(p);
   const details = String(p.details || '').split('|').map(x=>x.trim()).filter(Boolean);
@@ -1120,6 +1128,7 @@ function product(productId = publicState.productId) {
       <div><span>ACHOU, COMPROU</span><b>Detalhes do produto</b></div>
       <div class="product-top-actions">
         <button id="headFav" class="${fav?'active':''}" aria-label="Favoritar">${icon('heart')}</button>
+        <button id="headCart" class="${inCart?'active':''}" aria-label="Minha lista">${icon('cart')}${cartBadge()}</button>
         <button id="productShare" aria-label="Compartilhar">${icon('share')}</button>
       </div>
     </div>
@@ -1174,6 +1183,7 @@ function product(productId = publicState.productId) {
 
     <div class="product-action-bar">
       <button class="product-favorite-action" id="favBtn">${icon('heart')} <span>${fav ? 'Favoritado' : 'Favoritar'}</span></button>
+      <button class="product-cart-action ${inCart?'active':''}" id="addCartBtn">${icon(inCart?'check':'cart')} <span>${inCart?'Na Minha Lista':'Adicionar à lista'}</span></button>
       <button class="product-whatsapp-action" id="waBtn">${icon('chat')} <span>Falar com a loja</span></button>
     </div>
   </main>`;
@@ -1189,6 +1199,12 @@ function product(productId = publicState.productId) {
   const toggleFav=async()=>{ if(!currentClient()){ publicState.afterLogin={screen:'product',productId:p.id,favoriteId:p.id}; return clientLogin(); } const ok=await setFavorite(p.id,!fav); if(ok) product(p.id); };
   document.getElementById('favBtn').onclick = toggleFav;
   document.getElementById('headFav').onclick = toggleFav;
+  document.getElementById('headCart').onclick = ()=>shoppingList();
+  document.getElementById('addCartBtn').onclick = ()=>{
+    const result=addToCart(p.id,1);
+    if(!result.ok){alert(result.message);return;}
+    product(p.id);
+  };
   document.getElementById('productShare').onclick = async()=>{
     const text=`${p.name} — ${money(price)} na ${m.name} | Achou, Comprou`;
     try{
