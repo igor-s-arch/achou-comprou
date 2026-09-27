@@ -54,10 +54,11 @@ const DEFAULT_DB = {
     { id:'n2', title:'Bem-vindo ao Achou, Comprou', text:'Pesquise produtos e encontre lojas da sua cidade em poucos segundos.', type:'system', read:true }
   ],
   clientSettings: { offers:true, favorites:true, local:true },
+  cart: { storeId:null, items:[], note:'' },
   session: { clientId: null, merchantId: null, admin: false }
 };
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
+function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.cart = saved.cart && typeof saved.cart==='object' ? saved.cart : {storeId:null,items:[],note:''}; saved.cart.items = Array.isArray(saved.cart.items) ? saved.cart.items.filter(x=>x&&x.productId).map(x=>({productId:String(x.productId),qty:Math.max(1,Math.min(99,Number(x.qty)||1))})) : []; saved.cart.note=String(saved.cart.note||''); if(!saved.cart.items.length)saved.cart.storeId=null; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
 let db = loadDb();
 let adminBranding={
   name:'Igor',
@@ -347,6 +348,12 @@ const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merc
 function normalizeText(value = '') {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
+const SCHOOL_WORDS=['material escolar','papelaria','caderno','lapis','lapiseira','caneta','borracha','apontador','estojo','mochila','cola','tesoura','regua','marca texto','giz','cartolina','papel sulfite','pincel','agenda escolar'];
+function isSchoolProduct(p){
+  const store=storeById(p?.storeId);
+  const haystack=normalizeText([p?.name,p?.brand,p?.details,p?.type,categoryLabel(p?.type),store?.name,store?.category].filter(Boolean).join(' '));
+  return p?.type==='escolar' || SCHOOL_WORDS.some(word=>haystack.includes(normalizeText(word)));
+}
 function storePriority(plan) { return ({ premium_banner: 3, premium: 2, gratis: 1 })[plan] || 0; }
 function storeRatingValue(store){ return Number(String(store?.rating ?? 0).replace(',','.')) || 0; }
 function storeWhatsappValue(store){ return Number(store?.whatsappClicks || 0) || 0; }
@@ -407,6 +414,7 @@ function splitList(value='') { return String(value).split(/[,;|]/).map(x => x.tr
 function priceNumber(value) { return Number(String(value || '').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,'')) || 0; }
 function inferType(text) {
   const n = normalizeText(text);
+  if (/\b(material escolar|papelaria|caderno|lapis|lapiseira|caneta|borracha|apontador|estojo|mochila|cola|tesoura|regua|cartolina|sulfite)\b/.test(n)) return 'escolar';
   if (/\b(tenis|sapato|sandalia|chinelo|bota|calcado)\b/.test(n)) return 'calcado';
   if (/\b(vestido|blusa|blusinha|camisa|camiseta|calca|short|saia|roupa)\b/.test(n)) return 'roupa';
   if (/\b(pizza|lanche|hamburguer|comida|restaurante)\b/.test(n)) return 'pizza';
@@ -426,8 +434,9 @@ function parseSearchIntent(query='') {
   const explicitNumber = n.match(/(?:numero|n)\s*(\d{2})\b/);
   if (explicitNumber) number = explicitNumber[1];
   if (!number && type === 'calcado') { const standalone = n.match(/\b(1[3-9]|2\d|3\d|4[0-9])\b/); if (standalone) number = standalone[1]; }
+  const school = /\b(material escolar|papelaria|escolar)\b/.test(n);
   const tokens = n.split(' ').filter(t => t && !SEARCH_STOP.has(t) && !/^\d+(?:[.,]\d+)?$/.test(t) && !COLOR_WORDS.includes(t) && !SIZE_WORDS.includes(t));
-  return { type, number, size, color, maxPrice: maxMatch ? Number(maxMatch[1].replace(',','.')) : 0, tokens };
+  return { type, school, number, size, color, maxPrice: maxMatch ? Number(maxMatch[1].replace(',','.')) : 0, tokens };
 }
 function normalizedProduct(p) {
   const numbers = (p.numbers?.length ? p.numbers : (p.type === 'calcado' ? splitList((String(p.details||'').match(/Numerações?:\s*([^|]+)/i)||[])[1]) : [])).map(String);
@@ -440,7 +449,9 @@ function availableVariants(p) { return normalizedProduct(p).variants.filter(v =>
 function productAvailable(p) { return p.status === 'ativo' && (p.stock !== 'detalhado' || availableVariants(p).length > 0 || !normalizedProduct(p).variants.length); }
 function productMatchesStructured(p, intent) {
   const meta = normalizedProduct(p);
-  if (intent.type && p.type !== intent.type) return false;
+  if (intent.type && p.type !== intent.type) {
+    if(intent.type!=='escolar' || !isSchoolProduct(p)) return false;
+  }
   if (intent.maxPrice && priceNumber(currentPrice(p)) > intent.maxPrice) return false;
   const wantedOption = intent.number || intent.size || '';
   const wantedColor = normalizeText(intent.color || '');
@@ -465,7 +476,8 @@ function productSearchScore(p, query, intent) {
   let score = 0;
   intent.tokens.forEach(t => { if (haystack.includes(t)) score += 12; });
   if (normalizeText(p.name).includes(normalizeText(query))) score += 30;
-  if (intent.type && p.type === intent.type) score += 20;
+  if (intent.type && (p.type === intent.type || (intent.type==='escolar'&&isSchoolProduct(p)))) score += 20;
+  if (intent.school && isSchoolProduct(p)) score += 35;
   if (intent.number || intent.size || intent.color) score += 15;
   if (activeOfferFor(p.id)) score += 4;
   score += storePriority(store?.plan);
@@ -484,6 +496,7 @@ function searchProducts(query = '', filters = {}) {
     if (!productMatchesStructured(p, intent)) return false;
     const store = storeById(p.storeId);
     const haystack = normalizeText([p.name,p.brand,p.details,p.type,categoryLabel(p.type),store?.name,store?.category].filter(Boolean).join(' '));
+    if(intent.school && isSchoolProduct(p)) return true;
     return !intent.tokens.length || intent.tokens.every(t => haystack.includes(t));
   }).sort((a,b) => {
     const storeA=storeById(a.storeId);
@@ -500,7 +513,7 @@ function searchBadges(query='', filters={}) {
   if (filters.color) i.color = filters.color;
   if (filters.maxPrice) i.maxPrice = Number(String(filters.maxPrice).replace(',','.')) || 0;
   const out=[];
-  if(i.type) out.push(categoryLabel(i.type)); if(i.number) out.push(`Nº ${i.number}`); if(i.size) out.push(`Tam. ${i.size}`); if(i.color) out.push(`Cor ${i.color}`); if(i.maxPrice) out.push(`Até R$ ${i.maxPrice.toFixed(2).replace('.',',')}`);
+  if(i.school) out.push('Material escolar'); else if(i.type) out.push(categoryLabel(i.type)); if(i.number) out.push(`Nº ${i.number}`); if(i.size) out.push(`Tam. ${i.size}`); if(i.color) out.push(`Cor ${i.color}`); if(i.maxPrice) out.push(`Até R$ ${i.maxPrice.toFixed(2).replace('.',',')}`);
   return out;
 }
 function availabilitySummary(p) {
@@ -515,7 +528,7 @@ function availabilitySummary(p) {
   if (detailed) parts.push(`${live.reduce((s,v)=>s+Number(v.qty||0),0)} un. em estoque`);
   return parts;
 }
-function categoryLabel(type) { return ({ roupa:'Moda', calcado:'Calçados', pizza:'Alimentação', beleza:'Beleza', celular:'Tecnologia', outro:'Outros' })[type] || 'Outros'; }
+function categoryLabel(type) { return ({ roupa:'Moda', calcado:'Calçados', pizza:'Alimentação', beleza:'Beleza', celular:'Tecnologia', escolar:'Material escolar', outro:'Outros' })[type] || 'Outros'; }
 function whatsappUrl(store, product) {
   const digits = String(store?.whatsapp || '').replace(/\D/g,'');
   if (!digits) return '';
