@@ -1230,7 +1230,7 @@ async function store(storeId = publicState.storeId) {
     if(mine?.ok && mine.rating) myRating=Number(mine.rating.nota||0);
   }
 
-  const categoryPriority=['Moda','Calçados','Acessórios','Beleza','Alimentação','Saúde','Casa','Tecnologia','Automotivo','Serviços','Outros'];
+  const categoryPriority=['Moda','Calçados','Acessórios','Material escolar','Beleza','Alimentação','Saúde','Casa','Tecnologia','Automotivo','Serviços','Outros'];
   const categories=[...new Set((Array.isArray(m.categories)&&m.categories.length?m.categories:[m.category]).filter(Boolean))]
     .sort((a,b)=>{
       const ai=categoryPriority.indexOf(a), bi=categoryPriority.indexOf(b);
@@ -1330,13 +1330,20 @@ async function store(storeId = publicState.storeId) {
       ${ratingBox}
 
       <div class="section-title store-products-title"><h3>Produtos</h3><a>${products.length} cadastrados</a></div>
-      <div class="offers store-products-grid">${products.length ? products.map(p => `<article class="card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="price">${money(currentPrice(p))}</div>${currentPrice(p)!==originalPrice(p) ? `<div class="old">${money(originalPrice(p))}</div>` : ''}</div></article>`).join('') : '<div class="empty">A loja ainda não publicou produtos.</div>'}</div>
+      <div class="offers store-products-grid">${products.length ? products.map(p => `<article class="card" data-product-id="${p.id}"><div class="product-img">${productMedia(p, true)}</div>${discountFor(p) ? `<span class="discount">${discountFor(p)}</span>` : ''}<div class="card-body"><div class="card-title">${esc(p.name)}</div><div class="price">${money(currentPrice(p))}</div>${currentPrice(p)!==originalPrice(p) ? `<div class="old">${money(originalPrice(p))}</div>` : ''}<button class="store-card-cart" type="button" data-store-cart="${p.id}">${icon('cart')} Adicionar à lista</button></div></article>`).join('') : '<div class="empty">A loja ainda não publicou produtos.</div>'}</div>
     </section>
 
     ${nav('home')}
   </main>`;
 
   bind();
+  document.querySelectorAll('[data-store-cart]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const result=addToCart(btn.dataset.storeCart,1);
+    if(!result.ok){alert(result.message);return;}
+    btn.innerHTML=icon('check')+' Adicionado';
+    btn.disabled=true;
+  });
 
   const openMap=()=>{if(m.address)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address)}`,'_blank');};
   document.getElementById('storeWa').onclick=()=>{ const url=whatsappUrl(m,null); if(url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,metadata:{source:'loja'}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
@@ -2435,12 +2442,17 @@ async function stats() {
       <div class="merchant-contact-list">
         ${recentContacts.length?recentContacts.map(contact=>{
           const p=contact.productId?db.products.find(x=>x.id===contact.productId):null;
+          const isShoppingList=contact.metadata?.source==='minha_lista';
+          const listItems=Number(contact.metadata?.cart_item_count||0);
+          const listQty=Number(contact.metadata?.cart_quantity||0);
+          const contactTitle=isShoppingList?`Lista de compras · ${listItems} produto${listItems===1?'':'s'}`:(p?.name||'Contato geral com a loja');
+          const contactSubtitle=isShoppingList?`${listQty} unidade${listQty===1?'':'s'} enviadas pelo WhatsApp`:'Cliente veio pelo Achou, Comprou';
           const date=contact.clickedAt?new Date(contact.clickedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
           const statusLabel=contact.status==='venda'?'Venda confirmada':contact.status==='nao_venda'?'Não virou venda':'Aguardando';
           return `<article class="merchant-contact-card ${contact.status}">
             <div class="merchant-contact-main">
-              <span class="merchant-contact-icon">${icon(contact.status==='venda'?'check':contact.status==='nao_venda'?'arrowLeft':'whatsapp')}</span>
-              <div><b>${esc(p?.name||'Contato geral com a loja')}</b><small>Cliente veio pelo Achou, Comprou · ${esc(date)}</small></div>
+              <span class="merchant-contact-icon">${icon(contact.status==='venda'?'check':contact.status==='nao_venda'?'arrowLeft':isShoppingList?'cart':'whatsapp')}</span>
+              <div><b>${esc(contactTitle)}</b><small>${esc(contactSubtitle)} · ${esc(date)}</small></div>
               <em class="${contact.status}">${statusLabel}</em>
             </div>
             ${contact.status==='pendente'?`<div class="merchant-sale-actions">
@@ -3374,7 +3386,7 @@ function bind() {
   applyMerchantDeviceMode();
   document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
     const go = el.dataset.go;
-    ({ home, search, product, store, profile, categories, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, adminSettings, fav: favorites }[go] || home)();
+    ({ home, search, product, store, profile, categories, shoppingList, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, adminSettings, fav: favorites }[go] || home)();
   });
   document.querySelectorAll('[data-product-id]').forEach(el => el.onclick = () => product(el.dataset.productId));
   document.querySelectorAll('[data-store-id]').forEach(el => el.onclick = () => store(el.dataset.storeId));
