@@ -614,17 +614,18 @@
     async enableAdminPush(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       if(!pushSupported())return {ok:false,unsupported:true,message:'Este aparelho não oferece suporte a notificações Push.'};
-      const isAdmin=await api.isCurrentUserAdmin();
-      if(!isAdmin)return {ok:false,message:'Somente o administrador pode ativar estes alertas.'};
-      const session=await api.getSession();
-      const userId=session?.user?.id;
-      if(!userId)return {ok:false,message:'Entre novamente na administração.'};
 
       let permission=Notification.permission;
       if(permission==='default')permission=await Notification.requestPermission();
       if(permission!=='granted'){
         return {ok:false,denied:true,message:'As notificações estão bloqueadas neste navegador.'};
       }
+
+      const isAdmin=await api.isCurrentUserAdmin();
+      if(!isAdmin)return {ok:false,message:'Somente o administrador pode ativar estes alertas.'};
+      const session=await api.getSession();
+      const userId=session?.user?.id;
+      if(!userId)return {ok:false,message:'Entre novamente na administração.'};
 
       try{
         const registration=await navigator.serviceWorker.ready;
