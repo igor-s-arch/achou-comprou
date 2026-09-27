@@ -603,7 +603,7 @@
       if(!client)return {ok:false,supported:false,message:'Backend não configurado.'};
       if(!pushSupported())return {ok:true,supported:false,permission:'unsupported',subscribed:false};
       try{
-        const registration=await navigator.serviceWorker.ready;
+        const registration=await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('./sw.js');
         const subscription=await registration.pushManager.getSubscription();
         return {ok:true,supported:true,permission:Notification.permission,subscribed:!!subscription};
       }catch(error){
@@ -628,7 +628,7 @@
       if(!userId)return {ok:false,message:'Entre novamente na administração.'};
 
       try{
-        const registration=await navigator.serviceWorker.ready;
+        const registration=await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('./sw.js');
         let subscription=await registration.pushManager.getSubscription();
         if(!subscription){
           subscription=await registration.pushManager.subscribe({
@@ -660,7 +660,7 @@
       if(!client)return {ok:false,message:'Backend não configurado.'};
       if(!pushSupported())return {ok:true,subscribed:false};
       try{
-        const registration=await navigator.serviceWorker.ready;
+        const registration=await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('./sw.js');
         const subscription=await registration.pushManager.getSubscription();
         if(subscription){
           await client.from('admin_push_subscriptions').delete().eq('endpoint',subscription.endpoint);
