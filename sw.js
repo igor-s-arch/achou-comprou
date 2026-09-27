@@ -1,11 +1,11 @@
-const CACHE='achou-comprou-v66';
+const CACHE='achou-comprou-v67';
 const APP=[
   './',
   './index.html',
-  './styles.css?v=66',
-  './app.js?v=66',
+  './styles.css?v=67',
+  './app.js?v=67',
   './supabase-config.js',
-  './supabase-adapter.js?v=66',
+  './supabase-adapter.js?v=67',
   './manifest.webmanifest',
   './assets/logo-achou-comprou.png'
 ];
