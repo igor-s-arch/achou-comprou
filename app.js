@@ -663,7 +663,8 @@ const icons = {
   cart: '<path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/>',
   book: '<path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/>',
-  minus: '<path d="M5 12h14"/>'
+  minus: '<path d="M5 12h14"/>',
+  print: '<path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7"/><path d="M17 11h.01"/>'
 };
 
 function icon(name, cls = 'ui-icon') {
@@ -3018,9 +3019,20 @@ async function adminReports(){
     ratingAverage:null,ratingCount:0,stores:{}
   };
   if(window.ACCloud?.enabled){
-    const result=await window.ACCloud.adminAnalytics?.();
+    const [result]=await Promise.all([
+      window.ACCloud.adminAnalytics?.(),
+      syncAdminPayments()
+    ]);
     if(result?.ok)analytics=result;
   }
+
+  const generatedAt=new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const since30=Date.now()-30*86400000;
+  const payments=(db.payments||[]);
+  const paid30=payments.filter(p=>p.status==='pago' && new Date(p.paidAt||p.confirmedAt||p.createdAt||0).getTime()>=since30);
+  const planRevenue30=paid30.reduce((sum,p)=>sum+Number(p.value||0),0);
+  const paymentReview=payments.filter(p=>p.status==='em_analise').length;
+  const activePaidStores=db.merchants.filter(m=>m.status==='aprovada' && ['premium','premium_banner'].includes(m.plan)).length;
 
   const rows=db.merchants.filter(m=>m.status==='aprovada').map(m=>{
     const s=analytics.stores?.[m.id]||{};
@@ -3032,9 +3044,23 @@ async function adminReports(){
     ||(b.s.whatsapp30||0)-(a.s.whatsapp30||0)
     ||(b.s.productViews30||0)-(a.s.productViews30||0));
 
-  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage">
+  app.innerHTML=`<main class="app-shell admin-pro ${adminDeviceClass()} admin-subpage admin-reports-page">
     ${adminHeader('Relatórios e resultados','Contatos, vendas e retorno gerado pelo Achou, Comprou')}
-    <section class="admin-content">
+    <section class="admin-content admin-print-report">
+      <div class="admin-report-print-heading">
+        <div>
+          <span>ACHOU, COMPROU</span>
+          <h1>Relatório administrativo</h1>
+          <p>Resultados da plataforma · últimos 30 dias</p>
+        </div>
+        <div><small>Gerado em</small><b>${esc(generatedAt)}</b></div>
+      </div>
+
+      <div class="admin-report-toolbar no-print">
+        <div><b>Relatório dos últimos 30 dias</b><small>Visualize na tela ou imprima em papel / salve como PDF.</small></div>
+        <button id="printAdminReport" type="button">${icon('print')} Imprimir / Salvar PDF</button>
+      </div>
+
       <div class="admin-summary-strip admin-report-sales-summary">
         <div><small>Clientes</small><strong>${analytics.registeredClients||0}</strong></div>
         <div><small>Ativos 30d</small><strong>${analytics.activeVisitors30||0}</strong></div>
@@ -3048,6 +3074,16 @@ async function adminReports(){
         ${icon('check')}
         <div><b>Resultado confirmado pelo lojista</b><span>Cliques no WhatsApp são contatos. Só entram como venda quando a própria loja confirma e informa o valor.</span></div>
       </div>
+
+      <section class="admin-report-finance">
+        <div class="admin-section-head"><div><span>PLANOS E PAGAMENTOS</span><h2>Resumo financeiro da plataforma</h2></div></div>
+        <div class="admin-report-finance-grid">
+          <article><small>Lojas em plano pago</small><strong>${activePaidStores}</strong><span>Premium / Premium + Banner</span></article>
+          <article><small>Pagamentos aprovados 30d</small><strong>${paid30.length}</strong><span>Planos confirmados</span></article>
+          <article><small>Receita de planos 30d</small><strong>${brlNumber(planRevenue30)}</strong><span>Pagamentos confirmados</span></article>
+          <article><small>PIX para conferir</small><strong>${paymentReview}</strong><span>Em análise</span></article>
+        </div>
+      </section>
 
       <div class="admin-section-head"><div><span>DESEMPENHO DAS LOJAS</span><h2>Resultados dos últimos 30 dias</h2></div></div>
       <div class="admin-report-list">
@@ -3071,6 +3107,27 @@ async function adminReports(){
         </article>`).join(''):'<div class="notice">Ainda não há lojas aprovadas com dados para o relatório.</div>'}
       </div>
 
+      <section class="admin-report-table-section">
+        <div class="admin-section-head"><div><span>RELATÓRIO DETALHADO</span><h2>Resultado por loja</h2></div></div>
+        <div class="admin-report-table-wrap">
+          <table class="admin-report-table">
+            <thead><tr><th>Loja</th><th>Plano</th><th>WhatsApp</th><th>Vendas</th><th>Valor vendido</th><th>Conversão</th><th>Ticket médio</th><th>Visualizações</th></tr></thead>
+            <tbody>
+              ${rows.length?rows.map(x=>`<tr>
+                <td><b>${esc(x.m.name)}</b><small>${esc(x.m.category||'Loja local')}</small></td>
+                <td>${planLabel(x.m.plan)}</td>
+                <td>${x.s.whatsapp30||0}</td>
+                <td>${x.s.sales30||0}</td>
+                <td>${brlNumber(x.s.revenue30||0)}</td>
+                <td>${x.s.conversion30||0}%</td>
+                <td>${brlNumber(x.s.averageTicket30||0)}</td>
+                <td>${x.s.productViews30||0}</td>
+              </tr>`).join(''):`<tr><td colspan="8">Ainda não há dados de lojas aprovadas.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="admin-panel-card">
         <div class="admin-panel-head"><div><span>PLATAFORMA</span><h3>Leitura geral</h3></div></div>
         <div class="admin-report-overview">
@@ -3084,6 +3141,7 @@ async function adminReports(){
     ${adminNav('reports')}
   </main>`;
   bind();
+  document.getElementById('printAdminReport')?.addEventListener('click',()=>window.print());
 }
 
 async function adminStores(focusId='') {
