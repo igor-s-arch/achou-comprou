@@ -3085,8 +3085,8 @@ async function adminReports(){
         </div>
       </section>
 
-      <div class="admin-section-head"><div><span>DESEMPENHO DAS LOJAS</span><h2>Resultados dos últimos 30 dias</h2></div></div>
-      <div class="admin-report-list">
+      <div class="admin-section-head admin-report-cards-heading"><div><span>DESEMPENHO DAS LOJAS</span><h2>Resultados dos últimos 30 dias</h2></div></div>
+      <div class="admin-report-list admin-report-card-list">
         ${rows.length?rows.map((x,i)=>`<article class="admin-report-card admin-report-card-sales">
           <div class="admin-report-rank">${i+1}</div>
           <div class="admin-report-main">
