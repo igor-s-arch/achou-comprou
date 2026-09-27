@@ -4415,3 +4415,236 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   .market-offer-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
   .market-store-strip{grid-template-columns:repeat(8,minmax(0,1fr))!important}
 }
+
+
+/* ===== V66 — HOME DESKTOP COM CARA DE SITE DE COMPRAS ===== */
+@media(min-width:900px){
+  /* Só desktop: banner passa a ser o primeiro grande bloco da home */
+  .home-marketplace{
+    display:flex!important;
+    flex-direction:column!important;
+    padding-top:68px!important;
+    padding-bottom:52px!important;
+    background:#070707!important;
+  }
+  .home-marketplace .marketplace-content{
+    display:contents!important;
+  }
+
+  .home-marketplace .market-banner-carousel{
+    order:1!important;
+    width:calc(100% - 48px)!important;
+    max-width:1400px!important;
+    margin:26px auto 0!important;
+    border-radius:24px!important;
+    overflow:hidden!important;
+  }
+  .home-marketplace .market-hero-banner{
+    min-height:410px!important;
+    border-radius:24px!important;
+  }
+  .home-marketplace .market-video-banner{
+    aspect-ratio:3.2/1!important;
+    min-height:410px!important;
+  }
+  .home-marketplace .market-art-banner{
+    min-height:410px!important;
+  }
+  .home-marketplace .market-art-banner-image{
+    width:100%!important;
+    height:100%!important;
+    min-height:410px!important;
+    object-fit:cover!important;
+    object-position:center!important;
+  }
+
+  /* Faixa de compra abaixo do banner */
+  .home-marketplace .marketplace-topbar{
+    order:2!important;
+    position:relative!important;
+    top:auto!important;
+    width:100%!important;
+    padding:24px max(24px,calc((100vw - 1320px)/2)) 22px!important;
+    margin:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:
+      "search actions"
+      "quick quick"
+      "categories categories"!important;
+    column-gap:14px!important;
+    row-gap:12px!important;
+    background:
+      linear-gradient(180deg,#0a0a0b 0%,#0c0d0f 100%)!important;
+    border-top:1px solid #1e2024!important;
+    border-bottom:1px solid #202226!important;
+    box-shadow:0 16px 32px rgba(0,0,0,.16)!important;
+  }
+  .home-marketplace .home-brand-row{
+    grid-area:actions!important;
+    width:auto!important;
+    max-width:none!important;
+    min-height:60px!important;
+    margin:0!important;
+    justify-content:flex-end!important;
+  }
+  .home-marketplace .home-brand-row>.mini-logo{
+    display:none!important;
+  }
+  .home-marketplace .home-head-actions{
+    margin:0!important;
+    gap:9px!important;
+  }
+  .home-marketplace .marketplace-search{
+    grid-area:search!important;
+    width:100%!important;
+    max-width:none!important;
+    height:60px!important;
+    margin:0!important;
+    border-radius:14px!important;
+    box-shadow:0 8px 22px rgba(0,0,0,.18)!important;
+  }
+  .home-marketplace .marketplace-search input{
+    font-size:15px!important;
+  }
+  .home-marketplace .market-quick-row{
+    grid-area:quick!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-top:1px!important;
+  }
+  .home-marketplace .market-category-row{
+    grid-area:categories!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:2px 0 0!important;
+  }
+
+  /* Categorias mais parecidas com cabeçalho de marketplace */
+  .home-marketplace .market-category-row{
+    grid-template-columns:repeat(7,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  .home-marketplace .market-category-row button{
+    min-height:66px!important;
+    padding:0 14px!important;
+    border-radius:12px!important;
+    background:#141518!important;
+    border:1px solid #2a2d31!important;
+    transition:background .16s ease,border-color .16s ease,transform .16s ease!important;
+  }
+  .home-marketplace .market-category-row button:hover{
+    transform:translateY(-2px)!important;
+    background:#191b1f!important;
+    border-color:#5b5018!important;
+  }
+  .home-marketplace .market-category-row button span{
+    font-size:9.5px!important;
+  }
+
+  /* Blocos principais em largura de site */
+  .home-marketplace .market-section-title,
+  .home-marketplace .market-store-strip,
+  .home-marketplace .market-offer-grid{
+    width:calc(100% - 48px)!important;
+    max-width:1320px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  .home-marketplace .market-section-title.stores-first{
+    order:3!important;
+    margin-top:32px!important;
+  }
+  .home-marketplace .market-store-strip{
+    order:4!important;
+  }
+  .home-marketplace .market-section-title.offers-title{
+    order:5!important;
+    margin-top:38px!important;
+  }
+  .home-marketplace .market-offer-grid{
+    order:6!important;
+    padding-bottom:34px!important;
+  }
+
+  /* Vitrine de lojas */
+  .home-marketplace .market-store-strip{
+    grid-template-columns:repeat(8,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+  .home-marketplace .market-store-tile{
+    min-height:150px!important;
+    border-radius:16px!important;
+    background:linear-gradient(180deg,#16171a,#101113)!important;
+    border:1px solid #2c2e33!important;
+  }
+  .home-marketplace .market-store-tile:hover{
+    border-color:#73631d!important;
+    box-shadow:0 12px 28px rgba(0,0,0,.24)!important;
+  }
+
+  /* Produtos em grade de e-commerce */
+  .home-marketplace .market-offer-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:18px!important;
+  }
+  .home-marketplace .market-offer-card{
+    border-radius:18px!important;
+    box-shadow:0 9px 28px rgba(0,0,0,.20)!important;
+  }
+  .home-marketplace .market-offer-media{
+    height:238px!important;
+  }
+  .home-marketplace .market-offer-body{
+    padding:15px!important;
+  }
+  .home-marketplace .market-offer-title{
+    font-size:13.5px!important;
+    min-height:34px!important;
+  }
+  .home-marketplace .market-price-row strong{
+    font-size:24px!important;
+  }
+
+  /* Menu superior mais parecido com loja virtual */
+  .home-marketplace .marketplace-bottom-nav{
+    height:68px!important;
+    background:#050506!important;
+    border-bottom:1px solid #23252a!important;
+  }
+  .home-marketplace .desktop-site-brand{
+    min-width:225px!important;
+  }
+  .home-marketplace .desktop-site-brand .mini-logo{
+    width:165px!important;
+  }
+  .home-marketplace .marketplace-bottom-nav .nav-item{
+    min-width:104px!important;
+    height:40px!important;
+    border-radius:10px!important;
+  }
+  .home-marketplace .marketplace-bottom-nav .nav-item.active{
+    background:#1a1c20!important;
+    box-shadow:inset 0 0 0 1px #2d3035!important;
+  }
+}
+
+@media(min-width:1200px){
+  .home-marketplace .market-banner-carousel{
+    width:calc(100% - 64px)!important;
+  }
+}
+
+@media(min-width:1500px){
+  .home-marketplace .market-banner-carousel{
+    max-width:1460px!important;
+  }
+  .home-marketplace .market-hero-banner,
+  .home-marketplace .market-video-banner,
+  .home-marketplace .market-art-banner,
+  .home-marketplace .market-art-banner-image{
+    min-height:430px!important;
+  }
+}
