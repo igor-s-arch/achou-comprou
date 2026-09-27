@@ -501,6 +501,16 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 .admin-notification-head strong{display:block;margin-top:2px;font-size:14px}
 .admin-notification-head>b{flex:none;padding:5px 7px;border-radius:999px;background:#30260a;color:var(--yellow);font-size:7.5px}
 .admin-notification-head>b.ok{background:#15321f;color:#65dc91}
+.admin-push-control{padding:10px 11px;border-bottom:1px solid #27292d;background:#0d0e10}
+.admin-push-control>button{width:100%;border:1px solid #34363b;background:#17181b;color:#fff;border-radius:12px;padding:10px;display:grid;grid-template-columns:34px minmax(0,1fr);gap:9px;align-items:center;text-align:left;cursor:pointer}
+.admin-push-control>button>span{width:34px;height:34px;border-radius:10px;background:#30260a;color:var(--yellow);display:grid;place-items:center}
+.admin-push-control>button>span .ui-icon{width:16px;height:16px}
+.admin-push-control>button b{display:block;font-size:9.5px;line-height:1.2}
+.admin-push-control>button small{display:block;margin-top:3px;color:#969aa1;font-size:7.5px;line-height:1.35}
+.admin-push-control>button.active{border-color:#205e39;background:#11231a}
+.admin-push-control>button.active>span{background:#173823;color:#68de94}
+.admin-push-control>button:disabled{cursor:not-allowed;opacity:.66}
+.admin-push-message{min-height:0;margin-top:5px;color:#c6c9ce;font-size:7.5px;line-height:1.35}
 .admin-notification-list{display:grid;max-height:330px;overflow:auto}
 .admin-notification-item{width:100%;border:0;border-bottom:1px solid #25272b;background:#111214;color:#fff;padding:12px;display:grid;grid-template-columns:34px minmax(0,1fr) 14px;gap:9px;align-items:center;text-align:left;cursor:pointer}
 .admin-notification-item:last-child{border-bottom:0}
