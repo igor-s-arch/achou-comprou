@@ -53,6 +53,7 @@
   const normalizeText = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const categorySlugFromText = value => {
     const text = normalizeText(value);
+    if (text.includes('material escolar') || text.includes('papelaria') || text.includes('escolar')) return 'material-escolar';
     if (text.includes('acessor')) return 'acessorios';
     if (text.includes('calcad')) return 'calcados';
     if (text.includes('moda') || text.includes('roupa')) return 'moda';
@@ -66,7 +67,7 @@
     return 'outros';
   };
   const categorySlugFromProductType = type => ({
-    roupa:'moda', calcado:'calcados', pizza:'alimentacao', beleza:'beleza', celular:'tecnologia'
+    roupa:'moda', calcado:'calcados', pizza:'alimentacao', beleza:'beleza', celular:'tecnologia', escolar:'material-escolar'
   }[type] || 'outros');
   let grajauCityId = null;
   const categoryIds = new Map();
@@ -85,7 +86,7 @@
     categoryIds.set(slug,id);
     return id;
   }
-  const artFor = type => type === 'calcado' ? 'shoe' : type === 'roupa' ? 'shirt' : type === 'pizza' ? 'pizza' : type === 'celular' ? 'phone' : 'bag';
+  const artFor = type => type === 'calcado' ? 'shoe' : type === 'roupa' ? 'shirt' : type === 'pizza' ? 'pizza' : type === 'celular' ? 'phone' : type === 'escolar' ? 'book' : 'bag';
   const localStore = store => ({
     id: store.id,
     ownerId: store.owner_id,
@@ -1206,11 +1207,18 @@
         .order('clicado_em',{ascending:false})
         .limit(100);
       if(error)return {ok:false,message:errorMessage(error)};
+      const eventIds=(data||[]).map(r=>r.evento_id).filter(Boolean);
+      const eventMap=new Map();
+      if(eventIds.length){
+        const events=await client.from('eventos').select('id,metadata').in('id',eventIds);
+        if(!events.error)(events.data||[]).forEach(e=>eventMap.set(e.id,e.metadata||{}));
+      }
       const rows=(data||[]).map(r=>({
         id:r.id,eventId:r.evento_id,storeId:r.loja_id,productId:r.produto_id||'',
         status:r.status||'pendente',value:r.valor==null?null:Number(r.valor),
         note:r.observacao||'',clickedAt:r.clicado_em||r.created_at||'',
-        confirmedAt:r.confirmado_em||'',updatedAt:r.updated_at||''
+        confirmedAt:r.confirmado_em||'',updatedAt:r.updated_at||'',
+        metadata:eventMap.get(r.evento_id)||{}
       }));
       return {ok:true,contacts:rows};
     },
