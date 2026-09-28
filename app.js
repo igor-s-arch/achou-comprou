@@ -833,7 +833,18 @@ function home() {
     isPlatform:true,
     fixedFirst:true
   };
-  const bannerItems = [defaultBanner, ...premiumBanners];
+  const movingPlatformBanner = {
+    id:'default-banner-motion',
+    storeId:null,
+    title:'Achou, Comprou em movimento',
+    message:'Encontre ofertas e lojas da sua cidade.',
+    imageData:'',
+    videoData:'./Creating_smooth_advertising_bann…_1080p_20260926152920.mp4',
+    active:true,
+    isPlatform:true,
+    fixedSecond:true
+  };
+  const bannerItems = [defaultBanner, movingPlatformBanner, ...premiumBanners];
   const products = rankedPublicProducts();
   const shops = approvedStores().filter(m=>m.plan!=='gratis');
   const client = currentClient();
