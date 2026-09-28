@@ -588,6 +588,11 @@ function updateCartItem(productId,qty){
   saveDb();
 }
 function clearCart(){db.cart={storeId:null,items:[],note:''};saveDb();}
+function cartItemsForStore(storeId){
+  const cart=cartState();
+  if(!storeId || cart.storeId!==storeId)return [];
+  return cartDetailed().filter(item=>item.product.storeId===storeId);
+}
 function cartWhatsappUrl(store,items,note=''){
   const digits=String(store?.whatsapp||'').replace(/\D/g,'');
   if(!digits||!items.length)return '';
@@ -994,9 +999,26 @@ function home() {
     e.stopPropagation();
     const p=db.products.find(x=>x.id===btn.dataset.homeWa);
     const m=p?storeById(p.storeId):null;
-    const url=p&&m?whatsappUrl(m,p):'';
+    const storeCart=m?cartItemsForStore(m.id):[];
+    const usingCart=storeCart.length>0;
+    const url=p&&m?(usingCart?cartWhatsappUrl(m,storeCart,cartState().note):whatsappUrl(m,p)):'';
     if(!url)return;
-    if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,productId:p.id,metadata:{source:'home',product_name:p.name}}).catch(()=>{});
+    if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{
+      storeId:m.id,
+      productId:usingCart?null:p.id,
+      metadata:usingCart?{
+        source:'carrinho_home',
+        cart_item_count:storeCart.length,
+        cart_quantity:storeCart.reduce((sum,item)=>sum+item.qty,0),
+        cart_total:Number(storeCart.reduce((sum,item)=>sum+priceNumber(currentPrice(item.product))*item.qty,0).toFixed(2)),
+        cart_items:storeCart.slice(0,30).map(item=>({
+          product_id:item.product.id,
+          name:item.product.name,
+          qty:item.qty,
+          unit_price:priceNumber(currentPrice(item.product))
+        }))
+      }:{source:'home',product_name:p.name}
+    }).catch(()=>{});
     window.open(url,'_blank');
   });
 
@@ -1185,7 +1207,7 @@ function product(productId = publicState.productId) {
     <div class="product-action-bar">
       <button class="product-favorite-action" id="favBtn">${icon('heart')} <span>${fav ? 'Favoritado' : 'Favoritar'}</span></button>
       <button class="product-cart-action ${inCart?'active':''}" id="addCartBtn">${icon(inCart?'check':'cart')} <span>${inCart?'Na Minha Lista':'Adicionar à lista'}</span></button>
-      <button class="product-whatsapp-action" id="waBtn">${icon('whatsapp')} <span>Falar com a loja</span></button>
+      <button class="product-whatsapp-action" id="waBtn">${icon('whatsapp')} <span>${cartItemsForStore(m.id).length?'Enviar carrinho no WhatsApp':'Falar com a loja'}</span></button>
     </div>
   </main>`;
 
@@ -1214,7 +1236,29 @@ function product(productId = publicState.productId) {
       alert('Informações do produto copiadas.');
     }catch(_){}
   };
-  document.getElementById('waBtn').onclick = () => { const url=whatsappUrl(m,p); if (url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,productId:p.id,metadata:{source:'produto',product_name:p.name}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
+  document.getElementById('waBtn').onclick = () => {
+    const storeCart=cartItemsForStore(m.id);
+    const usingCart=storeCart.length>0;
+    const url=usingCart?cartWhatsappUrl(m,storeCart,cartState().note):whatsappUrl(m,p);
+    if(!url){alert('A loja ainda não cadastrou um WhatsApp válido.');return;}
+    if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{
+      storeId:m.id,
+      productId:usingCart?null:p.id,
+      metadata:usingCart?{
+        source:'carrinho_produto',
+        cart_item_count:storeCart.length,
+        cart_quantity:storeCart.reduce((sum,item)=>sum+item.qty,0),
+        cart_total:Number(storeCart.reduce((sum,item)=>sum+priceNumber(currentPrice(item.product))*item.qty,0).toFixed(2)),
+        cart_items:storeCart.slice(0,30).map(item=>({
+          product_id:item.product.id,
+          name:item.product.name,
+          qty:item.qty,
+          unit_price:priceNumber(currentPrice(item.product))
+        }))
+      }:{source:'produto',product_name:p.name}
+    }).catch(()=>{});
+    window.open(url,'_blank');
+  };
   if(window.ACCloud?.enabled) window.ACCloud.trackEvent('visualizacao_produto',{storeId:m.id,productId:p.id}).catch(()=>{});
 }
 
@@ -1347,7 +1391,28 @@ async function store(storeId = publicState.storeId) {
   });
 
   const openMap=()=>{if(m.address)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address)}`,'_blank');};
-  document.getElementById('storeWa').onclick=()=>{ const url=whatsappUrl(m,null); if(url) { if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{storeId:m.id,metadata:{source:'loja'}}).catch(()=>{}); window.open(url,'_blank'); } else alert('A loja ainda não cadastrou um WhatsApp válido.'); };
+  document.getElementById('storeWa').onclick=()=>{
+    const storeCart=cartItemsForStore(m.id);
+    const usingCart=storeCart.length>0;
+    const url=usingCart?cartWhatsappUrl(m,storeCart,cartState().note):whatsappUrl(m,null);
+    if(!url){alert('A loja ainda não cadastrou um WhatsApp válido.');return;}
+    if(window.ACCloud?.enabled) window.ACCloud.trackEvent('clique_whatsapp',{
+      storeId:m.id,
+      metadata:usingCart?{
+        source:'carrinho_loja',
+        cart_item_count:storeCart.length,
+        cart_quantity:storeCart.reduce((sum,item)=>sum+item.qty,0),
+        cart_total:Number(storeCart.reduce((sum,item)=>sum+priceNumber(currentPrice(item.product))*item.qty,0).toFixed(2)),
+        cart_items:storeCart.slice(0,30).map(item=>({
+          product_id:item.product.id,
+          name:item.product.name,
+          qty:item.qty,
+          unit_price:priceNumber(currentPrice(item.product))
+        }))
+      }:{source:'loja'}
+    }).catch(()=>{});
+    window.open(url,'_blank');
+  };
   if(document.getElementById('storeInstagram')) document.getElementById('storeInstagram').onclick=()=>{ const handle=String(m.instagram||'').replace('@','').trim(); if(handle) window.open(`https://instagram.com/${handle}`,'_blank'); };
   document.getElementById('storeMap').onclick=openMap;
   document.getElementById('storeAddress').onclick=openMap;
