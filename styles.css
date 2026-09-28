@@ -7860,45 +7860,46 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     color:#111!important;
   }
 
-  @media(max-width:390px){
-    .home-marketplace .home-brand-row>.mini-logo{
-      width:100px!important;
-      flex-basis:100px!important;
-    }
-    .home-marketplace .location-button{
-      min-width:82px!important;
-      max-width:90px!important;
-      padding:0 6px!important;
-      font-size:7.5px!important;
-    }
-    .home-marketplace .round-action{
-      width:36px!important;
-      height:36px!important;
-      flex-basis:36px!important;
-    }
-    .home-marketplace .market-banner-carousel{
-      aspect-ratio:2.58 / 1!important;
-    }
-    .home-marketplace .market-category-row{
-      gap:6px!important;
-      padding-left:10px!important;
-      padding-right:10px!important;
-    }
-    .home-marketplace .market-category-row button{
-      min-height:88px!important;
-      padding:8px 5px!important;
-    }
-    .home-marketplace .market-category-row button span{
-      font-size:7.4px!important;
-    }
-    .home-marketplace .market-category-row button small{
-      font-size:5.9px!important;
-    }
-    .home-marketplace .market-product-card-v2 .market-offer-media{
-      height:132px!important;
-    }
-    .home-marketplace .market-product-card-v2 .market-price-row strong{
-      font-size:15.5px!important;
-    }
+}
+
+@media(max-width:390px){
+  .home-marketplace .home-brand-row>.mini-logo{
+    width:100px!important;
+    flex-basis:100px!important;
+  }
+  .home-marketplace .location-button{
+    min-width:82px!important;
+    max-width:90px!important;
+    padding:0 6px!important;
+    font-size:7.5px!important;
+  }
+  .home-marketplace .round-action{
+    width:36px!important;
+    height:36px!important;
+    flex-basis:36px!important;
+  }
+  .home-marketplace .market-banner-carousel{
+    aspect-ratio:2.58 / 1!important;
+  }
+  .home-marketplace .market-category-row{
+    gap:6px!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  .home-marketplace .market-category-row button{
+    min-height:88px!important;
+    padding:8px 5px!important;
+  }
+  .home-marketplace .market-category-row button span{
+    font-size:7.4px!important;
+  }
+  .home-marketplace .market-category-row button small{
+    font-size:5.9px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-offer-media{
+    height:132px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-price-row strong{
+    font-size:15.5px!important;
   }
 }
