@@ -7108,3 +7108,43 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     background:#fff!important;
   }
 }
+
+
+/* ===== V77 — TEXTOS DAS CATEGORIAS MAIS NÍTIDOS NO PC ===== */
+@media(min-width:900px){
+  .home-marketplace .market-category-row button{
+    min-height:72px!important;
+    padding:10px 12px!important;
+    grid-template-columns:32px minmax(0,1fr) 14px!important;
+    column-gap:9px!important;
+  }
+  .home-marketplace .market-category-row button i{
+    width:32px!important;
+    height:32px!important;
+  }
+  .home-marketplace .market-category-row button i .ui-icon{
+    width:21px!important;
+    height:21px!important;
+  }
+  .home-marketplace .market-category-row button span{
+    font-size:12px!important;
+    line-height:1.18!important;
+    font-weight:900!important;
+    color:#1f2125!important;
+    letter-spacing:0!important;
+    text-rendering:geometricPrecision;
+  }
+  .home-marketplace .market-category-row button small{
+    font-size:9px!important;
+    line-height:1.22!important;
+    font-weight:600!important;
+    color:#666b72!important;
+    letter-spacing:0!important;
+    text-rendering:geometricPrecision;
+  }
+  .home-marketplace .market-category-arrow{
+    width:14px!important;
+    height:14px!important;
+    color:#aeb2b8!important;
+  }
+}
