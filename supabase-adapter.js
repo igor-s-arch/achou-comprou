@@ -165,7 +165,7 @@
     proofPath:p.comprovante_path||'', note:p.observacao||'',
     requestedAt:p.solicitado_em||p.created_at||'', paidAt:p.pago_em||'',
     confirmedAt:p.confirmado_em||'', periodStart:p.periodo_inicio||'',
-    periodEnd:p.periodo_fim||'', createdAt:p.created_at||''
+    periodEnd:p.periodo_fim||'', durationMonths:Number(p.duracao_meses||1), createdAt:p.created_at||''
   });
 
   async function dataUrlToBlob(dataUrl){
@@ -567,9 +567,12 @@
       return error?{ok:false,message:errorMessage(error)}:{ok:true,config:data};
     },
 
-    async requestPlanPayment(storeId,plan){
+    async requestPlanPayment(storeId,plan,months=1){
       if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
-      const {data,error}=await client.rpc('solicitar_pagamento_plano',{p_loja_id:storeId,p_plano_id:normalizePlan(plan)}).single();
+      const duration=[1,3,6,12].includes(Number(months))?Number(months):1;
+      const {data,error}=await client.rpc('solicitar_pagamento_plano',{
+        p_loja_id:storeId,p_plano_id:normalizePlan(plan),p_duracao_meses:duration
+      }).single();
       return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
     },
 
