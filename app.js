@@ -3423,7 +3423,7 @@ async function adminPlans() {
       <div class="admin-section-head"><div><span>PAGAMENTOS</span><h2>Para conferir</h2></div><span>${review.length} solicitação(ões)</span></div>
       <div class="admin-payment-list">
         ${review.length?review.map(p=>{const store=storeById(p.storeId);return `<article class="admin-payment-card">
-          <div class="admin-payment-main"><span class="admin-store-avatar">${esc((store?.name||'L').slice(0,2).toUpperCase())}</span><div><small>${formatDateBR(p.requestedAt)}</small><b>${esc(store?.name||'Loja')}</b><span>${planLabel(p.plan)} · ${brlNumber(p.value)}</span></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></div>
+          <div class="admin-payment-main"><span class="admin-store-avatar">${esc((store?.name||'L').slice(0,2).toUpperCase())}</span><div><small>${formatDateBR(p.requestedAt)}</small><b>${esc(store?.name||'Loja')}</b><span>${planLabel(p.plan)} · ${planPeriodLabel(p.durationMonths)} · ${brlNumber(p.value)}</span></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></div>
           ${p.proofPath?`<button class="payment-proof-link" data-proof-payment="${p.id}">${icon('eye')} Ver comprovante</button>`:'<div class="payment-no-proof">Comprovante ainda não enviado.</div>'}
           <label class="payment-note-label">Observação (opcional)<input data-payment-note="${p.id}" placeholder="Ex.: PIX conferido no extrato"></label>
           <div class="admin-payment-actions"><button class="btn btn-yellow" data-confirm-payment="${p.id}" type="button">${icon('check')} Confirmar pagamento</button><button class="btn btn-secondary" data-reject-payment="${p.id}" type="button">Recusar</button></div>
@@ -3435,13 +3435,13 @@ async function adminPlans() {
         ${db.merchants.filter(m=>m.status==='aprovada').map(store=>`<article class="subscription-control-card">
           <div class="subscription-store"><span class="admin-store-avatar">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><b>${esc(store.name)}</b><small>${store.requestedPlan?`Solicitou ${planLabel(store.requestedPlan)}`:'Sem solicitação pendente'}</small></div></div>
           <div class="subscription-current"><small>PLANO ATUAL</small><strong>${planLabel(store.plan)}</strong><span>${store.plan!=='gratis'&&store.planExpiresAt?`Vence em ${formatDateBR(store.planExpiresAt)}`:'Sem vencimento de plano pago'}</span></div>
-          <div class="subscription-manual"><select data-manual-plan="${store.id}"><option value="premium">Premium · R$ 49,90</option><option value="premium_banner" ${store.requestedPlan==='premium_banner'?'selected':''}>Premium + Banner · R$ 59,90</option></select><button class="btn btn-secondary" data-manual-activate="${store.id}" type="button">Ativar 30 dias manualmente</button>${store.plan!=='gratis'?`<button class="danger subscription-downgrade" data-downgrade-store="${store.id}" type="button">Voltar ao Grátis</button>`:''}</div>
+          <div class="subscription-manual"><select data-manual-plan="${store.id}"><option value="premium">Premium</option><option value="premium_banner" ${store.requestedPlan==='premium_banner'?'selected':''}>Premium + Banner</option></select><select data-manual-months="${store.id}"><option value="1">1 mês</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">1 ano</option></select><button class="btn btn-secondary" data-manual-activate="${store.id}" type="button">Ativar período</button>${store.plan!=='gratis'?`<button class="danger subscription-downgrade" data-downgrade-store="${store.id}" type="button">Voltar ao Grátis</button>`:''}</div>
         </article>`).join('')||'<div class="admin-empty">Nenhuma loja aprovada.</div>'}
       </div>
 
       <div class="admin-section-head"><div><span>HISTÓRICO</span><h2>Pagamentos recentes</h2></div></div>
       <div class="admin-payment-history">
-        ${payments.length?payments.slice(0,20).map(p=>{const store=storeById(p.storeId);return `<article><div><b>${esc(store?.name||'Loja')}</b><small>${formatDateBR(p.requestedAt)} · ${planLabel(p.plan)} · ${p.method==='cortesia'?'Ativação manual':brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></article>`}).join(''):'<div class="admin-empty">Ainda não há pagamentos registrados.</div>'}
+        ${payments.length?payments.slice(0,20).map(p=>{const store=storeById(p.storeId);return `<article><div><b>${esc(store?.name||'Loja')}</b><small>${formatDateBR(p.requestedAt)} · ${planLabel(p.plan)} · ${planPeriodLabel(p.durationMonths)} · ${p.method==='cortesia'?'Ativação manual':brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></article>`}).join(''):'<div class="admin-empty">Ainda não há pagamentos registrados.</div>'}
       </div>
     </section>
     ${adminNav('plans')}
@@ -3476,7 +3476,7 @@ async function adminPlans() {
       if(!result.ok){alert(result.message||'Não foi possível confirmar o pagamento.');return;}
       await syncAdminPayments();await syncCloudAdminData();adminPlans();return;
     }
-    const p=paymentById(id);if(p){p.status='pago';p.confirmedAt=new Date().toISOString();const m=storeById(p.storeId);if(m){m.plan=p.plan;m.planExpiresAt=new Date(Date.now()+30*86400000).toISOString();m.requestedPlan=null;}saveDb();adminPlans();}
+    const p=paymentById(id);if(p){p.status='pago';p.confirmedAt=new Date().toISOString();const m=storeById(p.storeId);if(m){const start=m.plan===p.plan&&m.planExpiresAt&&new Date(m.planExpiresAt).getTime()>Date.now()?m.planExpiresAt:new Date().toISOString();const end=addPlanMonthsIso(start,p.durationMonths||1);m.plan=p.plan;m.planExpiresAt=end;m.requestedPlan=null;p.periodStart=start;p.periodEnd=end;}saveDb();adminPlans();}
   });
 
   document.querySelectorAll('[data-reject-payment]').forEach(btn=>btn.onclick=async()=>{
@@ -3492,8 +3492,10 @@ async function adminPlans() {
   document.querySelectorAll('[data-manual-activate]').forEach(btn=>btn.onclick=async()=>{
     const storeId=btn.dataset.manualActivate;
     const plan=document.querySelector(`[data-manual-plan="${storeId}"]`)?.value||'premium';
+    const months=Number(document.querySelector(`[data-manual-months="${storeId}"]`)?.value||1);
+    const days=({1:30,3:90,6:180,12:365})[months]||30;
     if(window.ACCloud?.enabled){
-      btn.disabled=true;const result=await window.ACCloud.activatePlanManual(storeId,plan,30,'Ativação manual de 30 dias pelo administrador');btn.disabled=false;
+      btn.disabled=true;const result=await window.ACCloud.activatePlanManual(storeId,plan,days,'Ativação manual de '+planPeriodLabel(months)+' pelo administrador');btn.disabled=false;
       if(!result.ok){alert(result.message||'Não foi possível ativar o plano.');return;}
       await syncAdminPayments();await syncCloudAdminData();adminPlans();return;
     }
