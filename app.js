@@ -895,7 +895,7 @@ function home() {
               </article>`;
             }
             if(banner.imageData){
-              return `<article class="banner banner-pro banner-slide market-hero-banner market-art-banner" data-banner-index="${index}">
+              return `<article class="banner banner-pro banner-slide market-hero-banner market-art-banner${banner.isPlatform?' platform-first-banner':''}" data-banner-index="${index}">
                 <img class="market-art-banner-image" src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Loja em destaque')}">
                 ${bannerStore ? `<button class="market-art-banner-hit" type="button" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>` : ''}
               </article>`;
