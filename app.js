@@ -1876,7 +1876,7 @@ function planCards(mode='preview') {
 }
 
 function plansPreview() {
-  app.innerHTML = `<main class="app-shell plans-page"><div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Planos para lojas</b></div><header class="plans-hero"><span>ACHOU, COMPROU PARA EMPRESAS</span><h1>Planos para colocar sua loja em movimento.</h1><p>O cadastro da loja é feito normalmente. Depois da aprovação, escolha o plano e o período para liberar os recursos.</p></header><section class="plans-wrap">${planCards('preview')}<div class="plans-note"><b>Não existe plano Grátis automático.</b> O administrador pode liberar uma cortesia de 30 dias quando desejar.</div></section></main>`;
+  app.innerHTML = `<main class="app-shell plans-page"><div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Planos para lojas</b></div><header class="plans-hero"><span>ACHOU, COMPROU PARA EMPRESAS</span><h1>Planos para colocar sua loja em movimento.</h1><p>O cadastro da loja é feito normalmente. Depois da aprovação, escolha o plano e o período para liberar os recursos.</p></header><section class="plans-wrap">${planCards('preview')}<div class="plans-note"><b>O cadastro da loja não tem cobrança.</b> A cobrança começa somente quando o lojista decide ativar os recursos comerciais.</div></section></main>`;
   bind();
   bindPlanPeriodSelectors();
   document.querySelectorAll('[data-plan-preview]').forEach(btn=>btn.onclick=()=>{
@@ -2086,7 +2086,7 @@ function merchantSubmitted(chosen='gratis', options={}) {
   const m=currentMerchant();
   const displayName=options.name || m?.name || 'Sua loja';
   const emailPending=!!options.needsEmailConfirmation;
-  app.innerHTML=`<main class="app-shell submission-page"><div class="submission-card"><div class="submission-check">${icon('check')}</div><span>CADASTRO DA LOJA</span><h1>${emailPending?'Confirme seu e-mail':'Cadastro enviado'}</h1><p>${emailPending?`Enviamos um link de confirmação para <b>${esc(options.email||'seu e-mail')}</b>. Depois de confirmar, entre na Área do Lojista para acompanhar a análise.`:`Sua loja <b>${esc(displayName)}</b> foi enviada para análise.`}</p><div class="submission-summary"><div><small>Plano</small><strong>Sem plano ativo</strong></div><div><small>Status</small><strong>${emailPending?'E-mail pendente':'Aguardando aprovação'}</strong></div></div><div class="notice">Depois que a loja for aprovada, você poderá entrar normalmente no painel. Para cadastrar produtos, criar ofertas e usar os recursos comerciais, será necessário ativar um plano ou receber uma cortesia de 30 dias liberada pelo administrador.</div><button class="btn btn-yellow btn-block" data-go="${emailPending?'merchantLogin':'merchant'}">${emailPending?'Ir para o login':'Ir para meu painel'}</button><button class="btn btn-outline btn-block" data-go="home">Voltar ao aplicativo</button></div></main>`;
+  app.innerHTML=`<main class="app-shell submission-page"><div class="submission-card"><div class="submission-check">${icon('check')}</div><span>CADASTRO DA LOJA</span><h1>${emailPending?'Confirme seu e-mail':'Cadastro enviado'}</h1><p>${emailPending?`Enviamos um link de confirmação para <b>${esc(options.email||'seu e-mail')}</b>. Depois de confirmar, entre na Área do Lojista para acompanhar a análise.`:`Sua loja <b>${esc(displayName)}</b> foi enviada para análise.`}</p><div class="submission-summary"><div><small>Plano</small><strong>Sem plano ativo</strong></div><div><small>Status</small><strong>${emailPending?'E-mail pendente':'Aguardando aprovação'}</strong></div></div><div class="notice">Depois que a loja for aprovada, você poderá entrar normalmente no painel. Para cadastrar produtos, criar ofertas e usar os recursos comerciais, será necessário ativar um plano.</div><button class="btn btn-yellow btn-block" data-go="${emailPending?'merchantLogin':'merchant'}">${emailPending?'Ir para o login':'Ir para meu painel'}</button><button class="btn btn-outline btn-block" data-go="home">Voltar ao aplicativo</button></div></main>`;
   bind();
 }
 
@@ -3437,7 +3437,7 @@ async function adminPlans() {
       <div class="admin-subscription-control">
         ${db.merchants.filter(m=>m.status==='aprovada').map(store=>`<article class="subscription-control-card">
           <div class="subscription-store"><span class="admin-store-avatar">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><b>${esc(store.name)}</b><small>${store.requestedPlan?`Solicitou ${planLabel(store.requestedPlan)}`:'Sem solicitação pendente'}</small></div></div>
-          <div class="subscription-current"><small>PLANO ATUAL</small><strong>${planLabel(store.plan)}</strong><span>${store.plan!=='gratis'&&store.planExpiresAt?`Vence em ${formatDateBR(store.planExpiresAt)}`:'Sem vencimento de plano pago'}</span></div>
+          <div class="subscription-current"><small>PLANO ATUAL</small><strong>${planLabel(store.plan)}</strong><span>${store.plan!=='gratis'&&store.planExpiresAt?`Vence em ${formatDateBR(store.planExpiresAt)}` :'Nenhum plano ativo'}</span></div>
           <div class="subscription-manual"><select data-manual-plan="${store.id}"><option value="premium">Premium</option><option value="premium_banner" ${store.requestedPlan==='premium_banner'?'selected':''}>Premium + Banner</option></select><select data-manual-months="${store.id}"><option value="1">1 mês</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">1 ano</option></select><button class="btn btn-yellow subscription-trial" data-trial-store="${store.id}" type="button">Liberar 30 dias grátis</button><button class="btn btn-secondary" data-manual-activate="${store.id}" type="button">Ativar período manualmente</button>${store.plan!=='gratis'?`<button class="danger subscription-downgrade" data-downgrade-store="${store.id}" type="button">Remover plano</button>`:''}</div>
         </article>`).join('')||'<div class="admin-empty">Nenhuma loja aprovada.</div>'}
       </div>
@@ -3497,7 +3497,7 @@ async function adminPlans() {
     const plan=document.querySelector(`[data-manual-plan="${storeId}"]`)?.value||'premium';
     if(window.ACCloud?.enabled){
       btn.disabled=true;
-      const result=await window.ACCloud.activatePlanManual(storeId,plan,30,'Teste grátis de 30 dias liberado pelo administrador');
+      const result=await window.ACCloud.activateFreeTrial(storeId,plan);
       btn.disabled=false;
       if(!result.ok){alert(result.message||'Não foi possível liberar o teste grátis.');return;}
       await syncAdminPayments();await syncCloudAdminData();adminPlans();return;
@@ -3505,8 +3505,9 @@ async function adminPlans() {
     const m=storeById(storeId);
     if(m){
       const start=m.plan===plan&&m.planExpiresAt&&new Date(m.planExpiresAt).getTime()>Date.now()?m.planExpiresAt:new Date().toISOString();
-      m.plan=plan;m.planExpiresAt=addPlanMonthsIso(start,1);m.requestedPlan=null;
-      db.payments.unshift({id:id('pay'),storeId,plan,value:0,durationMonths:1,status:'pago',method:'cortesia',note:'Teste grátis de 30 dias',requestedAt:new Date().toISOString(),confirmedAt:new Date().toISOString(),periodStart:start,periodEnd:m.planExpiresAt});
+      const end=new Date(new Date(start).getTime()+30*86400000).toISOString();
+      m.plan=plan;m.planExpiresAt=end;m.requestedPlan=null;
+      db.payments.unshift({id:id('pay'),storeId,plan,value:0,durationMonths:1,status:'pago',method:'cortesia',note:'Teste grátis de 30 dias',requestedAt:new Date().toISOString(),confirmedAt:new Date().toISOString(),periodStart:start,periodEnd:end});
       saveDb();adminPlans();
     }
   });
