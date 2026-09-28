@@ -7933,3 +7933,54 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
       linear-gradient(180deg,rgba(0,0,0,.02) 0%,rgba(0,0,0,.06) 35%,rgba(0,0,0,.48) 64%,rgba(0,0,0,.94) 88%,#070808 100%)!important;
   }
 }
+
+
+/* ===== V83 — PROPORÇÃO REAL DOS BANNERS NO APP ===== */
+@media(max-width:899px){
+  .home-marketplace .market-banner-carousel{
+    width:calc(100% - 20px)!important;
+    height:auto!important;
+    aspect-ratio:2048 / 682!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:hidden!important;
+    background:#fff8e7!important;
+  }
+  .home-marketplace .banner-carousel-track{
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+  }
+  .home-marketplace .market-hero-banner,
+  .home-marketplace .market-art-banner,
+  .home-marketplace .market-video-banner{
+    flex:0 0 100%!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    aspect-ratio:auto!important;
+    overflow:hidden!important;
+  }
+  .home-marketplace .market-art-banner-image,
+  .home-marketplace .platform-first-banner .market-art-banner-image,
+  .home-marketplace .platform-second-image-banner .market-art-banner-image{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:#fff8e7!important;
+    transform:none!important;
+  }
+}
+
+@media(max-width:390px){
+  .home-marketplace .market-banner-carousel{
+    aspect-ratio:2048 / 682!important;
+  }
+}
