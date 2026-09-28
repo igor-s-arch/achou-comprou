@@ -7079,3 +7079,32 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     }
   }
 }
+
+
+/* ===== V76 — BANNER INSTITUCIONAL SEM CORTE NO PC ===== */
+@media(min-width:900px){
+  .home-marketplace .market-banner-carousel{
+    height:auto!important;
+    aspect-ratio:2048 / 682!important;
+    max-height:none!important;
+  }
+  .home-marketplace .banner-carousel-track{
+    height:100%!important;
+  }
+  .home-marketplace .market-hero-banner,
+  .home-marketplace .market-video-banner,
+  .home-marketplace .market-art-banner{
+    height:100%!important;
+    min-height:0!important;
+  }
+  .home-marketplace .platform-first-banner{
+    background:#fff!important;
+  }
+  .home-marketplace .platform-first-banner .market-art-banner-image{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:#fff!important;
+  }
+}
