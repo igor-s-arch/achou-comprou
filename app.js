@@ -119,7 +119,7 @@ function saveFavorite(productId, active) { const c=currentClient(); if(!c) retur
 async function finishClientAccess(clientId) { db.session.admin=false; db.session.merchantId=null; db.session.clientId=clientId; await syncCloudFavorites(clientId); const pending=publicState.afterLogin; if(pending?.favoriteId) await setFavorite(pending.favoriteId,true); publicState.afterLogin=null; saveDb(); if(pending?.screen==='product' && pending.productId) return product(pending.productId); if(pending?.screen==='favorites') return favorites(); profile(); }
 function id(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2,8)}`; }
 function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function planLabel(plan) { return ({gratis:'Grátis', premium:'Premium', premium_banner:'Premium + Banner'})[plan] || 'Grátis'; }
+function planLabel(plan) { return ({gratis:'Sem plano ativo', premium:'Premium', premium_banner:'Premium + Banner'})[plan] || 'Sem plano ativo'; }
 const PLAN_PERIODS={
   premium:{1:49.90,3:139.90,6:269.90,12:479.90},
   premium_banner:{1:59.90,3:169.90,6:319.90,12:569.90}
@@ -382,7 +382,30 @@ async function setFavorite(productId,active){
   return true;
 }
 
-const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merchantPlanIntent:'', merchantPlanMonths:1, merchantDraft:null, merchantExistingAccount:null, afterLogin:null, passwordRecovery:false, filters: { category:'', option:'', color:'', maxPrice:'' } };
+const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merchantPlanIntent:'', merchantPlanMonths:1, planGateFeature:'', merchantDraft:null, merchantExistingAccount:null, afterLogin:null, passwordRecovery:false, filters: { category:'', option:'', color:'', maxPrice:'' } };
+
+function storeHasActivePlan(store){
+  if(!store || !['premium','premium_banner'].includes(store.plan))return false;
+  if(!store.planExpiresAt)return true;
+  const t=new Date(store.planExpiresAt).getTime();
+  return !Number.isNaN(t) && t>Date.now();
+}
+function merchantHasActivePlan(store=currentMerchant()){
+  return !!store && store.status==='aprovada' && storeHasActivePlan(store);
+}
+function requireMerchantPlan(feature='usar este recurso'){
+  const m=currentMerchant();
+  if(!m){merchantLogin();return false;}
+  if(m.status!=='aprovada'){
+    app.innerHTML=`<main class="app-shell merchant ${merchantDeviceClass()} plans-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Recurso indisponível</b></div><section class="plan-gate-card"><span>${icon('clock')}</span><h1>Cadastro em análise</h1><p>Sua loja precisa ser aprovada antes de liberar recursos comerciais.</p><button class="btn btn-secondary btn-block" data-go="merchant">Voltar ao painel</button></section>${merchantNav('dashboard')}</main>`;
+    bind();
+    return false;
+  }
+  if(merchantHasActivePlan(m))return true;
+  publicState.planGateFeature=feature;
+  plans();
+  return false;
+}
 
 function normalizeText(value = '') {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -404,7 +427,7 @@ function compareStorePriority(a,b){
     || (storeVisitValue(b)-storeVisitValue(a))
     || String(a?.name||'').localeCompare(String(b?.name||''),'pt-BR');
 }
-function approvedStores() { return db.merchants.filter(m => m.status === 'aprovada').sort(compareStorePriority); }
+function approvedStores() { return db.merchants.filter(m => m.status === 'aprovada' && storeHasActivePlan(m)).sort(compareStorePriority); }
 function storeById(id) { return db.merchants.find(m => m.id === id) || null; }
 function publicPremiumBanners() {
   const now=Date.now();
