@@ -2755,16 +2755,16 @@ async function merchantPayment(paymentId) {
   app.innerHTML=`<main class="app-shell merchant ${merchantDeviceClass()} payment-page">
     <div class="page-head"><button class="back" data-go="plans" aria-label="Voltar">${icon('arrowLeft')}</button><b>Pagamento do plano</b></div>
     <section class="payment-hero">
-      <span>${planLabel(payment.plan).toUpperCase()}</span>
+      <span>${planLabel(payment.plan).toUpperCase()} · ${planPeriodLabel(payment.durationMonths)}</span>
       <h1>${brlNumber(payment.value)}</h1>
-      <p>${paid?'Pagamento confirmado e plano ativado por 30 dias.':reviewing?'Seu comprovante foi enviado e está aguardando conferência.':'Faça o PIX e envie o comprovante para análise.'}</p>
+      <p>${paid?`Pagamento confirmado e plano ativado por ${planPeriodLabel(payment.durationMonths)}.`:reviewing?`Seu comprovante de ${planPeriodLabel(payment.durationMonths)} foi enviado e está aguardando conferência.`:`Faça o PIX do período de ${planPeriodLabel(payment.durationMonths)} e envie o comprovante para análise.`}</p>
       <span class="admin-status ${paymentStatusClass(payment.status)}">${paymentStatusLabel(payment.status)}</span>
     </section>
     ${paid?`
       <section class="payment-success-card"><div class="payment-success-icon">${icon('check')}</div><h2>Plano ativo</h2><p>Período: <b>${formatDateBR(payment.periodStart)}</b> até <b>${formatDateBR(payment.periodEnd)}</b>.</p><button class="btn btn-yellow btn-block" data-go="merchant">Voltar ao painel</button></section>
     `:`
       <section class="payment-pix-card">
-        <div class="payment-section-title"><span>1</span><div><b>Faça o PIX</b><small>Valor exato: ${brlNumber(payment.value)}</small></div></div>
+        <div class="payment-section-title"><span>1</span><div><b>Faça o PIX</b><small>${planPeriodLabel(payment.durationMonths)} · valor exato: ${brlNumber(payment.value)}</small></div></div>
         ${cfg.pixKey?`
           <div class="pix-qr-wrap">
             <div class="pix-qr-box"><div id="pixQrCanvas" class="pix-qr-render" aria-label="QR Code PIX"></div><small id="pixQrStatus">Aponte a câmera do banco para o QR Code</small></div>
