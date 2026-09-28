@@ -2712,15 +2712,17 @@ async function plans() {
   const m = currentMerchant(); if (!m) return merchantLogin();
   if(window.ACCloud?.enabled) await syncMerchantPayments(m.id);
   const history=(db.payments||[]).filter(p=>p.storeId===m.id).slice(0,4);
+  const gateFeature=publicState.planGateFeature;
   const expiry=m.plan!=='gratis'&&m.planExpiresAt?`<div class="plan-expiry-note">Ativo até <b>${formatDateBR(m.planExpiresAt)}</b></div>`:'';
   app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} plans-page">
     <div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Meu plano</b></div>
     <header class="plans-hero compact"><span>PLANO ATUAL: ${planLabel(m.plan).toUpperCase()}</span><h1>Escolha o plano e o período.</h1><p>Você pode assinar por 1 mês, 3 meses, 6 meses ou 1 ano. O vencimento é calculado após a confirmação do PIX.</p>${expiry}</header>
-    <section class="plans-wrap">${planCards('account')}<div id="planMsg" class="plans-note">${m.status!=='aprovada'?'Sua loja precisa ser aprovada antes de realizar o pagamento.':'Escolha um plano pago para gerar a solicitação de PIX.'}</div></section>
+    <section class="plans-wrap">${gateFeature?`<div class="plan-gate-notice">${icon('lock')}<div><b>Plano necessário</b><span>Para ${esc(gateFeature)}, escolha um plano abaixo e faça o pagamento pelo PIX.</span></div></div>`:''}${planCards('account')}<div id="planMsg" class="plans-note">${m.status!=='aprovada'?'Sua loja precisa ser aprovada antes de realizar o pagamento.':'Escolha o plano e o período para gerar a solicitação de PIX.'}</div></section>
     ${history.length?`<section class="merchant-payment-history"><div class="section-title"><h3>Pagamentos</h3><a>Histórico</a></div>${history.map(p=>`<button class="payment-history-row" data-payment-open="${p.id}"><div><b>${planLabel(p.plan)}</b><small>${formatDateBR(p.requestedAt)} · ${planPeriodLabel(p.durationMonths)} · ${brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></button>`).join('')}</section>`:''}
     ${merchantNav('plan')}
   </main>`;
   bind();
+  publicState.planGateFeature='';
   bindPlanPeriodSelectors();
   document.querySelectorAll('[data-payment-open]').forEach(btn=>btn.onclick=()=>merchantPayment(btn.dataset.paymentOpen));
   document.querySelectorAll('[data-request-plan]').forEach(btn => btn.onclick = async () => {
@@ -3119,7 +3121,7 @@ async function admin() {
 
       <section class="admin-panel-card"><div class="admin-panel-head"><div><span>LOJAS</span><h3>Cadastros recentes</h3></div><button data-go="adminStores">Ver todas</button></div><div class="admin-store-list">${recent.map(m=>`<button data-admin-store="${m.id}"><span class="admin-store-avatar">${esc((m.name||'L').slice(0,2).toUpperCase())}</span><span class="admin-store-copy"><b>${esc(m.name)}</b><small>${esc(m.category)} · ${planLabel(m.plan)}</small></span>${adminStatusBadge(m.status)}</button>`).join('')}</div></section>
 
-      <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Grátis</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section>
+      <section class="admin-panel-card"><div class="admin-panel-head"><div><span>PLANOS</span><h3>Distribuição atual</h3></div><button data-go="adminPlans">Gerenciar</button></div><div class="admin-plan-bars"><div><label><span>Sem plano</span><b>${planMix.gratis}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.gratis/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium</span><b>${planMix.premium}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium/db.merchants.length*100):0}%"></u></i></div><div><label><span>Premium + Banner</span><b>${planMix.premium_banner}</b></label><i><u style="width:${db.merchants.length?Math.max(8,planMix.premium_banner/db.merchants.length*100):0}%"></u></i></div></div></section>
 
       <button class="admin-logout-link" id="adminLogout">Sair da administração</button>
     </section>
@@ -3436,7 +3438,7 @@ async function adminPlans() {
         ${db.merchants.filter(m=>m.status==='aprovada').map(store=>`<article class="subscription-control-card">
           <div class="subscription-store"><span class="admin-store-avatar">${esc((store.name||'L').slice(0,2).toUpperCase())}</span><div><b>${esc(store.name)}</b><small>${store.requestedPlan?`Solicitou ${planLabel(store.requestedPlan)}`:'Sem solicitação pendente'}</small></div></div>
           <div class="subscription-current"><small>PLANO ATUAL</small><strong>${planLabel(store.plan)}</strong><span>${store.plan!=='gratis'&&store.planExpiresAt?`Vence em ${formatDateBR(store.planExpiresAt)}`:'Sem vencimento de plano pago'}</span></div>
-          <div class="subscription-manual"><select data-manual-plan="${store.id}"><option value="premium">Premium</option><option value="premium_banner" ${store.requestedPlan==='premium_banner'?'selected':''}>Premium + Banner</option></select><select data-manual-months="${store.id}"><option value="1">1 mês</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">1 ano</option></select><button class="btn btn-secondary" data-manual-activate="${store.id}" type="button">Ativar período</button>${store.plan!=='gratis'?`<button class="danger subscription-downgrade" data-downgrade-store="${store.id}" type="button">Voltar ao Grátis</button>`:''}</div>
+          <div class="subscription-manual"><select data-manual-plan="${store.id}"><option value="premium">Premium</option><option value="premium_banner" ${store.requestedPlan==='premium_banner'?'selected':''}>Premium + Banner</option></select><select data-manual-months="${store.id}"><option value="1">1 mês</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">1 ano</option></select><button class="btn btn-yellow subscription-trial" data-trial-store="${store.id}" type="button">Liberar 30 dias grátis</button><button class="btn btn-secondary" data-manual-activate="${store.id}" type="button">Ativar período manualmente</button>${store.plan!=='gratis'?`<button class="danger subscription-downgrade" data-downgrade-store="${store.id}" type="button">Remover plano</button>`:''}</div>
         </article>`).join('')||'<div class="admin-empty">Nenhuma loja aprovada.</div>'}
       </div>
 
@@ -3488,6 +3490,25 @@ async function adminPlans() {
       await syncAdminPayments();adminPlans();return;
     }
     const p=paymentById(id);if(p){p.status='recusado';p.note=note;saveDb();adminPlans();}
+  });
+
+  document.querySelectorAll('[data-trial-store]').forEach(btn=>btn.onclick=async()=>{
+    const storeId=btn.dataset.trialStore;
+    const plan=document.querySelector(`[data-manual-plan="${storeId}"]`)?.value||'premium';
+    if(window.ACCloud?.enabled){
+      btn.disabled=true;
+      const result=await window.ACCloud.activatePlanManual(storeId,plan,30,'Teste grátis de 30 dias liberado pelo administrador');
+      btn.disabled=false;
+      if(!result.ok){alert(result.message||'Não foi possível liberar o teste grátis.');return;}
+      await syncAdminPayments();await syncCloudAdminData();adminPlans();return;
+    }
+    const m=storeById(storeId);
+    if(m){
+      const start=m.plan===plan&&m.planExpiresAt&&new Date(m.planExpiresAt).getTime()>Date.now()?m.planExpiresAt:new Date().toISOString();
+      m.plan=plan;m.planExpiresAt=addPlanMonthsIso(start,1);m.requestedPlan=null;
+      db.payments.unshift({id:id('pay'),storeId,plan,value:0,durationMonths:1,status:'pago',method:'cortesia',note:'Teste grátis de 30 dias',requestedAt:new Date().toISOString(),confirmedAt:new Date().toISOString(),periodStart:start,periodEnd:m.planExpiresAt});
+      saveDb();adminPlans();
+    }
   });
 
   document.querySelectorAll('[data-manual-activate]').forEach(btn=>btn.onclick=async()=>{
