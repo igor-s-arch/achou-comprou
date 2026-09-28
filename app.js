@@ -834,12 +834,12 @@ function home() {
     fixedFirst:true
   };
   const movingPlatformBanner = {
-    id:'default-banner-motion',
+    id:'default-banner-second',
     storeId:null,
-    title:'Achou, Comprou em movimento',
+    title:'Achou, Comprou',
     message:'Encontre ofertas e lojas da sua cidade.',
-    imageData:'',
-    videoData:'./Creating_smooth_advertising_bann…_1080p_20260926152920.mp4',
+    imageData:'./Imagem%20ChatGPT%2028_09_2026,%2017_16_39.png',
+    videoData:'',
     active:true,
     isPlatform:true,
     fixedSecond:true
@@ -906,7 +906,7 @@ function home() {
               </article>`;
             }
             if(banner.imageData){
-              return `<article class="banner banner-pro banner-slide market-hero-banner market-art-banner${banner.isPlatform?' platform-first-banner':''}" data-banner-index="${index}">
+              return `<article class="banner banner-pro banner-slide market-hero-banner market-art-banner${banner.fixedSecond?' platform-second-image-banner':banner.isPlatform?' platform-first-banner':''}" data-banner-index="${index}">
                 <img class="market-art-banner-image" src="${esc(banner.imageData)}" alt="Banner ${esc(bannerStore?.name||'Loja em destaque')}">
                 ${bannerStore ? `<button class="market-art-banner-hit" type="button" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>` : ''}
               </article>`;
