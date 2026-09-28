@@ -708,6 +708,14 @@
       return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
     },
 
+    async activateFreeTrial(storeId,plan='premium'){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const {data,error}=await client.rpc('liberar_teste_gratis_30_dias',{
+        p_loja_id:storeId,p_plano_id:normalizePlan(plan)
+      }).single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,payment:localPayment(data)};
+    },
+
     async downgradeStore(storeId){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.rpc('rebaixar_loja_gratis',{p_loja_id:storeId,p_observacao:'Plano alterado para Grátis pelo administrador'});
