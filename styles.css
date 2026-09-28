@@ -7164,3 +7164,18 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     display:block!important;
   }
 }
+
+
+/* ===== V80 — SEGUNDO BANNER INSTITUCIONAL EM IMAGEM ===== */
+@media(min-width:900px){
+  .home-marketplace .platform-second-image-banner{
+    background:#fff!important;
+  }
+  .home-marketplace .platform-second-image-banner .market-art-banner-image{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:#fff!important;
+  }
+}
