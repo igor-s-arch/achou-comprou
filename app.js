@@ -2154,7 +2154,8 @@ async function merchant() {
   const planText = planLabel(m.plan);
   const lastProducts = products.slice(-3).reverse();
   const lastOffer = offers.slice(-1)[0];
-  const pending = m.status !== 'aprovada' ? `<div class="merchant-alert">${icon('clock')}<div><b>${statusText}</b><span>Você pode preparar produtos e ofertas. A loja só aparece para clientes depois da aprovação.</span></div></div>` : '';
+  const pending = m.status !== 'aprovada' ? `<div class="merchant-alert">${icon('clock')}<div><b>${statusText}</b><span>Você pode revisar os dados da loja. Produtos, ofertas e estatísticas são liberados após a aprovação e ativação de um plano.</span></div></div>` : '';
+  const planRequired = m.status==='aprovada' && !merchantHasActivePlan(m) ? `<div class="merchant-plan-required">${icon('star')}<div><b>Ative um plano para começar</b><span>Seu cadastro está aprovado. Escolha um plano para cadastrar produtos, criar ofertas e acessar os recursos comerciais.</span></div><button data-go="plans">Ver planos</button></div>` : '';
   const heroCover=m.coverData?`<img class="merchant-dash-cover" src="${esc(m.coverData)}" alt="">`:'';
   const shopLogo=m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:icon('store');
 
@@ -2177,12 +2178,13 @@ async function merchant() {
 
     <section class="merchant-dashboard-body">
       ${pending}
+      ${planRequired}
       <div class="merchant-section-heading"><div><span>VISÃO GERAL</span><h2>Resumo da loja</h2></div><small>${window.ACCloud?.enabled ? 'Dados online' : 'Dados locais'}</small></div>
       <div class="merchant-kpi-grid">
         <article class="merchant-kpi"><span>${icon('eye')}</span><small>Visualizações 30d</small><strong>${dashViews30}</strong><em>Loja + produtos</em></article>
         <article class="merchant-kpi"><span>${icon('whatsapp')}</span><small>WhatsApp 30d</small><strong>${dashContacts30.length||dashCounts30.clique_whatsapp||0}</strong><em>Interessados recebidos</em></article>
         <article class="merchant-kpi"><span>${icon('package')}</span><small>Produtos ativos</small><strong>${activeProducts.length}</strong><em>${products.length} no total</em></article>
-        <article class="merchant-kpi"><span>${icon('flame')}</span><small>Ofertas ativas</small><strong>${offers.length}</strong><em>${m.plan === 'gratis' ? 'Limite de 2/mês' : 'Ilimitadas'}</em></article>
+        <article class="merchant-kpi"><span>${icon('flame')}</span><small>Ofertas ativas</small><strong>${offers.length}</strong><em>${merchantHasActivePlan(m) ? 'Ilimitadas' : 'Plano necessário'}</em></article>
       </div>
 
       <section class="merchant-result-snapshot">
@@ -2226,7 +2228,7 @@ async function merchant() {
 }
 
 function merchantProducts() {
-  const m = currentMerchant(); if (!m) return merchantLogin(); const products = merchantProductsFor(m.id);
+  const m = currentMerchant(); if (!m) return merchantLogin(); if(!requireMerchantPlan('ver e gerenciar produtos'))return; const products = merchantProductsFor(m.id);
   const activeCount = products.filter(p => p.status === 'ativo').length;
   app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage">
     <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>CATÁLOGO</span><b>Meus produtos</b></div><button class="merchant-add-small" data-go="productForm">${icon('plus')} Novo</button></div>
@@ -2271,7 +2273,7 @@ function merchantProducts() {
 }
 
 function merchantProductEdit(productId){
-  const m=currentMerchant(); if(!m)return merchantLogin();
+  const m=currentMerchant(); if(!m)return merchantLogin(); if(!requireMerchantPlan('editar produtos'))return;
   const p=db.products.find(x=>x.id===productId && x.storeId===m.id); if(!p)return merchantProducts();
   const meta=normalizedProduct(p);
   const CLOTHING_ADULT=['Único','PP','P','M','G','GG','XG','XXG'];
@@ -2339,7 +2341,7 @@ function merchantProductEdit(productId){
 }
 
 function merchantOffers() {
-  const m = currentMerchant(); if (!m) return merchantLogin();
+  const m = currentMerchant(); if (!m) return merchantLogin(); if(!requireMerchantPlan('ver e gerenciar ofertas'))return;
   const offers = merchantOffersFor(m.id).slice().reverse();
   const activeCount = offers.filter(o => o.active).length;
   const used = m.plan === 'gratis' ? Math.min(offers.length, 2) : offers.length;
@@ -2436,7 +2438,7 @@ function merchantStore() {
 }
 
 function productForm() {
-  const m = currentMerchant(); if (!m) return merchantLogin(); const ownProducts = merchantProductsFor(m.id); if (m.plan === 'gratis' && ownProducts.length >= 2) { app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar produto</b></div><div class="form-card"><div class="notice">Seu plano Grátis permite até 2 produtos. Para cadastrar mais, escolha um plano Premium.</div><button class="btn btn-yellow btn-block" data-go="plans">Ver planos</button></div></main>`; bind(); return; }
+  const m = currentMerchant(); if (!m) return merchantLogin(); if(!requireMerchantPlan('cadastrar produtos'))return; const ownProducts = merchantProductsFor(m.id);
   app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Cadastrar produto</b></div><form class="form-card" id="productFormEl"><div class="form-intro"><span class="section-icon">${icon('package')}</span><div><h2>Informações do produto</h2><p>Cadastre dados que o cliente poderá usar na busca inteligente.</p></div></div><div class="product-media-field"><label class="media-label">Fotos do produto</label><input class="media-file-input" id="prodImageFile" type="file" accept="image/*" multiple><div class="product-multi-preview" id="prodImagesPreview"></div><small>Adicione até 8 fotos. A primeira será a foto principal.</small></div><label>Nome<input id="prodName" required placeholder="Ex.: Tênis infantil"></label><label>Categoria<select id="prodCat"><option value="roupa">Roupa</option><option value="calcado">Calçado</option><option value="pizza">Pizza / Alimentação</option><option value="beleza">Beleza / Perfumaria</option><option value="celular">Celular</option><option value="escolar">Material escolar</option><option value="outro">Outro</option></select></label><label>Marca<input id="prodBrand" placeholder="Marca"></label><div class="two-cols"><label>Preço normal<input id="prodPrice" required placeholder="159,90"></label><label>Preço promocional<input id="prodPromo" placeholder="129,90"></label></div><div id="dynamicFields"></div><label>Controle de estoque<select id="prodStock"><option value="simples">Simples — disponível/indisponível</option><option value="detalhado">Detalhado — por variação</option></select></label><div id="variantSection" class="hidden"><div class="variation-head"><div><b>Variações e quantidade</b><span>Ex.: Nº 28 / Rosa / 2 unidades</span></div><button class="mini-action" id="addVariant" type="button">${icon('plus')} Adicionar</button></div><div id="variantRows"></div></div><label>Descrição<textarea id="prodDescription" placeholder="Descrição do produto"></textarea></label><button class="btn btn-yellow btn-block" type="submit">Salvar produto</button><div id="saveMsg"></div></form></main>`;
   bind();
   const productImagePicker = bindMultiImagePicker('prodImageFile','prodImagesPreview',{max:8,maxW:1200,maxH:1200,quality:.8});
@@ -2547,7 +2549,7 @@ function productForm() {
 }
 
 function offerForm() {
-  const m = currentMerchant(); if (!m) return merchantLogin(); const products = merchantProductsFor(m.id).filter(p => p.status === 'ativo'); const monthOffers = merchantOffersFor(m.id).filter(o => { const match = String(o.id||'').match(/(\d{13})/); const d = o.createdAt ? new Date(o.createdAt) : new Date(match ? Number(match[1]) : Date.now()); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }); if (m.plan === 'gratis' && monthOffers.length >= 2) { app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Criar oferta</b></div><div class="form-card"><div class="notice">Seu plano Grátis permite até 2 ofertas por mês. Para publicar mais, escolha um plano Premium.</div><button class="btn btn-yellow btn-block" data-go="plans">Ver planos</button></div></main>`; bind(); return; }
+  const m = currentMerchant(); if (!m) return merchantLogin(); if(!requireMerchantPlan('criar ofertas'))return; const products = merchantProductsFor(m.id).filter(p => p.status === 'ativo');
   app.innerHTML = `<main class="app-shell form-page"><div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Criar oferta</b></div><form class="form-card" id="offerFormEl">${products.length ? `<label>Produto<select id="offerProduct">${products.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label><div class="two-cols"><label>Preço normal<input id="offerNormal" required placeholder="159,90"></label><label>Preço promocional<input id="offerPromo" required placeholder="129,90"></label></div><label>Validade<input id="offerUntil" type="date" required></label><label>Quantidade disponível<input id="offerQty" type="number" min="1" value="1" required></label><button class="btn btn-yellow btn-block" type="submit">Publicar oferta</button><div id="offerMsg"></div>` : '<div class="notice">Cadastre pelo menos um produto ativo antes de criar uma oferta.</div><button class="btn btn-yellow btn-block" type="button" data-go="productForm">Cadastrar produto</button>'}</form></main>`;
   bind();
   const form = document.getElementById('offerFormEl');
@@ -2579,7 +2581,7 @@ function offerForm() {
 }
 
 async function stats() {
-  const m=currentMerchant(); if(!m)return merchantLogin();
+  const m=currentMerchant(); if(!m)return merchantLogin(); if(!requireMerchantPlan('ver estatísticas e resultados'))return;
   let counts={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0};
   let counts30={visualizacao_loja:0,clique_whatsapp:0,favorito:0,visualizacao_produto:0};
   let byProduct={}, whatsappByProduct={}, uniqueVisitors30=0, ratingAverage=null, ratingCount=0;
