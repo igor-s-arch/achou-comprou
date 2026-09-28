@@ -2714,20 +2714,22 @@ async function plans() {
   const expiry=m.plan!=='gratis'&&m.planExpiresAt?`<div class="plan-expiry-note">Ativo até <b>${formatDateBR(m.planExpiresAt)}</b></div>`:'';
   app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} plans-page">
     <div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Meu plano</b></div>
-    <header class="plans-hero compact"><span>PLANO ATUAL: ${planLabel(m.plan).toUpperCase()}</span><h1>Escolha o nível de presença da sua loja.</h1><p>Planos pagos são liberados por 30 dias após a confirmação do PIX.</p>${expiry}</header>
+    <header class="plans-hero compact"><span>PLANO ATUAL: ${planLabel(m.plan).toUpperCase()}</span><h1>Escolha o plano e o período.</h1><p>Você pode assinar por 1 mês, 3 meses, 6 meses ou 1 ano. O vencimento é calculado após a confirmação do PIX.</p>${expiry}</header>
     <section class="plans-wrap">${planCards('account')}<div id="planMsg" class="plans-note">${m.status!=='aprovada'?'Sua loja precisa ser aprovada antes de realizar o pagamento.':'Escolha um plano pago para gerar a solicitação de PIX.'}</div></section>
-    ${history.length?`<section class="merchant-payment-history"><div class="section-title"><h3>Pagamentos</h3><a>Histórico</a></div>${history.map(p=>`<button class="payment-history-row" data-payment-open="${p.id}"><div><b>${planLabel(p.plan)}</b><small>${formatDateBR(p.requestedAt)} · ${brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></button>`).join('')}</section>`:''}
+    ${history.length?`<section class="merchant-payment-history"><div class="section-title"><h3>Pagamentos</h3><a>Histórico</a></div>${history.map(p=>`<button class="payment-history-row" data-payment-open="${p.id}"><div><b>${planLabel(p.plan)}</b><small>${formatDateBR(p.requestedAt)} · ${planPeriodLabel(p.durationMonths)} · ${brlNumber(p.value)}</small></div><span class="admin-status ${paymentStatusClass(p.status)}">${paymentStatusLabel(p.status)}</span></button>`).join('')}</section>`:''}
     ${merchantNav('plan')}
   </main>`;
   bind();
+  bindPlanPeriodSelectors();
   document.querySelectorAll('[data-payment-open]').forEach(btn=>btn.onclick=()=>merchantPayment(btn.dataset.paymentOpen));
   document.querySelectorAll('[data-request-plan]').forEach(btn => btn.onclick = async () => {
     const requested=btn.dataset.requestPlan;
+    const months=selectedPlanMonths(btn);
     const msg=document.getElementById('planMsg');
     if(m.status!=='aprovada'){msg.innerHTML='<div class="notice error">Sua loja ainda precisa ser aprovada antes do pagamento.</div>';return;}
     if(window.ACCloud?.enabled){
       btn.disabled=true;msg.innerHTML='<div class="notice">Gerando solicitação de pagamento...</div>';
-      const result=await window.ACCloud.requestPlanPayment(m.id,requested);
+      const result=await window.ACCloud.requestPlanPayment(m.id,requested,months);
       btn.disabled=false;
       if(!result.ok){msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível gerar o pagamento.')}</div>`;return;}
       m.requestedPlan=requested;
@@ -2737,7 +2739,7 @@ async function plans() {
       merchantPayment(result.payment.id);
       return;
     }
-    const payment={id:id('pay'),storeId:m.id,plan:requested,value:planPrice(requested),status:'aguardando',method:'pix',requestedAt:new Date().toISOString()};
+    const payment={id:id('pay'),storeId:m.id,plan:requested,value:planPrice(requested,months),durationMonths:months,status:'aguardando',method:'pix',requestedAt:new Date().toISOString()};
     db.payments.unshift(payment);m.requestedPlan=requested;saveDb();merchantPayment(payment.id);
   });
 }
