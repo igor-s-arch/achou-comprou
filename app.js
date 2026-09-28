@@ -1902,7 +1902,7 @@ function merchantRegister() {
   const categoryOptions=['Moda','Calçados','Acessórios','Material escolar','Alimentação','Beleza','Saúde','Tecnologia','Casa','Automotivo','Serviços','Outros'];
   app.innerHTML = `<main class="app-shell form-page merchant-register-page">
     <div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>${existingAccount?'Concluir cadastro da loja':'Cadastrar minha loja'}</b></div>
-    <div class="register-progress"><span class="active">1</span><i></i><span>2</span><i></i><span>3</span><small>Dados</small><small>Plano</small><small>Aprovação</small></div>
+    <div class="registration-flow-note"><b>Cadastro da loja</b><span>Depois da aprovação, você escolhe o plano para liberar os recursos.</span></div>
     <form class="form-card merchant-register-card" id="merchantRegisterForm">
       <div class="form-intro"><span class="section-icon">${icon('store')}</span><div><h2>Dados da empresa</h2><p>Preencha os dados comerciais e fiscais para análise da loja.</p></div></div>
       ${intent}
@@ -1947,7 +1947,7 @@ function merchantRegister() {
       ${existingAccount
         ? `<label>E-mail de acesso<input id="regEmail" type="email" value="${esc(existingEmail)}" readonly><input id="regPassword" type="hidden" value=""></label><div class="field-help">Você continuará usando a mesma senha dessa conta.</div>`
         : `<div class="two-cols"><label>E-mail de acesso<input id="regEmail" type="email" required autocomplete="username" placeholder="seuemail@exemplo.com"></label><label>Senha<input id="regPassword" type="password" minlength="6" required autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label></div>`}
-      <button class="btn btn-yellow btn-block" type="submit">Continuar para os planos</button>
+      <button class="btn btn-yellow btn-block" type="submit">Enviar cadastro para análise</button>
       <div id="regMsg"></div>
     </form>
   </main>`;
@@ -1976,7 +1976,7 @@ function merchantRegister() {
     cepInput.value=d.length>5?`${d.slice(0,5)}-${d.slice(5)}`:d;
   });
 
-  document.getElementById('merchantRegisterForm').onsubmit = e => {
+  document.getElementById('merchantRegisterForm').onsubmit = async e => {
     e.preventDefault();
     const categories=categoryInputs.filter(x=>x.checked).map(x=>x.value);
     const cnpj=document.getElementById('regCnpj').value.trim();
@@ -2034,16 +2034,46 @@ function merchantRegister() {
       return;
     }
     publicState.merchantDraft=draft;
+    publicState.merchantPlanIntent='';
+    publicState.merchantPlanMonths=1;
+    const submit=e.currentTarget.querySelector('button[type="submit"]');
     if(window.ACCloud?.enabled){
-      merchantPlanOnboarding();
+      submit.disabled=true;
+      msg.innerHTML='<div class="notice">Enviando cadastro para análise...</div>';
+      const result=publicState.merchantExistingAccount
+        ? await window.ACCloud.convertClientToMerchant({...draft,plan:'gratis'})
+        : await window.ACCloud.signUpMerchant({...draft,plan:'gratis'});
+      submit.disabled=false;
+      if(!result.ok){
+        msg.innerHTML=`<div class="notice error">${esc(result.message||'Não foi possível concluir o cadastro.')}</div>`;
+        return;
+      }
+      if(result.needsEmailConfirmation){
+        publicState.merchantDraft=null;
+        publicState.merchantExistingAccount=null;
+        merchantSubmitted('gratis',{name:draft.name,email:draft.email,needsEmailConfirmation:true});
+        return;
+      }
+      if(result.store&&result.user){
+        upsertCloudMerchant(result.store,result.user);
+        db.session.admin=false;
+        db.session.merchantId=result.store.id;
+        db.session.clientId=null;
+        saveDb();
+        syncPublicStoreState();
+      }
+      publicState.merchantDraft=null;
+      publicState.merchantExistingAccount=null;
+      merchantSubmitted('gratis',{name:draft.name});
       return;
     }
     const merchantId=id('loja');
-    db.merchants.push({ id:merchantId, ...draft, status:'rascunho', plan:'gratis', rating:'Novo', dist:'—' });
+    db.merchants.push({ id:merchantId, ...draft, status:'aguardando', plan:'gratis', requestedPlan:null, planExpiresAt:'', rating:'Novo', dist:'—' });
     db.session.merchantId=merchantId;
+    publicState.merchantDraft=null;
     saveDb();
     syncPublicStoreState();
-    merchantPlanOnboarding();
+    merchantSubmitted('gratis',{name:draft.name});
   };
 }
 
