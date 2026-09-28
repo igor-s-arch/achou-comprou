@@ -1137,15 +1137,48 @@ function product(productId = publicState.productId) {
   const details = String(p.details || '').split('|').map(x=>x.trim()).filter(Boolean);
   const availability = availabilitySummary(p);
   const meta = normalizedProduct(p);
-  const liveOptions = availableVariants(p).map(v=>v.option).filter(Boolean);
+  const liveVariants = availableVariants(p);
+  const liveOptions = liveVariants.map(v=>v.option).filter(Boolean);
   const productOptions = [...new Set([...(p.type==='calcado'?meta.numbers:meta.sizes),...liveOptions])];
+  const productColors = [...new Set([...meta.colors,...liveVariants.map(v=>v.color).filter(Boolean)])];
+  const colorPalette={preto:'#111111',preta:'#111111',branco:'#ffffff',branca:'#ffffff',azul:'#2563eb',rosa:'#ec4899',vermelho:'#dc2626',vermelha:'#dc2626',verde:'#16a34a',amarelo:'#eab308',amarela:'#eab308',bege:'#d6c2a1',marrom:'#7c4a2d',cinza:'#8a8f98'};
+  const colorHex=name=>colorPalette[normalizeText(name)]||'#d7d9dd';
   const optionTitle = p.type==='calcado' ? 'Numerações disponíveis' : 'Tamanhos disponíveis';
   const photos = [...new Set((Array.isArray(p.images)&&p.images.length?p.images:(p.imageData?[p.imageData]:[])).filter(Boolean))];
   const storeLogo = m.logoData
     ? `<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`
     : icon('store');
 
-  app.innerHTML = `<main class="app-shell product-page product-page-pro">
+  app.innerHTML = `<main class="app-shell product-page product-page-pro product-page-premium">
+    <header class="product-commerce-desktop">
+      <button class="product-commerce-logo" type="button" data-go="home" aria-label="Ir para o início">${logo()}</button>
+      <div class="product-commerce-search">
+        ${icon('search')}
+        <input id="productSiteSearch" placeholder="O que você está procurando?">
+        <button id="productSiteSearchBtn" type="button">Buscar</button>
+      </div>
+      <nav class="product-commerce-links">
+        <button type="button" data-go="categories">Categorias ${icon('arrowRight')}</button>
+        <button type="button" data-search-term="ofertas">Ofertas</button>
+        <button type="button" data-go="home">Para você</button>
+      </nav>
+      <div class="product-commerce-actions">
+        <button id="desktopProductFav" class="${fav?'active':''}" type="button" aria-label="Favoritar">${icon('heart')}</button>
+        <button id="desktopProductCart" type="button" aria-label="Minha lista">${icon('cart')}${cartBadge()}</button>
+        <button type="button" data-go="profile" class="commerce-user" aria-label="Perfil">${icon('user')}</button>
+      </div>
+    </header>
+
+    <div class="product-desktop-breadcrumb">
+      <button id="productDesktopBack" type="button" aria-label="Voltar">${icon('arrowLeft')}</button>
+      <span>Início</span><i>›</i><span>${esc(categoryLabel(p.type))}</span><i>›</i><b>${esc(p.name)}</b>
+      <div class="product-breadcrumb-actions">
+        <button type="button" id="desktopBreadcrumbFav" class="${fav?'active':''}">${icon('heart')}</button>
+        <button type="button" data-go="shoppingList">${icon('cart')}${cartBadge()}</button>
+        <button type="button" id="desktopBreadcrumbShare">${icon('share')}</button>
+      </div>
+    </div>
+
     <div class="product-topbar">
       <button class="product-back" id="productBack" aria-label="Voltar">${icon('arrowLeft')}</button>
       <div><span>ACHOU, COMPROU</span><b>Detalhes do produto</b></div>
@@ -1167,7 +1200,10 @@ function product(productId = publicState.productId) {
 
       <div class="product-main-card">
         <div class="product-title-block">
-          <span class="product-category-chip">${categoryLabel(p.type)}</span>
+          <div class="product-title-topline">
+            <span class="product-category-chip">${categoryLabel(p.type)}</span>
+            <span class="product-quality-chip">${icon('star')}<span><b>Qualidade</b><small>Estilo no seu dia a dia</small></span></span>
+          </div>
           <h1>${esc(p.name)}</h1>
           ${p.brand ? `<span class="product-brand-line">Marca: <b>${esc(p.brand)}</b></span>` : ''}
         </div>
@@ -1188,14 +1224,19 @@ function product(productId = publicState.productId) {
           ${icon('arrowRight','product-store-arrow')}
         </button>
 
-        <div class="product-info-section">
-          <div class="product-section-head"><span>${icon('check')}</span><div><small>DISPONIBILIDADE</small><h3>Pronto para consultar</h3></div></div>
-          <span class="product-stock-badge">Disponível</span>
-          ${productOptions.length && ['roupa','calcado','pizza'].includes(p.type) ? `<div class="client-option-group"><b>${optionTitle}</b><div class="client-option-chips">${productOptions.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>` : ''}
-          ${availability.length ? `<div class="product-option-list">${availability.filter(x=>!x.startsWith('Tamanhos:')&&!x.startsWith('Numerações:')).map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
+        <div class="product-info-section product-availability-section">
+          <div class="product-availability-banner">
+            <div class="product-section-head"><span>${icon('check')}</span><div><small>DISPONIBILIDADE</small><h3>Pronto para consultar</h3></div></div>
+            <span class="product-stock-badge">Disponível</span>
+          </div>
+          <div class="product-variant-grid">
+            ${productOptions.length && ['roupa','calcado','pizza'].includes(p.type) ? `<div class="client-option-group premium"><b>${optionTitle}</b><div class="client-option-chips">${productOptions.map((x,i)=>`<span class="${i===0?'selected':''}">${esc(x)}</span>`).join('')}</div></div>` : ''}
+            ${productColors.length ? `<div class="product-color-group"><b>Cor${productColors.length>1?'es':''}</b><div>${productColors.map(c=>`<span class="product-color-choice"><i style="background:${colorHex(c)}"></i>${esc(c)}</span>`).join('')}</div></div>` : ''}
+          </div>
+          ${availability.length ? `<div class="product-option-list premium-stock">${availability.filter(x=>x.includes('estoque')).map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : ''}
         </div>
 
-        <div class="product-info-section">
+        <div class="product-info-section product-details-premium">
           <div class="product-section-head"><span>${icon('package')}</span><div><small>INFORMAÇÕES</small><h3>Detalhes do produto</h3></div></div>
           <div class="product-description">
             ${details.length ? details.map(d=>`<p>${esc(d)}</p>`).join('') : '<p>Consulte a loja para mais informações sobre este produto.</p>'}
@@ -1212,6 +1253,11 @@ function product(productId = publicState.productId) {
   </main>`;
 
   bind();
+  const desktopSearch=document.getElementById('productSiteSearch');
+  const runDesktopSearch=()=>{const q=desktopSearch?.value.trim()||'';if(q)search(q);};
+  document.getElementById('productSiteSearchBtn')?.addEventListener('click',runDesktopSearch);
+  desktopSearch?.addEventListener('keydown',e=>{if(e.key==='Enter')runDesktopSearch();});
+  document.getElementById('productDesktopBack')?.addEventListener('click',()=>publicState.query?search(publicState.query):home());
   document.querySelectorAll('[data-product-photo]').forEach(btn=>btn.onclick=()=>{
     const index=Number(btn.dataset.productPhoto||0);
     const main=document.getElementById('productMainPhoto');
@@ -1222,13 +1268,16 @@ function product(productId = publicState.productId) {
   const toggleFav=async()=>{ if(!currentClient()){ publicState.afterLogin={screen:'product',productId:p.id,favoriteId:p.id}; return clientLogin(); } const ok=await setFavorite(p.id,!fav); if(ok) product(p.id); };
   document.getElementById('favBtn').onclick = toggleFav;
   document.getElementById('headFav').onclick = toggleFav;
+  document.getElementById('desktopProductFav')?.addEventListener('click',toggleFav);
+  document.getElementById('desktopBreadcrumbFav')?.addEventListener('click',toggleFav);
   document.getElementById('headCart').onclick = ()=>shoppingList();
+  document.getElementById('desktopProductCart')?.addEventListener('click',()=>shoppingList());
   document.getElementById('addCartBtn').onclick = ()=>{
     const result=addToCart(p.id,1);
     if(!result.ok){alert(result.message);return;}
     product(p.id);
   };
-  document.getElementById('productShare').onclick = async()=>{
+  const shareProduct=async()=>{
     const text=`${p.name} — ${money(price)} na ${m.name} | Achou, Comprou`;
     try{
       if(navigator.share){await navigator.share({title:p.name,text});return;}
@@ -1236,6 +1285,8 @@ function product(productId = publicState.productId) {
       alert('Informações do produto copiadas.');
     }catch(_){}
   };
+  document.getElementById('productShare').onclick = shareProduct;
+  document.getElementById('desktopBreadcrumbShare')?.addEventListener('click',shareProduct);
   document.getElementById('waBtn').onclick = () => {
     const storeCart=cartItemsForStore(m.id);
     const usingCart=storeCart.length>0;
