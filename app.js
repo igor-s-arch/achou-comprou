@@ -780,6 +780,8 @@ function bindMultiImagePicker(inputId, previewId, options = {}) {
 }
 
 function nav(active = 'home') {
+  const client=currentClient();
+  const unread=(db.notifications||[]).filter(n=>!n.read).length;
   return `<nav class="bottom-nav marketplace-bottom-nav">
     <div class="desktop-site-brand">${logo()}</div>
     <button class="nav-item ${active === 'home' ? 'active' : ''}" data-go="home">${icon('home')}<span>Início</span></button>
@@ -787,6 +789,12 @@ function nav(active = 'home') {
     <button class="nav-item ${active === 'categories' ? 'active' : ''}" data-go="categories">${icon('grid')}<span>Categorias</span></button>
     <button class="nav-item ${active === 'fav' ? 'active' : ''}" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
     <button class="nav-item ${active === 'profile' ? 'active' : ''}" data-go="profile">${icon('user')}<span>Perfil</span></button>
+    <div class="desktop-site-actions">
+      <button class="desktop-location" type="button">${icon('pin')}<span>Grajaú - MA</span><span>⌄</span></button>
+      <button type="button" data-go="notifications" aria-label="Notificações">${icon('bell')}${unread?'<i></i>':''}</button>
+      <button type="button" data-go="shoppingList" aria-label="Minha lista">${icon('cart')}${cartBadge()}</button>
+      <button type="button" data-go="profile" class="desktop-profile-avatar ${client?.avatar?'has-photo':''}" aria-label="Perfil">${client?.avatar?`<img src="${esc(client.avatar)}" alt="Foto de perfil">`:icon('user')}</button>
+    </div>
   </nav>`;
 }
 
@@ -967,6 +975,7 @@ function home() {
                 <span class="market-available">${icon('check')} ${o?'Oferta ativa':'Disponível'}</span>
               </div>
               ${availableOptions.length ? `<div class="market-card-options market-card-options-v2"><div>${availableOptions.map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>` : ''}
+              <div class="market-product-rating-row"><span>${icon('star')} ${esc(m.rating||'Novo')}</span><span>${icon('whatsapp')} WhatsApp</span></div>
               <div class="market-offer-footer">
                 <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')}</small></div>
                 <div class="market-card-actions">
