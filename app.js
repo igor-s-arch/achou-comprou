@@ -898,7 +898,7 @@ function home() {
           ${bannerItems.map((banner,index)=>{
             const bannerStore=storeById(banner.storeId);
             if(banner.videoData){
-              return `<article class="banner banner-pro banner-slide market-hero-banner market-video-banner" data-banner-index="${index}">
+              return `<article class="banner banner-pro banner-slide market-hero-banner market-video-banner${banner.fixedSecond?' platform-second-banner':''}" data-banner-index="${index}">
                 <video class="market-home-banner-video" autoplay muted loop playsinline preload="metadata" aria-label="Banner Achou, Comprou">
                   <source src="${esc(banner.videoData)}" type="video/mp4">
                 </video>
