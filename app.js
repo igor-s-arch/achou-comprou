@@ -825,12 +825,13 @@ function home() {
   const defaultBanner = {
     id:'default-banner',
     storeId:null,
-    title:'Ofertas da sua cidade',
-    message:'Produtos e ofertas das lojas da cidade em um só lugar.',
-    imageData:'',
-    videoData:'./Creating_smooth_advertising_bann…_1080p_20260926152920.mp4',
+    title:'Tudo o que você procura perto de você',
+    message:'Produtos e serviços da sua cidade em um só lugar.',
+    imageData:'./Imagem%20ChatGPT%2028_09_2026,%2016_35_24.png',
+    videoData:'',
     active:true,
-    isPlatform:true
+    isPlatform:true,
+    fixedFirst:true
   };
   const bannerItems = [defaultBanner, ...premiumBanners];
   const products = rankedPublicProducts();
@@ -1059,6 +1060,7 @@ function home() {
     bannerTrack.style.transform=`translateX(-${bannerIndex*100}%)`;
     bannerDots.forEach((dot,i)=>dot.classList.toggle('active',i===bannerIndex));
   };
+  showBanner(0);
   const restartBannerTimer=()=>{
     clearInterval(window.__achouBannerTimer);
     if(bannerItems.length<2)return;
