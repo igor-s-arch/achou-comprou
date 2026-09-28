@@ -7903,3 +7903,33 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     font-size:15.5px!important;
   }
 }
+
+
+/* ===== V82 — IMAGENS MOBILE SEM CORTE ===== */
+@media(max-width:899px){
+  /* Banner principal da Home: mostra a arte inteira */
+  .home-marketplace .market-art-banner{
+    background:#fff8e7!important;
+  }
+  .home-marketplace .market-art-banner-image,
+  .home-marketplace .platform-first-banner .market-art-banner-image,
+  .home-marketplace .platform-second-image-banner .market-art-banner-image{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:#fff8e7!important;
+  }
+
+  /* Capa do perfil da loja: mostra a capa inteira, sem cortar */
+  .store-premium-page .store-premium-hero.has-cover{
+    background-size:contain!important;
+    background-position:center top!important;
+    background-repeat:no-repeat!important;
+    background-color:#070808!important;
+  }
+  .store-premium-page .store-premium-overlay{
+    background:
+      linear-gradient(180deg,rgba(0,0,0,.02) 0%,rgba(0,0,0,.06) 35%,rgba(0,0,0,.48) 64%,rgba(0,0,0,.94) 88%,#070808 100%)!important;
+  }
+}
