@@ -416,7 +416,7 @@ function isSchoolProduct(p){
   const haystack=normalizeText([p?.name,p?.brand,p?.details,p?.type,categoryLabel(p?.type),store?.name,store?.category].filter(Boolean).join(' '));
   return p?.type==='escolar' || SCHOOL_WORDS.some(word=>haystack.includes(normalizeText(word)));
 }
-function storePriority(plan) { return ({ premium_banner: 3, premium: 2, gratis: 1 })[plan] || 0; }
+function storePriority(plan) { return ({ premium_banner: 1, premium: 0, gratis: 0 })[plan] || 0; }
 function storeRatingValue(store){ return Number(String(store?.rating ?? 0).replace(',','.')) || 0; }
 function storeWhatsappValue(store){ return Number(store?.whatsappClicks || 0) || 0; }
 function storeVisitValue(store){ return Number(store?.storeVisits || 0) || 0; }
@@ -1476,7 +1476,7 @@ async function store(storeId = publicState.storeId) {
       <div class="store-premium-main">
         <div class="store-premium-logo ${m.logoData?'has-logo':''}">${m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:icon('store')}</div>
         <h1>${esc(m.name)}</h1>
-        <div class="store-premium-badge">${icon('star')} <span>${full?'Loja em destaque':'Comércio local'}</span></div>
+        <div class="store-premium-badge">${icon(m.plan==='premium_banner'?'star':'store')} <span>${m.plan==='premium_banner'?'Loja em destaque':'Comércio local'}</span></div>
         <div class="store-premium-categories">${esc(categoryText)}</div>
         <button class="store-premium-address" id="storeAddress">${icon('pin')}<span>${esc(m.address||'Grajaú - MA')}</span>${icon('arrowRight')}</button>
         <div class="store-premium-actions">
@@ -1870,8 +1870,8 @@ function planCards(mode='preview') {
     ? `<button class="btn btn-yellow btn-block" data-plan-preview="${plan}">${label}</button>`
     : `<button class="btn btn-yellow btn-block" data-request-plan="${plan}">${m?.plan === plan ? `Renovar ${planLabel(plan)}` : label}</button>`;
   return `<div class="plans plans-pro paid-plans-only">
-    <article class="plan plan-pro featured" data-plan-card="premium"><div class="plan-topline"><span>MAIS RECURSOS</span></div><h4>Premium</h4><div class="amount">R$ 49,90<span>/mês</span></div><p class="plan-desc">Para lojas que querem publicar sem limite e ganhar mais presença.</p><ul><li>${icon('check')} Produtos ilimitados</li><li>${icon('check')} Ofertas ilimitadas</li><li>${icon('check')} Selo de destaque</li><li>${icon('check')} Prioridade nas categorias</li><li>${icon('check')} Estatísticas avançadas</li><li>${icon('check')} Página completa da loja</li></ul>${periods('premium')}${button('premium', mode==='preview'?'Cadastrar e conhecer o Premium':'Assinar Premium')}</article>
-    <article class="plan plan-pro featured banner-plan" data-plan-card="premium_banner"><div class="plan-ribbon">MAIOR VISIBILIDADE</div><div class="plan-topline"><span>DESTAQUE NA HOME</span></div><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><p class="plan-desc">Tudo do Premium, mais presença no banner principal do aplicativo.</p><ul><li>${icon('check')} Tudo do Premium</li><li>${icon('check')} Produtos e ofertas ilimitados</li><li>${icon('check')} Página completa da loja</li><li>${icon('check')} Loja no banner principal</li></ul>${periods('premium_banner')}${button('premium_banner', mode==='preview'?'Cadastrar e conhecer o Premium + Banner':'Assinar Premium + Banner')}</article>
+    <article class="plan plan-pro featured" data-plan-card="premium"><div class="plan-topline"><span>MAIS RECURSOS</span></div><h4>Premium</h4><div class="amount">R$ 49,90<span>/mês</span></div><p class="plan-desc">Para lojas que querem publicar sem limite e ter uma página completa.</p><ul><li>${icon('check')} Produtos ilimitados</li><li>${icon('check')} Ofertas ilimitadas</li><li>${icon('check')} Estatísticas avançadas</li><li>${icon('check')} Página completa da loja</li></ul>${periods('premium')}${button('premium', mode==='preview'?'Cadastrar e conhecer o Premium':'Assinar Premium')}</article>
+    <article class="plan plan-pro featured banner-plan" data-plan-card="premium_banner"><div class="plan-ribbon">MAIOR VISIBILIDADE</div><div class="plan-topline"><span>DESTAQUE NA HOME</span></div><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><p class="plan-desc">Tudo do Premium, mais destaque e prioridade para aumentar a visibilidade da loja.</p><ul><li>${icon('check')} Tudo do Premium</li><li>${icon('check')} Selo de destaque</li><li>${icon('check')} Prioridade nas categorias</li><li>${icon('check')} Loja no banner principal</li></ul>${periods('premium_banner')}${button('premium_banner', mode==='preview'?'Cadastrar e conhecer o Premium + Banner':'Assinar Premium + Banner')}</article>
   </div>`;
 }
 
