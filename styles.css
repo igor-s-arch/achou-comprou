@@ -6005,3 +6005,528 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     height:21px!important;
   }
 }
+
+
+/* ===== V73 — TEMA CLARO APROVADO: PRETO + AMARELO ===== */
+:root{
+  --ac-page:#f7f7f5;
+  --ac-page-soft:#fbfbfa;
+  --ac-card:#ffffff;
+  --ac-border:#e6e7e9;
+  --ac-text:#17181b;
+  --ac-muted:#73777e;
+  --ac-soft-yellow:#fff7d8;
+}
+
+/* HOME — base clara em app e site */
+.home-marketplace{
+  background:var(--ac-page)!important;
+  color:var(--ac-text)!important;
+}
+.home-marketplace .marketplace-topbar{
+  background:
+    radial-gradient(circle at 91% 4%,rgba(255,208,0,.12),transparent 25%),
+    linear-gradient(180deg,#ffffff,#fafaf8)!important;
+  border-bottom:1px solid var(--ac-border)!important;
+}
+.home-marketplace .home-brand-row{
+  color:var(--ac-text)!important;
+}
+.home-marketplace .location-button{
+  background:#fff!important;
+  color:#26282c!important;
+  border:1px solid #dedfe2!important;
+  box-shadow:0 4px 14px rgba(17,24,39,.04)!important;
+}
+.home-marketplace .round-action{
+  background:#fff!important;
+  color:#202226!important;
+  border:1px solid #dedfe2!important;
+  box-shadow:0 4px 14px rgba(17,24,39,.04)!important;
+}
+.home-marketplace .notification-dot{
+  border-color:#fff!important;
+}
+.home-marketplace .marketplace-search{
+  border:1px solid #e2e3e5!important;
+  box-shadow:0 10px 28px rgba(17,24,39,.07)!important;
+}
+.home-marketplace .marketplace-search>button{
+  background:#f2f3f4!important;
+}
+.home-marketplace .market-quick-row>b{
+  color:#bc9600!important;
+}
+.home-marketplace .market-quick-scroll button{
+  background:#fff!important;
+  color:#555960!important;
+  border:1px solid #e1e3e6!important;
+  box-shadow:0 2px 8px rgba(17,24,39,.025)!important;
+}
+.home-marketplace .market-quick-scroll button:hover{
+  border-color:#dfbd23!important;
+  background:#fff9df!important;
+  color:#3e3500!important;
+}
+
+/* Categorias — cards claros como no modelo aprovado */
+.home-marketplace .market-category-row{
+  gap:9px!important;
+}
+.home-marketplace .market-category-row button{
+  position:relative!important;
+  min-height:78px!important;
+  padding:10px!important;
+  border:1px solid #e2e4e7!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  color:#1f2125!important;
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr) 14px!important;
+  grid-template-rows:auto auto!important;
+  column-gap:9px!important;
+  row-gap:1px!important;
+  align-items:center!important;
+  justify-items:start!important;
+  text-align:left!important;
+  box-shadow:0 5px 18px rgba(17,24,39,.035)!important;
+}
+.home-marketplace .market-category-row button i{
+  grid-column:1!important;
+  grid-row:1 / span 2!important;
+  width:34px!important;
+  height:34px!important;
+  border-radius:10px!important;
+  background:#fff8d1!important;
+  color:#d1a500!important;
+}
+.home-marketplace .market-category-row button i .ui-icon{
+  width:20px!important;
+  height:20px!important;
+  color:#d1a500!important;
+}
+.home-marketplace .market-category-row button span{
+  grid-column:2!important;
+  grid-row:1!important;
+  color:#24262a!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  line-height:1.15!important;
+}
+.home-marketplace .market-category-row button small{
+  grid-column:2!important;
+  grid-row:2!important;
+  display:block!important;
+  color:#92959b!important;
+  font-size:6.7px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  max-width:100%!important;
+}
+.home-marketplace .market-category-arrow{
+  grid-column:3!important;
+  grid-row:1 / span 2!important;
+  width:13px!important;
+  height:13px!important;
+  color:#b4b7bc!important;
+}
+.home-marketplace .market-category-row button:hover{
+  transform:translateY(-1px)!important;
+  border-color:#e1c23f!important;
+  box-shadow:0 9px 22px rgba(17,24,39,.065)!important;
+}
+
+/* Conteúdo principal claro */
+.home-marketplace .marketplace-content{
+  background:var(--ac-page)!important;
+}
+.home-marketplace .market-section-title{
+  color:var(--ac-text)!important;
+}
+.home-marketplace .market-section-icon{
+  background:#fff2a7!important;
+  color:#8b6d00!important;
+  box-shadow:0 5px 16px rgba(202,161,0,.10)!important;
+}
+.home-marketplace .market-section-title h3{
+  color:#17181b!important;
+}
+.home-marketplace .market-section-title p{
+  color:#878b91!important;
+}
+.home-marketplace .market-section-title>button{
+  color:#a88300!important;
+}
+
+/* Lojas em destaque — cards brancos horizontais */
+.home-marketplace .market-store-strip{
+  gap:10px!important;
+}
+.home-marketplace .market-store-tile{
+  min-height:82px!important;
+  padding:10px!important;
+  border:1px solid #e2e4e7!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  color:#17181b!important;
+  display:grid!important;
+  grid-template-columns:48px minmax(0,1fr) auto!important;
+  grid-template-rows:1fr!important;
+  gap:10px!important;
+  align-items:center!important;
+  text-align:left!important;
+  box-shadow:0 6px 18px rgba(17,24,39,.04)!important;
+}
+.home-marketplace .market-store-logo{
+  width:48px!important;
+  height:48px!important;
+  margin:0!important;
+  border-radius:12px!important;
+  background:#ffd000!important;
+}
+.home-marketplace .market-store-copy{
+  min-width:0!important;
+  display:block!important;
+}
+.home-marketplace .market-store-copy>b{
+  display:block!important;
+  color:#1c1e22!important;
+  font-size:9px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.home-marketplace .market-store-copy>small{
+  display:block!important;
+  margin-top:2px!important;
+  color:#8b8f95!important;
+  font-size:7px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.home-marketplace .market-store-copy>em{
+  display:flex!important;
+  align-items:center!important;
+  gap:3px!important;
+  margin-top:5px!important;
+  padding:0!important;
+  color:#5f6268!important;
+  font-size:7px!important;
+  font-style:normal!important;
+}
+.home-marketplace .market-store-copy>em .ui-icon{
+  width:10px!important;
+  height:10px!important;
+  color:#e2b400!important;
+}
+.home-marketplace .market-store-cta{
+  min-height:30px!important;
+  padding:0 10px!important;
+  border-radius:999px!important;
+  background:#ffd000!important;
+  color:#111!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:7px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+.home-marketplace .market-store-tile:hover{
+  transform:translateY(-2px)!important;
+  border-color:#e1c23d!important;
+  box-shadow:0 12px 25px rgba(17,24,39,.07)!important;
+}
+
+/* Produtos — vitrine clara e botão amarelo */
+.home-marketplace .market-product-card-v2{
+  box-shadow:0 8px 24px rgba(17,24,39,.065)!important;
+  border-color:#e4e5e7!important;
+}
+.home-marketplace .market-product-card-v2:hover{
+  transform:translateY(-3px)!important;
+  box-shadow:0 15px 34px rgba(17,24,39,.10)!important;
+}
+.home-marketplace .market-product-card-v2 .market-offer-footer{
+  grid-template-columns:minmax(0,1fr) auto 34px 26px!important;
+  gap:6px!important;
+}
+.home-marketplace .market-product-card-v2 .market-card-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+.home-marketplace .market-product-card-v2 .market-cart-add{
+  width:auto!important;
+  min-width:78px!important;
+  height:34px!important;
+  padding:0 10px!important;
+  border-radius:9px!important;
+  background:#ffd000!important;
+  color:#111!important;
+  border:1px solid #e5ba00!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  font-size:7px!important;
+  font-weight:950!important;
+}
+.home-marketplace .market-product-card-v2 .market-cart-add span{
+  display:inline!important;
+}
+.home-marketplace .market-product-card-v2 .market-cart-add .ui-icon{
+  width:14px!important;
+  height:14px!important;
+}
+.home-marketplace .market-product-card-v2 .market-whatsapp{
+  width:34px!important;
+  height:34px!important;
+}
+
+/* PERFIL do cliente */
+.profile-page{
+  background:var(--ac-page)!important;
+  color:var(--ac-text)!important;
+}
+.profile-page .profile-head{
+  background:#fff!important;
+  color:#17181b!important;
+  border:1px solid #e2e4e7!important;
+  box-shadow:0 8px 24px rgba(17,24,39,.045)!important;
+}
+.profile-page .profile-head p{
+  color:#7d8187!important;
+}
+.profile-page .avatar{
+  background:#ffd000!important;
+  color:#111!important;
+}
+.profile-page .menu-list button{
+  border:1px solid #e2e4e7!important;
+  box-shadow:0 5px 16px rgba(17,24,39,.035)!important;
+}
+.profile-page .role-box{
+  background:#fff!important;
+  color:#17181b!important;
+  border:1px solid #e2e4e7!important;
+}
+.profile-page .role-box p{
+  color:#74787f!important;
+}
+
+/* Páginas utilitárias e Minha Lista mais leves */
+.utility-page,
+.shopping-list-page,
+.favorites-page{
+  background:var(--ac-page)!important;
+  color:#17181b!important;
+}
+.utility-page .utility-hero,
+.shopping-list-page .shopping-list-hero{
+  background:linear-gradient(145deg,#fffdf5,#fff7d7)!important;
+  color:#17181b!important;
+  border:1px solid #eedb8a!important;
+  box-shadow:0 8px 24px rgba(17,24,39,.035)!important;
+}
+.utility-page .utility-hero>span,
+.shopping-list-page .shopping-list-hero>span{
+  background:#ffd000!important;
+  color:#111!important;
+}
+.utility-page .utility-hero small,
+.shopping-list-page .shopping-list-hero small{
+  color:#947500!important;
+}
+.utility-page .utility-hero p,
+.shopping-list-page .shopping-list-hero p{
+  color:#73777d!important;
+}
+
+/* Perfil público da loja: hero escuro, conteúdo claro */
+.store-premium-page.app-shell{
+  background:var(--ac-page)!important;
+}
+.store-premium-page .store-premium-body{
+  background:var(--ac-page)!important;
+}
+.store-premium-page .store-premium-card{
+  background:#fff!important;
+  color:#17181b!important;
+  border:1px solid #e2e4e7!important;
+  box-shadow:0 9px 26px rgba(17,24,39,.05)!important;
+}
+.store-premium-page .store-card-icon{
+  background:#fff7cf!important;
+  color:#8b7000!important;
+  border:1px solid #ead472!important;
+}
+.store-premium-page .store-card-heading h2{
+  color:#17181b!important;
+}
+.store-premium-page .store-about-pro p{
+  color:#63676e!important;
+}
+.store-premium-page .store-benefit-item,
+.store-premium-page .store-hours-item{
+  background:#fafaf9!important;
+  border:1px solid #e5e6e8!important;
+  color:#17181b!important;
+}
+.store-premium-page .store-benefit-item b,
+.store-premium-page .store-hours-item b{
+  color:#17181b!important;
+}
+.store-premium-page .store-benefit-item small,
+.store-premium-page .store-hours-item small{
+  color:#777b82!important;
+}
+.store-premium-page .store-rating-card{
+  background:#fff!important;
+  color:#17181b!important;
+  border-color:#e2e4e7!important;
+}
+.store-premium-page .store-products-title h2{
+  color:#17181b!important;
+}
+.store-premium-page .store-products-title p{
+  color:#7b7f85!important;
+}
+
+/* Busca, favoritos, login, cadastro e planos: acabamento unificado */
+.search-results-page,
+.auth-page,
+.form-page,
+.plans-page{
+  background:var(--ac-page)!important;
+}
+.search-results-page .search-page-top,
+.auth-page>.page-head,
+.form-page>.page-head,
+.plans-page>.page-head,
+.favorites-page>.page-head,
+.utility-page>.page-head{
+  background:#fff!important;
+  color:#17181b!important;
+  border-color:#e5e6e8!important;
+}
+.auth-card,
+.form-card,
+.settings-card,
+.favorite-login-card{
+  border:1px solid #e2e4e7!important;
+  box-shadow:0 8px 24px rgba(17,24,39,.045)!important;
+}
+
+/* Desktop — fiel ao modelo aprovado */
+@media(min-width:900px){
+  .home-marketplace{
+    background:#f7f7f5!important;
+  }
+  .home-marketplace .marketplace-topbar{
+    background:#f7f7f5!important;
+    border-top:0!important;
+    border-bottom:1px solid #e4e5e7!important;
+    box-shadow:none!important;
+  }
+  .home-marketplace .home-brand-row{
+    background:transparent!important;
+  }
+  .home-marketplace .market-category-row{
+    grid-template-columns:repeat(8,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  .home-marketplace .market-category-row button{
+    min-height:72px!important;
+  }
+  .home-marketplace .marketplace-content{
+    background:#f7f7f5!important;
+  }
+  .home-marketplace .market-banner-carousel{
+    background:#fff!important;
+    border:1px solid #e4e5e7!important;
+    box-shadow:0 11px 30px rgba(17,24,39,.055)!important;
+  }
+  .home-marketplace .market-section-title,
+  .home-marketplace .market-store-strip,
+  .home-marketplace .market-offer-grid{
+    max-width:1320px!important;
+  }
+  .home-marketplace .market-section-title{
+    padding-top:4px!important;
+  }
+  .home-marketplace .market-store-strip{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+  .home-marketplace .market-store-tile{
+    min-height:88px!important;
+  }
+  .home-marketplace .market-offer-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-offer-media{
+    background:#fff!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-offer-title{
+    font-size:12px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-price-row strong{
+    font-size:22px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-offer-footer{
+    grid-template-columns:minmax(0,1fr) auto 36px 28px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-cart-add{
+    min-width:96px!important;
+    height:36px!important;
+    font-size:8px!important;
+  }
+  .store-premium-page{
+    background:#f7f7f5!important;
+  }
+  .store-premium-page .store-premium-body{
+    background:#f7f7f5!important;
+  }
+}
+
+/* Mobile — claro sem perder identidade */
+@media(max-width:899px){
+  .home-marketplace .marketplace-topbar{
+    background:#fff!important;
+  }
+  .home-marketplace .market-category-row{
+    grid-auto-columns:132px!important;
+    gap:8px!important;
+    padding-top:12px!important;
+  }
+  .home-marketplace .market-category-row button{
+    min-height:72px!important;
+  }
+  .home-marketplace .market-store-strip{
+    grid-auto-columns:220px!important;
+    gap:9px!important;
+  }
+  .home-marketplace .market-store-tile{
+    min-height:82px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-offer-footer{
+    grid-template-columns:minmax(0,1fr) auto 32px!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-go{
+    display:none!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-cart-add{
+    min-width:0!important;
+    width:34px!important;
+    padding:0!important;
+    border-radius:50%!important;
+  }
+  .home-marketplace .market-product-card-v2 .market-cart-add span{
+    display:none!important;
+  }
+}
