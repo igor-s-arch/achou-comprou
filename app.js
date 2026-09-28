@@ -1825,21 +1825,45 @@ function clientSettings() {
 
 function planCards(mode='preview') {
   const m = currentMerchant();
+  const selectedMonths = plan => publicState.merchantPlanIntent===plan ? Number(publicState.merchantPlanMonths||1) : 1;
+  const periods = plan => {
+    const active=selectedMonths(plan);
+    return `<div class="plan-period-block">
+      <div class="plan-period-heading"><b>Escolha o período</b><span>Quanto maior o período, maior a economia</span></div>
+      <div class="plan-period-grid">
+        ${[1,3,6,12].map(months=>{
+          const badge=months===6?'Mais escolhido':months===12?'Melhor economia':'';
+          return `<button type="button" class="plan-period-option ${months===active?'active':''}" data-plan-period="${months}">
+            ${badge?`<em>${badge}</em>`:''}
+            <strong>${planPeriodLabel(months)}</strong>
+            <span>${brlNumber(planPrice(plan,months))}</span>
+          </button>`;
+        }).join('')}
+      </div>
+      <div class="plan-selected-total"><small>Total selecionado</small><strong data-plan-selected-price>${brlNumber(planPrice(plan,active))}</strong><span data-plan-selected-caption>${planPeriodLabel(active)}</span></div>
+    </div>`;
+  };
   const button = (plan, label) => mode === 'preview'
     ? `<button class="btn ${plan === 'gratis' ? 'btn-secondary' : 'btn-yellow'} btn-block" data-plan-preview="${plan}">${label}</button>`
     : mode === 'onboarding'
       ? `<button class="btn ${plan === 'gratis' ? 'btn-secondary' : 'btn-yellow'} btn-block" data-onboard-plan="${plan}">${label}</button>`
-      : `<button class="btn ${plan === 'gratis' ? 'btn-secondary' : 'btn-yellow'} btn-block" ${plan === 'gratis' ? '' : `data-request-plan="${plan}"`}>${m?.plan === plan ? 'Plano atual' : label}</button>`;
+      : `<button class="btn ${plan === 'gratis' ? 'btn-secondary' : 'btn-yellow'} btn-block" ${plan === 'gratis' ? '' : `data-request-plan="${plan}"`}>${m?.plan === plan ? `Renovar ${planLabel(plan)}` : label}</button>`;
   return `<div class="plans plans-pro">
     <article class="plan plan-pro"><div class="plan-topline"><span>COMECE GRÁTIS</span></div><h4>Grátis</h4><div class="amount">R$ 0,00<span>/mês</span></div><p class="plan-desc">Para colocar sua loja no Achou, Comprou e começar a testar.</p><ul><li>${icon('check')} Até 2 produtos</li><li>${icon('check')} Até 2 ofertas por mês</li><li>${icon('check')} Botão de WhatsApp</li><li>${icon('check')} Página básica da loja</li></ul>${button('gratis', mode==='preview'?'Cadastrar loja grátis':mode==='onboarding'?'Começar no Grátis':'Plano básico')}</article>
-    <article class="plan plan-pro featured"><div class="plan-topline"><span>MAIS RECURSOS</span></div><h4>Premium</h4><div class="amount">R$ 49,90<span>/mês</span></div><p class="plan-desc">Para lojas que querem publicar sem limite e ganhar mais presença.</p><ul><li>${icon('check')} Produtos ilimitados</li><li>${icon('check')} Ofertas ilimitadas</li><li>${icon('check')} Selo de destaque</li><li>${icon('check')} Prioridade nas categorias</li><li>${icon('check')} Estatísticas avançadas</li><li>${icon('check')} Página completa da loja</li></ul>${button('premium', mode==='preview'?'Quero o Premium':mode==='onboarding'?'Escolher Premium':'Solicitar Premium')}</article>
-    <article class="plan plan-pro featured banner-plan"><div class="plan-ribbon">MAIOR VISIBILIDADE</div><div class="plan-topline"><span>DESTAQUE NA HOME</span></div><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><p class="plan-desc">Tudo do Premium, mais presença no banner principal do aplicativo.</p><ul><li>${icon('check')} Tudo do Premium</li><li>${icon('check')} Produtos e ofertas ilimitados</li><li>${icon('check')} Página completa da loja</li><li>${icon('check')} Loja no banner principal</li></ul>${button('premium_banner', mode==='preview'?'Quero Premium + Banner':mode==='onboarding'?'Escolher Premium + Banner':'Solicitar Premium + Banner')}</article>
+    <article class="plan plan-pro featured" data-plan-card="premium"><div class="plan-topline"><span>MAIS RECURSOS</span></div><h4>Premium</h4><div class="amount">R$ 49,90<span>/mês</span></div><p class="plan-desc">Para lojas que querem publicar sem limite e ganhar mais presença.</p><ul><li>${icon('check')} Produtos ilimitados</li><li>${icon('check')} Ofertas ilimitadas</li><li>${icon('check')} Selo de destaque</li><li>${icon('check')} Prioridade nas categorias</li><li>${icon('check')} Estatísticas avançadas</li><li>${icon('check')} Página completa da loja</li></ul>${periods('premium')}${button('premium', mode==='preview'?'Quero o Premium':mode==='onboarding'?'Escolher Premium':'Assinar Premium')}</article>
+    <article class="plan plan-pro featured banner-plan" data-plan-card="premium_banner"><div class="plan-ribbon">MAIOR VISIBILIDADE</div><div class="plan-topline"><span>DESTAQUE NA HOME</span></div><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><p class="plan-desc">Tudo do Premium, mais presença no banner principal do aplicativo.</p><ul><li>${icon('check')} Tudo do Premium</li><li>${icon('check')} Produtos e ofertas ilimitados</li><li>${icon('check')} Página completa da loja</li><li>${icon('check')} Loja no banner principal</li></ul>${periods('premium_banner')}${button('premium_banner', mode==='preview'?'Quero Premium + Banner':mode==='onboarding'?'Escolher Premium + Banner':'Assinar Premium + Banner')}</article>
   </div>`;
 }
 
 function plansPreview() {
-  app.innerHTML = `<main class="app-shell plans-page"><div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Planos para lojas</b></div><header class="plans-hero"><span>ACHOU, COMPROU PARA EMPRESAS</span><h1>Escolha como sua loja vai aparecer.</h1><p>Comece grátis e evolua quando quiser.</p></header><section class="plans-wrap">${planCards('preview')}<div class="plans-note">O plano Premium + Banner custa <b>R$ 59,90/mês no total</b>. Não é soma com o Premium.</div></section></main>`;
-  bind(); document.querySelectorAll('[data-plan-preview]').forEach(btn=>btn.onclick=()=>{publicState.merchantPlanIntent=btn.dataset.planPreview;merchantRegister();});
+  app.innerHTML = `<main class="app-shell plans-page"><div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>Planos para lojas</b></div><header class="plans-hero"><span>ACHOU, COMPROU PARA EMPRESAS</span><h1>Escolha seu plano e o período.</h1><p>1 mês, 3 meses, 6 meses ou 1 ano. Quanto maior o período, maior a economia.</p></header><section class="plans-wrap">${planCards('preview')}<div class="plans-note"><b>Premium + Banner</b> já inclui todos os benefícios do Premium. Os valores mostrados são o total do período escolhido.</div></section></main>`;
+  bind();
+  bindPlanPeriodSelectors();
+  document.querySelectorAll('[data-plan-preview]').forEach(btn=>btn.onclick=()=>{
+    publicState.merchantPlanIntent=btn.dataset.planPreview;
+    publicState.merchantPlanMonths=btn.dataset.planPreview==='gratis'?1:selectedPlanMonths(btn);
+    merchantRegister();
+  });
 }
 
 function merchantLogin() {
@@ -1854,7 +1878,7 @@ function merchantRegister() {
   const existingAccount=publicState.merchantExistingAccount;
   const existingName=existingAccount?.profile?.nome||existingAccount?.user?.user_metadata?.nome||'';
   const existingEmail=existingAccount?.email||existingAccount?.user?.email||'';
-  const intent = publicState.merchantPlanIntent ? `<div class="selected-plan-hint">Plano de interesse: <b>${planLabel(publicState.merchantPlanIntent)}</b>. Você poderá confirmar ou trocar na próxima etapa.</div>` : '';
+  const intent = publicState.merchantPlanIntent ? `<div class="selected-plan-hint">Plano de interesse: <b>${planLabel(publicState.merchantPlanIntent)}</b>${publicState.merchantPlanIntent!=='gratis'?` · ${planPeriodLabel(publicState.merchantPlanMonths)} · ${brlNumber(planPrice(publicState.merchantPlanIntent,publicState.merchantPlanMonths))}`:''}. Você poderá confirmar ou trocar na próxima etapa.</div>` : '';
   const categoryOptions=['Moda','Calçados','Acessórios','Material escolar','Alimentação','Beleza','Saúde','Tecnologia','Casa','Automotivo','Serviços','Outros'];
   app.innerHTML = `<main class="app-shell form-page merchant-register-page">
     <div class="page-head"><button class="back" data-go="merchantLogin" aria-label="Voltar">${icon('arrowLeft')}</button><b>${existingAccount?'Concluir cadastro da loja':'Cadastrar minha loja'}</b></div>
