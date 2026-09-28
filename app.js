@@ -120,7 +120,46 @@ async function finishClientAccess(clientId) { db.session.admin=false; db.session
 function id(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2,8)}`; }
 function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function planLabel(plan) { return ({gratis:'Grátis', premium:'Premium', premium_banner:'Premium + Banner'})[plan] || 'Grátis'; }
-function planPrice(plan){return ({gratis:0,premium:49.90,premium_banner:59.90})[plan]??0;}
+const PLAN_PERIODS={
+  premium:{1:49.90,3:139.90,6:269.90,12:479.90},
+  premium_banner:{1:59.90,3:169.90,6:319.90,12:569.90}
+};
+function planPrice(plan,months=1){
+  if(plan==='gratis')return 0;
+  return Number(PLAN_PERIODS[plan]?.[Number(months)] ?? PLAN_PERIODS[plan]?.[1] ?? 0);
+}
+function planPeriodLabel(months=1){
+  const n=Number(months)||1;
+  return n===1?'1 mês':n===12?'1 ano':`${n} meses`;
+}
+function planPeriodShort(months=1){
+  const n=Number(months)||1;
+  return n===12?'1 ano':`${n} ${n===1?'mês':'meses'}`;
+}
+function addPlanMonthsIso(base,months=1){
+  const d=base?new Date(base):new Date();
+  const start=Number.isNaN(d.getTime())?new Date():d;
+  start.setMonth(start.getMonth()+(Number(months)||1));
+  return start.toISOString();
+}
+function selectedPlanMonths(btn){
+  const card=btn?.closest?.('[data-plan-card]');
+  return Number(card?.querySelector('[data-plan-period].active')?.dataset.planPeriod||1);
+}
+function bindPlanPeriodSelectors(){
+  document.querySelectorAll('[data-plan-period]').forEach(btn=>btn.onclick=()=>{
+    const card=btn.closest('[data-plan-card]');
+    card?.querySelectorAll('[data-plan-period]').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    const plan=card?.dataset.planCard;
+    if(plan){
+      const amount=card.querySelector('[data-plan-selected-price]');
+      const caption=card.querySelector('[data-plan-selected-caption]');
+      if(amount)amount.textContent=brlNumber(planPrice(plan,btn.dataset.planPeriod));
+      if(caption)caption.textContent=planPeriodLabel(btn.dataset.planPeriod);
+    }
+  });
+}
 function brlNumber(value){return Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function formatDateBR(value){if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR');}
 function paymentStatusLabel(status){return ({aguardando:'Aguardando PIX',em_analise:'Em análise',pago:'Pago',recusado:'Recusado',cancelado:'Cancelado',vencido:'Vencido'})[status]||status;}
@@ -343,7 +382,7 @@ async function setFavorite(productId,active){
   return true;
 }
 
-const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merchantPlanIntent:'', merchantDraft:null, merchantExistingAccount:null, afterLogin:null, passwordRecovery:false, filters: { category:'', option:'', color:'', maxPrice:'' } };
+const publicState = { productId: 'p1', storeId: 'loja-maranhao', query: '', merchantPlanIntent:'', merchantPlanMonths:1, merchantDraft:null, merchantExistingAccount:null, afterLogin:null, passwordRecovery:false, filters: { category:'', option:'', color:'', maxPrice:'' } };
 
 function normalizeText(value = '') {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
