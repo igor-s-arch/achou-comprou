@@ -831,14 +831,14 @@ function home() {
   const unreadNotifications = (db.notifications || []).filter(n => !n.read).length;
   const quickSearches = ['Material escolar','Churrasco','Tênis','Celular','Pizzaria','Farmácia'];
   const cats = [
-    ['shirt','Moda','moda'],
-    ['bag','Calçados','calcado'],
-    ['food','Alimentação','alimentacao'],
-    ['beauty','Beleza','beleza'],
-    ['health','Saúde','saude'],
-    ['home','Casa','casa'],
-    ['book','Material escolar','material escolar'],
-    ['grid','Mais','']
+    ['shirt','Moda','moda','Roupas e acessórios'],
+    ['bag','Calçados','calcado','Tênis, sandálias e mais'],
+    ['food','Alimentação','alimentacao','Restaurantes e mercados'],
+    ['beauty','Beleza','beleza','Cosméticos e cuidados'],
+    ['health','Saúde','saude','Farmácias e bem-estar'],
+    ['home','Casa','casa','Decoração e utilidades'],
+    ['book','Material escolar','material escolar','Tudo para os estudos'],
+    ['grid','Mais','','Mais categorias']
   ];
 
   app.innerHTML = `<main class="app-shell home-professional home-marketplace">
@@ -865,9 +865,9 @@ function home() {
       </div>
 
       <div class="market-category-row">
-        ${cats.map(([ico,label,term])=>term
-          ? `<button data-search-term="${term}"><i>${icon(ico)}</i><span>${label}</span></button>`
-          : `<button data-go="categories"><i>${icon(ico)}</i><span>${label}</span></button>`
+        ${cats.map(([ico,label,term,subtitle])=>term
+          ? `<button data-search-term="${term}"><i>${icon(ico)}</i><span>${label}</span><small>${subtitle}</small>${icon('arrowRight','market-category-arrow')}</button>`
+          : `<button data-go="categories"><i>${icon(ico)}</i><span>${label}</span><small>${subtitle}</small>${icon('arrowRight','market-category-arrow')}</button>`
         ).join('')}
       </div>
     </header>
@@ -925,9 +925,12 @@ function home() {
         ${shops.length ? shops.slice(0,8).map(m=>`
           <button class="market-store-tile" data-store-id="${m.id}">
             <span class="market-store-logo ${m.logoData?'has-logo':''}">${m.logoData ? `<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">` : esc((m.name||'L').slice(0,2).toUpperCase())}</span>
-            <b>${esc(m.name)}</b>
-            <small>${esc(m.category||'Comércio local')}</small>
-            <em>${icon('star')} ${esc(m.rating||'Novo')}</em>
+            <span class="market-store-copy">
+              <b>${esc(m.name)}</b>
+              <small>${esc(m.category||'Comércio local')}</small>
+              <em>${icon('star')} ${esc(m.rating||'Novo')}</em>
+            </span>
+            <span class="market-store-cta">Ver loja</span>
           </button>
         `).join('') : '<div class="market-empty-dark">Nenhuma loja em destaque ainda.</div>'}
       </div>
@@ -967,7 +970,7 @@ function home() {
               <div class="market-offer-footer">
                 <div class="market-offer-store"><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')}</small></div>
                 <div class="market-card-actions">
-                  <button class="market-cart-add" type="button" data-home-cart="${p.id}" aria-label="Adicionar à Minha Lista">${icon('cart')}</button>
+                  <button class="market-cart-add" type="button" data-home-cart="${p.id}" aria-label="Adicionar à Minha Lista">${icon('cart')}<span>Adicionar</span></button>
                   <button class="market-whatsapp" type="button" data-home-wa="${p.id}" aria-label="Falar no WhatsApp">${icon('whatsapp')}</button>
                 </div>
                 <span class="market-go">${icon('arrowRight')}</span>
