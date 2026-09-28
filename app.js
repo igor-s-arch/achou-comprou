@@ -2033,8 +2033,12 @@ function merchantPlanOnboarding() {
   if(!m && !(window.ACCloud?.enabled && draft)) return merchantLogin();
   app.innerHTML=`<main class="app-shell plans-page"><div class="page-head"><button class="back" data-go="${window.ACCloud?.enabled?'merchantRegister':'merchant'}" aria-label="Voltar">${icon('arrowLeft')}</button><b>Escolher plano</b></div><div class="register-progress"><span>${icon('check')}</span><i class="done"></i><span class="active">2</span><i></i><span>3</span><small>Dados</small><small>Plano</small><small>Aprovação</small></div><header class="plans-hero compact"><span>ETAPA 2 DE 3</span><h1>Como você quer começar?</h1><p>Você pode mudar de plano depois.</p><div id="planOnboardMsg"></div></header><section class="plans-wrap">${planCards('onboarding')}</section></main>`;
   bind();
+  bindPlanPeriodSelectors();
   document.querySelectorAll('[data-onboard-plan]').forEach(btn=>btn.onclick=async()=>{
     const chosen=btn.dataset.onboardPlan;
+    const chosenMonths=chosen==='gratis'?1:selectedPlanMonths(btn);
+    publicState.merchantPlanIntent=chosen;
+    publicState.merchantPlanMonths=chosenMonths;
     if(window.ACCloud?.enabled){
       const msg=document.getElementById('planOnboardMsg');
       document.querySelectorAll('[data-onboard-plan]').forEach(b=>b.disabled=true);
@@ -2050,7 +2054,7 @@ function merchantPlanOnboarding() {
       publicState.merchantPlanIntent='';
       if(result.needsEmailConfirmation){
         publicState.merchantDraft=null;
-        merchantSubmitted(chosen,{name:draft.name,email:draft.email,needsEmailConfirmation:true});
+        merchantSubmitted(chosen,{name:draft.name,email:draft.email,needsEmailConfirmation:true,months:chosenMonths});
         return;
       }
       if(result.store&&result.user){
@@ -2063,7 +2067,7 @@ function merchantPlanOnboarding() {
       }
       publicState.merchantDraft=null;
       publicState.merchantExistingAccount=null;
-      merchantSubmitted(chosen,{name:draft.name});
+      merchantSubmitted(chosen,{name:draft.name,months:chosenMonths});
       return;
     }
     m.plan='gratis';
@@ -2073,7 +2077,7 @@ function merchantPlanOnboarding() {
     publicState.merchantDraft=null;
     saveDb();
     syncPublicStoreState();
-    merchantSubmitted(chosen);
+    merchantSubmitted(chosen,{months:chosenMonths});
   });
 }
 
@@ -2081,8 +2085,9 @@ function merchantSubmitted(chosen='gratis', options={}) {
   const m=currentMerchant();
   const displayName=options.name || m?.name || 'Sua loja';
   const paid=chosen!=='gratis';
+  const chosenMonths=Number(options.months||publicState.merchantPlanMonths||1);
   const emailPending=!!options.needsEmailConfirmation;
-  app.innerHTML=`<main class="app-shell submission-page"><div class="submission-card"><div class="submission-check">${icon('check')}</div><span>ETAPA 3 DE 3</span><h1>${emailPending?'Confirme seu e-mail':'Cadastro enviado'}</h1><p>${emailPending?`Enviamos um link de confirmação para <b>${esc(options.email||'seu e-mail')}</b>. Depois de confirmar, entre na Área do Lojista para concluir a criação da loja.`:`Sua loja <b>${esc(displayName)}</b> está aguardando aprovação para aparecer no Achou, Comprou.`}</p><div class="submission-summary"><div><small>Plano escolhido</small><strong>${planLabel(chosen)}</strong></div><div><small>Status</small><strong>${emailPending?'E-mail pendente':'Aguardando aprovação'}</strong></div></div>${paid?`<div class="notice">O plano <b>${planLabel(chosen)}</b> ficará como solicitado. No MVP, a ativação acontece após a confirmação manual do Pix.</div>`:''}${emailPending?`<div class="notice">Ao confirmar o e-mail, o sistema cria sua loja automaticamente no banco com o plano Grátis ativo e registra sua solicitação de <b>${planLabel(chosen)}</b> quando for um plano pago.</div>`:''}<button class="btn btn-yellow btn-block" data-go="${emailPending?'merchantLogin':'merchant'}">${emailPending?'Ir para o login':'Ir para meu painel'}</button><button class="btn btn-outline btn-block" data-go="home">Voltar ao aplicativo</button></div></main>`;
+  app.innerHTML=`<main class="app-shell submission-page"><div class="submission-card"><div class="submission-check">${icon('check')}</div><span>ETAPA 3 DE 3</span><h1>${emailPending?'Confirme seu e-mail':'Cadastro enviado'}</h1><p>${emailPending?`Enviamos um link de confirmação para <b>${esc(options.email||'seu e-mail')}</b>. Depois de confirmar, entre na Área do Lojista para concluir a criação da loja.`:`Sua loja <b>${esc(displayName)}</b> está aguardando aprovação para aparecer no Achou, Comprou.`}</p><div class="submission-summary"><div><small>Plano escolhido</small><strong>${planLabel(chosen)}</strong></div><div><small>Período</small><strong>${paid?planPeriodLabel(chosenMonths):'Sem prazo'}</strong></div><div><small>Status</small><strong>${emailPending?'E-mail pendente':'Aguardando aprovação'}</strong></div></div>${paid?`<div class="notice">Você escolheu <b>${planLabel(chosen)} · ${planPeriodLabel(chosenMonths)}</b>. Após a aprovação da loja, o período será confirmado no pagamento PIX antes da ativação.</div>`:''}${emailPending?`<div class="notice">Ao confirmar o e-mail, o sistema cria sua loja automaticamente no banco com o plano Grátis ativo e registra sua solicitação de <b>${planLabel(chosen)}</b> quando for um plano pago.</div>`:''}<button class="btn btn-yellow btn-block" data-go="${emailPending?'merchantLogin':'merchant'}">${emailPending?'Ir para o login':'Ir para meu painel'}</button><button class="btn btn-outline btn-block" data-go="home">Voltar ao aplicativo</button></div></main>`;
   bind();
 }
 
