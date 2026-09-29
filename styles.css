@@ -8613,6 +8613,8 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 .market-category-row-mobile,
 .mobile-offers-title{display:none}
 .desktop-products-title{display:inline}
+.mobile-discount-text{display:none}
+.desktop-discount-text{display:inline}
 
 @media(max-width:899px){
   html,body{
@@ -8922,6 +8924,8 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
   }
   .mobile-offers-title{display:inline!important}
   .desktop-products-title{display:none!important}
+  .mobile-discount-text{display:inline!important}
+  .desktop-discount-text{display:none!important}
 
   /* ofertas em carrossel horizontal */
   .home-marketplace .market-offer-grid{
