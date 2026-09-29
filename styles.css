@@ -10226,3 +10226,59 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     aspect-ratio:2048 / 682!important;
   }
 }
+
+
+/* ===== V97 — ÍCONES MOBILE IGUAIS AO MODELO APROVADO ===== */
+@media(max-width:899px){
+  .approved-mobile-home .acm-categories>button>span{
+    width:44px!important;
+    height:40px!important;
+    display:grid!important;
+    place-items:center!important;
+    color:#050505!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-svg{
+    width:36px!important;
+    height:36px!important;
+    display:block!important;
+    color:#050505!important;
+    overflow:visible!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-shirt{
+    width:38px!important;
+    height:38px!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-shoe{
+    width:40px!important;
+    height:36px!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-beauty{
+    width:33px!important;
+    height:38px!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-food{
+    width:33px!important;
+    height:39px!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-phone{
+    width:32px!important;
+    height:39px!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-grid{
+    width:35px!important;
+    height:35px!important;
+  }
+}
+
+@media(max-width:390px){
+  .approved-mobile-home .acm-categories .acm-cat-svg{
+    transform:scale(.92)!important;
+  }
+}
