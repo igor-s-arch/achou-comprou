@@ -8334,6 +8334,7 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 
 /* ===== V86 — CATEGORIAS + VÍDEOS, SEM ALTERAR O PADRÃO VISUAL ===== */
 .desktop-profile-label{display:none}
+.desktop-search-nav{display:none!important}
 
 /* área pública de vídeos: cards normais do marketplace, sem feed vertical */
 .videos-page .video-utility-hero{margin-bottom:16px}
@@ -8593,6 +8594,7 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 @media(min-width:900px){
   .mobile-account-label{display:none}
   .desktop-profile-label{display:inline}
+  .marketplace-bottom-nav .desktop-search-nav{display:flex!important;min-width:80px!important;padding-left:8px!important;padding-right:8px!important}
   .videos-page .store-video-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
   .videos-page .utility-content{padding-bottom:72px!important}
   .store-video-card h3{font-size:17px}
