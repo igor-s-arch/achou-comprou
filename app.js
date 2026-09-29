@@ -1073,7 +1073,7 @@ function home() {
           return `<article class="market-offer-card market-product-card market-product-card-v2" data-product-id="${p.id}">
             <div class="market-offer-media">
               ${productMedia(p,true)}
-              <span class="market-discount market-offer-badge">OFERTA${discount ? ` · ${esc(discount.replace('-',''))} OFF` : ''}</span>
+              <span class="market-discount market-offer-badge"><span class="mobile-discount-text">${discount?esc(discount):'Oferta'}</span><span class="desktop-discount-text">OFERTA${discount ? ` · ${esc(discount.replace('-',''))} OFF` : ''}</span></span>
               <button class="market-favorite ${favorite?'active':''}" type="button" data-home-fav="${p.id}" aria-label="Favoritar">${icon('heart')}</button>
             </div>
             <div class="market-offer-body">
