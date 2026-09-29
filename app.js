@@ -906,15 +906,43 @@ function splash() {
 
 function mobileCategoryIcon(name){
   const paths={
-    shirt:'<path d="M22 13.5 12.5 18l4.5 10 5-2.6V49h20V25.4l5 2.6 4.5-10L42 13.5c-2 3.6-5.2 5.5-10 5.5s-8-1.9-10-5.5Z"/><path d="M26 18.3c1.6 1.7 3.6 2.7 6 2.7s4.4-1 6-2.7"/>',
-    shoe:'<path d="M11 39.5c9.7 2 17.2-.7 24.2-8.5l5.6 4.3c4.1 3.2 7.8 5 12.2 5.7 2.4.4 4 2.1 4 4.1 0 2.5-2 4.4-5.2 4.4H18.2c-5.3 0-8.4-2.3-8.4-5.9 0-1.5.4-2.8 1.2-4.1Z"/><path d="M19 48h31"/><path d="m32.5 31.8 5.8 4.4m-2.4-7 5.7 4.2"/>',
-    beauty:'<path d="M25 13h14v10H25z"/><path d="M22 23h20l2.7 28H19.3L22 23Z"/><path d="M29 13V8h6v5"/><path d="M27 31h10"/><path d="M30 38h4"/>',
-    food:'<path d="M18 10v18M12 10v10c0 5 3 8 6 8s6-3 6-8V10M18 28v25"/><path d="M42 10v43M42 10c7 5 7 18 0 24"/>',
-    phone:'<rect x="20" y="7" width="24" height="50" rx="6"/><path d="M27 14h10"/><circle cx="32" cy="49" r="2.5"/><path d="M25 20h14v22H25z"/>',
-    grid:'<rect x="9" y="9" width="18" height="18" rx="4"/><rect x="37" y="9" width="18" height="18" rx="4"/><rect x="9" y="37" width="18" height="18" rx="4"/><rect x="37" y="37" width="18" height="18" rx="4"/>'
+    shirt:[
+      '<path d="M23 13.5 14.2 17.7 10 25.8l8 4.2 4-2.4V52h20V27.6l4 2.4 8-4.2-4.2-8.1L41 13.5"/>',
+      '<path d="M23 13.5c1.3 4.2 4.2 6.4 9 6.4s7.7-2.2 9-6.4"/>',
+      '<path d="M24.8 14.4c1.7 2 4 3 7.2 3s5.5-1 7.2-3"/>'
+    ].join(''),
+    shoe:[
+      '<path d="M10.5 40.5c7.6 1.3 14.2.5 19.4-3.8 3.1-2.6 5.5-5.6 7.6-9.2l6.3 5.1c3.1 2.5 6.2 4.2 9.8 5.2 2.4.7 4 2.3 4 4.4 0 3-2.7 5.3-6.5 5.3H18.4c-5.4 0-8.7-2.4-8.7-6 0-.3.2-.7.8-1Z"/>',
+      '<path d="M15.5 43.5h35.8"/>',
+      '<path d="m31.2 35.5 5.7 3.1m-2.8-6.2 5.9 3.2"/>',
+      '<path d="M22.2 39.4c2.5-1 4.8-2.4 6.9-4.4"/>'
+    ].join(''),
+    beauty:[
+      '<path d="M23 28h18v25H23z"/>',
+      '<path d="M27 22h10v6H27z"/>',
+      '<path d="M28.5 22V12.5l8.5-5v14.5"/>',
+      '<path d="M28.5 16.5h8.5"/>',
+      '<path d="M26 35h12"/>'
+    ].join(''),
+    food:[
+      '<path d="M16 9v15m-6-15v9c0 5 2.5 8 6 8s6-3 6-8V9m-6 17v29"/>',
+      '<path d="M43 9v46"/>',
+      '<path d="M43 9c7 5.5 8.5 17.5 1.2 25H43"/>'
+    ].join(''),
+    phone:[
+      '<rect x="20" y="6" width="24" height="52" rx="6"/>',
+      '<path d="M28 13h8"/>',
+      '<circle cx="32" cy="50" r="2.6" fill="currentColor" stroke="none"/>'
+    ].join(''),
+    grid:[
+      '<rect x="9" y="9" width="18" height="18" rx="4"/>',
+      '<rect x="37" y="9" width="18" height="18" rx="4"/>',
+      '<rect x="9" y="37" width="18" height="18" rx="4"/>',
+      '<rect x="37" y="37" width="18" height="18" rx="4"/>'
+    ].join('')
   };
   const body=paths[name]||paths.grid;
-  return `<svg class="acm-cat-svg" viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  return `<svg class="acm-cat-svg acm-cat-${name}" viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 }
 
 function approvedMobileHome() {
