@@ -478,9 +478,14 @@ function rankedPublicProducts(){
   return publicProducts()
     .map(p=>({product:p,offer:activeOfferFor(p.id),store:storeById(p.storeId)}))
     .filter(x=>x.store && x.store.plan!=='gratis')
-    .sort((a,b)=>compareStorePriority(a.store,b.store)
+    .sort((a,b)=>
+      (storePriority(b.store?.plan)-storePriority(a.store?.plan))
+      || (storeWhatsappValue(b.store)-storeWhatsappValue(a.store))
+      || (storeRatingValue(b.store)-storeRatingValue(a.store))
+      || (storeVisitValue(b.store)-storeVisitValue(a.store))
       || Number(!!b.offer)-Number(!!a.offer)
-      || String(a.product?.name||'').localeCompare(String(b.product?.name||''),'pt-BR'));
+      || String(a.product?.name||'').localeCompare(String(b.product?.name||''),'pt-BR')
+    );
 }
 const COLOR_WORDS = ['preto','preta','branco','branca','rosa','azul','vermelho','vermelha','verde','amarelo','amarela','bege','marrom','cinza','roxo','roxa','laranja','dourado','dourada','prata'];
 const SIZE_WORDS = ['pp','p','m','g','gg','xg','xxg','rn','0-3m','3-6m','6-9m','9-12m'];
@@ -901,30 +906,29 @@ function splash() {
 
 function approvedMobileHome() {
   const premiumBanners = publicPremiumBanners();
-  const bannerItems = [
-    {
-      id:'default-banner',
-      storeId:null,
-      title:'Achou o que precisa, comprou aqui!',
-      message:'Produtos, ofertas e lojas locais de Grajaú - MA, tudo em um só lugar.',
-      imageData:'./Imagem%20ChatGPT%2028_09_2026,%2016_35_24.png',
-      videoData:'',
-      active:true,
-      isPlatform:true
-    },
-    {
-      id:'default-banner-second',
-      storeId:null,
-      title:'Achou, Comprou',
-      message:'Encontre ofertas e lojas da sua cidade.',
-      imageData:'./Imagem%20ChatGPT%2028_09_2026,%2017_16_39.png',
-      videoData:'',
-      active:true,
-      isPlatform:true
-    },
-    ...premiumBanners
-  ];
+  const defaultBanner = {
+    id:'default-banner',
+    storeId:null,
+    title:'Achou o que precisa, comprou aqui!',
+    message:'Produtos, ofertas e lojas locais de Grajaú - MA, tudo em um só lugar.',
+    imageData:'./Imagem%20ChatGPT%2028_09_2026,%2016_35_24.png',
+    videoData:'',
+    active:true,
+    isPlatform:true
+  };
+  const secondPlatformBanner = {
+    id:'default-banner-second',
+    storeId:null,
+    title:'Achou, Comprou',
+    message:'Encontre ofertas e lojas da sua cidade.',
+    imageData:'./Imagem%20ChatGPT%2028_09_2026,%2017_16_39.png',
+    videoData:'',
+    active:true,
+    isPlatform:true
+  };
+  const bannerItems = [defaultBanner, ...premiumBanners, secondPlatformBanner];
   const products = rankedPublicProducts();
+  const offerProducts = products.filter(({product,offer})=>offer || priceNumber(currentPrice(product)) < priceNumber(originalPrice(product)));
   const shops = approvedStores().filter(m=>m.plan!=='gratis');
   const unreadNotifications = (db.notifications || []).filter(n=>!n.read).length;
   const categories = [
@@ -936,7 +940,7 @@ function approvedMobileHome() {
     ['grid','Ver todas','']
   ];
 
-  const productCards = products.length ? products.slice(0,10).map(({product:p,store:m})=>{
+  const renderMobileProductCard = ({product:p,store:m})=>{
     const price=currentPrice(p);
     const old=originalPrice(p);
     const discount=discountFor(p);
@@ -957,7 +961,13 @@ function approvedMobileHome() {
         </div>
       </div>
     </article>`;
-  }).join('') : `<div class="acm-empty">Nenhum produto ativo no momento.</div>`;
+  };
+  const productCards = offerProducts.length
+    ? offerProducts.slice(0,10).map(renderMobileProductCard).join('')
+    : `<div class="acm-empty">Nenhuma oferta ativa no momento.</div>`;
+  const generalProductCards = products.length
+    ? products.map(renderMobileProductCard).join('')
+    : `<div class="acm-empty">Nenhum produto ativo no momento.</div>`;
 
   const storeCards = shops.length ? shops.slice(0,10).map(m=>`
     <button type="button" class="acm-store-card" data-store-id="${m.id}">
@@ -1007,8 +1017,8 @@ function approvedMobileHome() {
               </article>`;
             }
             if(banner.imageData){
-              return `<article class="acm-banner-slide" data-banner-index="${index}">
-                <img src="${esc(banner.imageData)}" alt="Destaque Achou, Comprou">
+              return `<article class="acm-banner-slide acm-banner-image-slide" data-banner-index="${index}" style="background-image:url('${esc(banner.imageData)}')">
+                <img src="${esc(banner.imageData)}" alt="Destaque Achou, Comprou" loading="eager">
                 ${bannerStore?`<button type="button" class="acm-banner-hit" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>`:`<button type="button" class="acm-banner-hit" data-search-term="" aria-label="Ver ofertas"></button>`}
               </article>`;
             }
@@ -1031,6 +1041,12 @@ function approvedMobileHome() {
         <button type="button" data-search-term="">Ver todas ${icon('arrowRight')}</button>
       </div>
       <div class="acm-stores">${storeCards}</div>
+
+      <div class="acm-section-title acm-general-title">
+        <h2>Produtos em geral</h2>
+        <button type="button" data-search-term="">Ver todos ${icon('arrowRight')}</button>
+      </div>
+      <div class="acm-products acm-general-products">${generalProductCards}</div>
     </section>
 
     <nav class="acm-bottom-nav">
@@ -1086,7 +1102,7 @@ function approvedMobileHome() {
     window.__achouBannerTimer=setInterval(()=>{
       if(!document.body.contains(track)){clearInterval(window.__achouBannerTimer);return;}
       show(current+1);
-    },4800);
+    },3800);
   };
   dots.forEach(dot=>dot.onclick=()=>{show(Number(dot.dataset.acmDot));restart();});
   carousel?.addEventListener('touchstart',e=>{startX=e.touches?.[0]?.clientX??null;},{passive:true});
