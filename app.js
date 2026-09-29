@@ -2694,6 +2694,16 @@ async function merchant() {
         </div>
       </section>
 
+      <div class="merchant-video-quick-cta ${merchantCanPostVideos(m)?'enabled':'locked'}">
+        <div class="merchant-video-quick-icon">${icon('video')}</div>
+        <div class="merchant-video-quick-copy">
+          <small>VÍDEOS DA LOJA</small>
+          <h3>${merchantCanPostVideos(m)?'Publique um vídeo agora':'Vídeos no plano R$ 59,90'}</h3>
+          <p>${merchantCanPostVideos(m)?'Mostre novidades, ofertas e produtos da sua loja em vídeo.':'Esse recurso é exclusivo do Premium + Banner.'}</p>
+        </div>
+        <button type="button" data-go="merchantVideos">${icon('plus')} ${merchantCanPostVideos(m)?'Publicar vídeo':'Ver recurso'}</button>
+      </div>
+
       <div class="merchant-section-heading quick-heading"><div><span>ATALHOS</span><h2>Ações rápidas</h2></div></div>
       <div class="merchant-quick-grid">
         <button class="primary" data-go="productForm"><span>${icon('plus')}</span><div><b>Novo produto</b><small>Adicionar ao catálogo</small></div>${icon('arrowRight','merchant-arrow')}</button>
