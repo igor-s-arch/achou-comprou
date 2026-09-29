@@ -928,7 +928,21 @@ function approvedMobileHome() {
   };
   const bannerItems = [defaultBanner, ...premiumBanners, secondPlatformBanner];
   const products = rankedPublicProducts();
-  const offerProducts = products.filter(({product,offer})=>offer || priceNumber(currentPrice(product)) < priceNumber(originalPrice(product)));
+  const offerProducts = products
+    .filter(({product,offer})=>offer || priceNumber(currentPrice(product)) < priceNumber(originalPrice(product)))
+    .sort((a,b)=>{
+      const aOld=priceNumber(originalPrice(a.product));
+      const aNow=priceNumber(currentPrice(a.product));
+      const bOld=priceNumber(originalPrice(b.product));
+      const bNow=priceNumber(currentPrice(b.product));
+      const aDiscount=aOld>aNow&&aOld>0?((aOld-aNow)/aOld):0;
+      const bDiscount=bOld>bNow&&bOld>0?((bOld-bNow)/bOld):0;
+      return (bDiscount-aDiscount)
+        || (storePriority(b.store?.plan)-storePriority(a.store?.plan))
+        || (storeWhatsappValue(b.store)-storeWhatsappValue(a.store))
+        || (storeRatingValue(b.store)-storeRatingValue(a.store))
+        || String(a.product?.name||'').localeCompare(String(b.product?.name||''),'pt-BR');
+    });
   const shops = approvedStores().filter(m=>m.plan!=='gratis');
   const unreadNotifications = (db.notifications || []).filter(n=>!n.read).length;
   const categories = [
@@ -1031,7 +1045,7 @@ function approvedMobileHome() {
       </div>
 
       <div class="acm-section-title">
-        <h2>Ofertas para você</h2>
+        <h2>Ofertas em destaque</h2>
         <button type="button" data-search-term="">Ver todas ${icon('arrowRight')}</button>
       </div>
       <div class="acm-products">${productCards}</div>
