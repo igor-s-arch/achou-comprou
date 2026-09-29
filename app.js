@@ -1017,8 +1017,8 @@ function approvedMobileHome() {
               </article>`;
             }
             if(banner.imageData){
-              return `<article class="acm-banner-slide acm-banner-image-slide" data-banner-index="${index}" style="background-image:url('${esc(banner.imageData)}')">
-                <img src="${esc(banner.imageData)}" alt="Destaque Achou, Comprou" loading="eager">
+              return `<article class="acm-banner-slide acm-banner-image-slide" data-banner-index="${index}">
+                <img src="${esc(banner.imageData)}" alt="Destaque Achou, Comprou" loading="eager" decoding="async">
                 ${bannerStore?`<button type="button" class="acm-banner-hit" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>`:`<button type="button" class="acm-banner-hit" data-search-term="" aria-label="Ver ofertas"></button>`}
               </article>`;
             }
