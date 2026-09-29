@@ -10100,3 +10100,45 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     aspect-ratio:2.68 / 1!important;
   }
 }
+
+
+/* ===== V95 — ÍCONES DE CATEGORIAS MOBILE MAIS PROFISSIONAIS ===== */
+@media(max-width:899px){
+  .approved-mobile-home .acm-categories>button>span{
+    width:42px!important;
+    height:38px!important;
+    display:grid!important;
+    place-items:center!important;
+    color:#070707!important;
+  }
+
+  .approved-mobile-home .acm-categories .acm-cat-svg{
+    width:34px!important;
+    height:34px!important;
+    display:block!important;
+    color:#070707!important;
+    overflow:visible!important;
+    filter:none!important;
+  }
+
+  .approved-mobile-home .acm-categories>button{
+    background:linear-gradient(180deg,#ffdd14 0%,#ffd000 100%)!important;
+    border:1px solid rgba(17,17,17,.06)!important;
+    box-shadow:
+      0 7px 16px rgba(0,0,0,.15),
+      inset 0 1px 0 rgba(255,255,255,.28)!important;
+  }
+
+  .approved-mobile-home .acm-categories>button b{
+    color:#050505!important;
+    font-weight:950!important;
+    letter-spacing:-.015em!important;
+  }
+}
+
+@media(max-width:390px){
+  .approved-mobile-home .acm-categories .acm-cat-svg{
+    width:31px!important;
+    height:31px!important;
+  }
+}
