@@ -2686,6 +2686,7 @@ async function merchant() {
         <button data-go="offerForm"><i class="red">${icon('flame')}</i><span>Criar<br>Oferta</span></button>
         <button data-go="stats"><i class="blue">${icon('cart')}</i><span>Registrar<br>Venda</span></button>
         <button data-go="merchantStore"><i class="dark">${icon('store')}</i><span>Editar<br>Minha Loja</span></button>
+        <button data-go="merchantVideos"><i class="video">${icon('video')}</i><span>Publicar<br>Vídeo</span></button>
       </div>
 
       <section class="merchant-approved-sales">
