@@ -861,6 +861,7 @@ function nav(active = 'home') {
   return `<nav class="bottom-nav marketplace-bottom-nav">
     <div class="desktop-site-brand">${logo()}</div>
     <button class="nav-item ${active === 'home' ? 'active' : ''}" data-go="home">${icon('home')}<span>Início</span></button>
+    <button class="nav-item desktop-search-nav ${active === 'search' ? 'active' : ''}" data-go="search">${icon('search')}<span>Buscar</span></button>
     <button class="nav-item ${active === 'categories' ? 'active' : ''}" data-go="categories">${icon('grid')}<span>Categorias</span></button>
     <button class="nav-item ${active === 'videos' ? 'active' : ''}" data-go="videos">${icon('video')}<span>Vídeos</span></button>
     <button class="nav-item ${active === 'fav' ? 'active' : ''}" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
