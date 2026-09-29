@@ -45,6 +45,7 @@ const DEFAULT_DB = {
   ],
   offers: [{ id:'o1', storeId:'loja-maranhao', productId:'p1', normal:'159,90', promo:'129,90', validUntil:'2026-12-31', quantity:10, active:true }],
   banners: [{ id:'b1', storeId:'loja-maranhao', title:'Compre no comércio local', message:'Ofertas especiais perto de você', active:true }],
+  videos: [],
   payments: [],
   paymentConfig: { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' },
   clients: [{ id:'cliente-demo', name:'Cliente Demo', email:'cliente@exemplo.com', password:'123456', phone:'(99) 99999-0000', city:'Grajaú - MA', favorites:['p1'] }],
@@ -58,7 +59,7 @@ const DEFAULT_DB = {
   session: { clientId: null, merchantId: null, admin: false }
 };
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.cart = saved.cart && typeof saved.cart==='object' ? saved.cart : {storeId:null,items:[],note:''}; saved.cart.items = Array.isArray(saved.cart.items) ? saved.cart.items.filter(x=>x&&x.productId).map(x=>({productId:String(x.productId),qty:Math.max(1,Math.min(99,Number(x.qty)||1))})) : []; saved.cart.note=String(saved.cart.note||''); if(!saved.cart.items.length)saved.cart.storeId=null; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
+function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.videos = Array.isArray(saved.videos) ? saved.videos : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.cart = saved.cart && typeof saved.cart==='object' ? saved.cart : {storeId:null,items:[],note:''}; saved.cart.items = Array.isArray(saved.cart.items) ? saved.cart.items.filter(x=>x&&x.productId).map(x=>({productId:String(x.productId),qty:Math.max(1,Math.min(99,Number(x.qty)||1))})) : []; saved.cart.note=String(saved.cart.note||''); if(!saved.cart.items.length)saved.cart.storeId=null; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
 let db = loadDb();
 let adminBranding={
   name:'Igor',
@@ -304,6 +305,7 @@ function collectWeeklyHours(prefix){
 function money(value) { const n = String(value || '').replace(/[^0-9,]/g,''); return n ? `R$ ${n}` : 'R$ 0,00'; }
 function merchantProductsFor(storeId) { return db.products.filter(p => p.storeId === storeId); }
 function merchantOffersFor(storeId) { return db.offers.filter(o => o.storeId === storeId); }
+function merchantVideosFor(storeId) { return (db.videos||[]).filter(v => v.storeId === storeId); }
 function syncPublicStoreState() { state.stores = db.merchants.map(m => ({ name:m.name, cat:m.category, dist:m.dist || '—', rating:m.rating || 'Novo', status:m.status, plan:m.plan, id:m.id })); }
 syncPublicStoreState();
 
@@ -313,6 +315,7 @@ function applyCloudPublicCatalog(catalog){
   db.products=Array.isArray(catalog.products)?catalog.products:[];
   db.offers=Array.isArray(catalog.offers)?catalog.offers:[];
   db.banners=Array.isArray(catalog.banners)?catalog.banners:[];
+  db.videos=Array.isArray(catalog.videos)?catalog.videos:[];
   syncPublicStoreState();
   saveDb();
   return true;
@@ -324,7 +327,7 @@ async function syncCloudPublicCatalog(){
 }
 function applyCloudAdminData(result){
   if(!result?.ok)return false;
-  db.merchants=result.stores||[];db.products=result.products||[];db.offers=result.offers||[];db.banners=result.banners||[];
+  db.merchants=result.stores||[];db.products=result.products||[];db.offers=result.offers||[];db.banners=result.banners||[];db.videos=result.videos||[];
   syncPublicStoreState();saveDb();return true;
 }
 async function syncCloudAdminData(){
@@ -338,6 +341,7 @@ async function syncCloudMerchantCatalog(storeId){
   if(!result.ok)return false;
   db.products=db.products.filter(p=>p.storeId!==storeId).concat(result.products||[]);
   db.offers=db.offers.filter(o=>o.storeId!==storeId).concat(result.offers||[]);
+  db.videos=(db.videos||[]).filter(v=>v.storeId!==storeId).concat(result.videos||[]);
   saveDb();
   return true;
 }
@@ -392,6 +396,15 @@ function storeHasActivePlan(store){
 }
 function merchantHasActivePlan(store=currentMerchant()){
   return !!store && store.status==='aprovada' && storeHasActivePlan(store);
+}
+function merchantCanPostVideos(store=currentMerchant()){
+  return !!store && store.status==='aprovada' && store.plan==='premium_banner' && storeHasActivePlan(store);
+}
+function publicVideos(){
+  const allowed=new Set(approvedStores().filter(m=>m.plan==='premium_banner').map(m=>m.id));
+  return (db.videos||[])
+    .filter(v=>v && v.active!==false && v.videoUrl && allowed.has(v.storeId))
+    .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
 }
 function requireMerchantPlan(feature='usar este recurso'){
   const m=currentMerchant();
@@ -714,6 +727,7 @@ const icons = {
   package: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>',
   card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+  video: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
@@ -847,10 +861,10 @@ function nav(active = 'home') {
   return `<nav class="bottom-nav marketplace-bottom-nav">
     <div class="desktop-site-brand">${logo()}</div>
     <button class="nav-item ${active === 'home' ? 'active' : ''}" data-go="home">${icon('home')}<span>Início</span></button>
-    <button class="nav-item ${active === 'search' ? 'active' : ''}" data-go="search">${icon('search')}<span>Buscar</span></button>
     <button class="nav-item ${active === 'categories' ? 'active' : ''}" data-go="categories">${icon('grid')}<span>Categorias</span></button>
+    <button class="nav-item ${active === 'videos' ? 'active' : ''}" data-go="videos">${icon('video')}<span>Vídeos</span></button>
     <button class="nav-item ${active === 'fav' ? 'active' : ''}" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
-    <button class="nav-item ${active === 'profile' ? 'active' : ''}" data-go="profile">${icon('user')}<span>Perfil</span></button>
+    <button class="nav-item ${active === 'profile' ? 'active' : ''}" data-go="profile">${icon('user')}<span class="mobile-account-label">Conta</span><span class="desktop-profile-label">Perfil</span></button>
     <div class="desktop-site-actions">
       <button class="desktop-location" type="button">${icon('pin')}<span>Grajaú - MA</span><span>⌄</span></button>
       <button type="button" data-go="notifications" aria-label="Notificações">${icon('bell')}${unread?'<i></i>':''}</button>
@@ -859,7 +873,6 @@ function nav(active = 'home') {
     </div>
   </nav>`;
 }
-
 function logo() {
   return `<img src="assets/logo-achou-comprou.png" alt="Achou, Comprou" class="mini-logo">`;
 }
@@ -1750,8 +1763,39 @@ function categories() {
     ['grid','Outros','outros','Tudo que não se encaixa nas categorias acima']
   ];
   const counts={}; publicProducts().forEach(p=>{const k=categoryLabel(p.type);counts[k]=(counts[k]||0)+1;if(isSchoolProduct(p)&&k!=='Material escolar')counts['Material escolar']=(counts['Material escolar']||0)+1;});
-  app.innerHTML=`<main class="app-shell utility-page categories-page"><div class="page-head"><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><b>Todas as categorias</b></div><section class="utility-content"><div class="utility-hero"><span>${icon('grid')}</span><div><small>EXPLORAR</small><h1>Encontre por categoria</h1><p>Veja produtos e lojas da cidade organizados por tipo.</p></div></div><div class="category-directory">${defs.map(([ico,label,term,desc])=>`<button data-category-search="${term}"><span class="category-directory-icon">${icon(ico)}</span><span class="category-directory-copy"><b>${label}</b><small>${desc}</small></span><span class="category-directory-count">${counts[label]||0}</span>${icon('arrowRight','category-directory-arrow')}</button>`).join('')}</div></section>${nav('search')}</main>`;
+  app.innerHTML=`<main class="app-shell utility-page categories-page"><div class="page-head"><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><b>Todas as categorias</b></div><section class="utility-content"><div class="utility-hero"><span>${icon('grid')}</span><div><small>EXPLORAR</small><h1>Encontre por categoria</h1><p>Veja produtos e lojas da cidade organizados por tipo.</p></div></div><div class="category-directory">${defs.map(([ico,label,term,desc])=>`<button data-category-search="${term}"><span class="category-directory-icon">${icon(ico)}</span><span class="category-directory-copy"><b>${label}</b><small>${desc}</small></span><span class="category-directory-count">${counts[label]||0}</span>${icon('arrowRight','category-directory-arrow')}</button>`).join('')}</div></section>${nav('categories')}</main>`;
   bind(); document.querySelectorAll('[data-category-search]').forEach(btn=>btn.onclick=()=>search(btn.dataset.categorySearch));
+}
+
+async function videos(){
+  if(window.ACCloud?.enabled) await syncCloudPublicCatalog();
+  const items=publicVideos();
+  app.innerHTML=`<main class="app-shell utility-page videos-page">
+    <div class="page-head"><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><b>Vídeos das lojas</b></div>
+    <section class="utility-content">
+      <div class="utility-hero video-utility-hero"><span>${icon('video')}</span><div><small>NOVIDADES EM VÍDEO</small><h1>Veja o que chegou nas lojas</h1><p>Vídeos publicados pelos lojistas do Achou, Comprou. Sem feed infinito: escolha o que quer assistir.</p></div></div>
+      <div class="store-video-grid">
+        ${items.length?items.map(v=>{
+          const m=storeById(v.storeId);
+          const p=v.productId?db.products.find(x=>x.id===v.productId):null;
+          return `<article class="store-video-card">
+            <div class="store-video-media"><video controls playsinline preload="metadata" src="${esc(v.videoUrl)}"></video></div>
+            <div class="store-video-body">
+              <div class="store-video-store"><span class="store-video-logo">${storeLogoMedia(m)}</span><div><b>${esc(m?.name||'Loja')}</b><small>${esc(m?.category||'Comércio local')}</small></div></div>
+              <h3>${esc(v.title||'Novidade da loja')}</h3>
+              ${v.caption?`<p>${esc(v.caption)}</p>`:''}
+              <div class="store-video-actions">
+                ${p?`<button class="btn btn-yellow" data-product-id="${p.id}">Ver produto</button>`:''}
+                ${m?`<button class="btn btn-secondary" data-store-id="${m.id}">Ver loja</button>`:''}
+              </div>
+            </div>
+          </article>`;
+        }).join(''):`<div class="professional-empty video-empty"><span>${icon('video')}</span><h3>Ainda não há vídeos publicados</h3><p>Quando as lojas do plano Premium + Banner publicarem novidades, elas aparecerão aqui.</p></div>`}
+      </div>
+    </section>
+    ${nav('videos')}
+  </main>`;
+  bind();
 }
 
 function clientEditProfile(){
@@ -1871,7 +1915,7 @@ function planCards(mode='preview') {
     : `<button class="btn btn-yellow btn-block" data-request-plan="${plan}">${m?.plan === plan ? `Renovar ${planLabel(plan)}` : label}</button>`;
   return `<div class="plans plans-pro paid-plans-only">
     <article class="plan plan-pro featured" data-plan-card="premium"><div class="plan-topline"><span>MAIS RECURSOS</span></div><h4>Premium</h4><div class="amount">R$ 49,90<span>/mês</span></div><p class="plan-desc">Para lojas que querem publicar sem limite e ter uma página completa.</p><ul><li>${icon('check')} Produtos ilimitados</li><li>${icon('check')} Ofertas ilimitadas</li><li>${icon('check')} Estatísticas avançadas</li><li>${icon('check')} Página completa da loja</li></ul>${periods('premium')}${button('premium', mode==='preview'?'Cadastrar e conhecer o Premium':'Assinar Premium')}</article>
-    <article class="plan plan-pro featured banner-plan" data-plan-card="premium_banner"><div class="plan-ribbon">MAIOR VISIBILIDADE</div><div class="plan-topline"><span>DESTAQUE NA HOME</span></div><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><p class="plan-desc">Tudo do Premium, mais destaque e prioridade para aumentar a visibilidade da loja.</p><ul><li>${icon('check')} Tudo do Premium</li><li>${icon('check')} Selo de destaque</li><li>${icon('check')} Prioridade nas categorias</li><li>${icon('check')} Loja no banner principal</li></ul>${periods('premium_banner')}${button('premium_banner', mode==='preview'?'Cadastrar e conhecer o Premium + Banner':'Assinar Premium + Banner')}</article>
+    <article class="plan plan-pro featured banner-plan" data-plan-card="premium_banner"><div class="plan-ribbon">MAIOR VISIBILIDADE</div><div class="plan-topline"><span>DESTAQUE NA HOME</span></div><h4>Premium + Banner</h4><div class="amount">R$ 59,90<span>/mês</span></div><p class="plan-desc">Tudo do Premium, mais destaque e prioridade para aumentar a visibilidade da loja.</p><ul><li>${icon('check')} Tudo do Premium</li><li>${icon('check')} Selo de destaque</li><li>${icon('check')} Prioridade nas categorias</li><li>${icon('check')} Loja no banner principal</li><li>${icon('check')} Publicação de vídeos da loja</li></ul>${periods('premium_banner')}${button('premium_banner', mode==='preview'?'Cadastrar e conhecer o Premium + Banner':'Assinar Premium + Banner')}</article>
   </div>`;
 }
 
@@ -2205,6 +2249,7 @@ async function merchant() {
         <button class="primary" data-go="productForm"><span>${icon('plus')}</span><div><b>Novo produto</b><small>Adicionar ao catálogo</small></div>${icon('arrowRight','merchant-arrow')}</button>
         <button data-go="offerForm"><span>${icon('flame')}</span><div><b>Nova oferta</b><small>Criar promoção</small></div>${icon('arrowRight','merchant-arrow')}</button>
         <button data-go="merchantStore"><span>${icon('store')}</span><div><b>Minha loja</b><small>Logo, capa e informações</small></div>${icon('arrowRight','merchant-arrow')}</button>
+        <button data-go="merchantVideos"><span>${icon('video')}</span><div><b>Vídeos</b><small>${merchantCanPostVideos(m)?'Publicar novidades em vídeo':'Exclusivo do plano R$ 59,90'}</small></div>${icon('arrowRight','merchant-arrow')}</button>
         <button data-go="stats"><span>${icon('chart')}</span><div><b>Estatísticas</b><small>Acompanhar desempenho</small></div>${icon('arrowRight','merchant-arrow')}</button>
       </div>
 
@@ -2338,6 +2383,110 @@ function merchantProductEdit(productId){
     msg.innerHTML='<div class="notice success">Tamanhos e fotos atualizados. O cliente já poderá visualizar.</div>';
     setTimeout(()=>merchantProductEdit(p.id),550);
   };
+}
+
+async function merchantVideos(){
+  const m=currentMerchant(); if(!m)return merchantLogin();
+  if(window.ACCloud?.enabled) await syncCloudMerchantCatalog(m.id);
+  const own=merchantVideosFor(m.id).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const products=merchantProductsFor(m.id).filter(p=>p.status==='ativo');
+
+  if(!merchantCanPostVideos(m)){
+    const reason=m.status!=='aprovada'
+      ? 'Sua loja precisa ser aprovada antes de publicar vídeos.'
+      : !merchantHasActivePlan(m)
+        ? 'Ative um plano para liberar os recursos comerciais.'
+        : 'A publicação de vídeos é exclusiva do Premium + Banner de R$ 59,90.';
+    app.innerHTML=`<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage merchant-videos-page">
+      <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>CONTEÚDO</span><b>Vídeos da loja</b></div></div>
+      <section class="merchant-sub-body">
+        <div class="merchant-video-plan-gate">
+          <span>${icon('video')}</span>
+          <small>RECURSO PREMIUM + BANNER</small>
+          <h1>Publique vídeos da sua loja</h1>
+          <p>${reason}</p>
+          <button class="btn btn-yellow btn-block" data-go="plans">Ver plano de R$ 59,90</button>
+        </div>
+        ${own.length?`<div class="merchant-video-existing-note">Seus vídeos anteriores continuam salvos. Eles voltam a aparecer para os clientes quando o plano Premium + Banner estiver ativo.</div>`:''}
+      </section>
+      ${merchantNav('dashboard')}
+    </main>`;
+    bind();
+    return;
+  }
+
+  app.innerHTML=`<main class="app-shell merchant ${merchantDeviceClass()} merchant-subpage merchant-videos-page">
+    <div class="merchant-sub-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><div><span>CONTEÚDO</span><b>Vídeos da loja</b></div><span class="merchant-premium-video-badge">R$ 59,90</span></div>
+    <section class="merchant-sub-body">
+      <div class="merchant-video-intro">
+        <span>${icon('video')}</span><div><small>PREMIUM + BANNER</small><h2>Mostre suas novidades em vídeo</h2><p>Publique um vídeo e, se quiser, vincule-o a um produto da sua loja.</p></div>
+      </div>
+      <form class="merchant-video-form" id="merchantVideoForm">
+        <label>Título do vídeo<input id="merchantVideoTitle" maxlength="90" required placeholder="Ex.: Novidades que chegaram hoje"></label>
+        <label>Legenda <small>(opcional)</small><textarea id="merchantVideoCaption" maxlength="220" placeholder="Conte em poucas palavras o que aparece no vídeo"></textarea></label>
+        <label>Produto relacionado <small>(opcional)</small><select id="merchantVideoProduct"><option value="">Nenhum produto</option>${products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="merchant-video-file-label">Vídeo<input id="merchantVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime" required><small>MP4, WEBM ou MOV · até 50 MB.</small></label>
+        <button class="btn btn-yellow btn-block" type="submit">Publicar vídeo</button>
+        <div id="merchantVideoMsg"></div>
+      </form>
+
+      <div class="merchant-section-heading"><div><span>PUBLICADOS</span><h2>Meus vídeos</h2></div><small>${own.length} vídeo${own.length===1?'':'s'}</small></div>
+      <div class="merchant-video-list">
+        ${own.length?own.map(v=>`<article class="merchant-video-item">
+          <video controls playsinline preload="metadata" src="${esc(v.videoUrl)}"></video>
+          <div><b>${esc(v.title)}</b><small>${v.active?'Publicado':'Pausado'}${v.productId?' · produto vinculado':''}</small>${v.caption?`<p>${esc(v.caption)}</p>`:''}</div>
+          <div class="merchant-video-item-actions">
+            <button type="button" data-toggle-video="${v.id}" data-next-active="${v.active?'0':'1'}">${v.active?'Pausar':'Publicar'}</button>
+            <button type="button" class="danger" data-delete-video="${v.id}">Excluir</button>
+          </div>
+        </article>`).join(''):`<div class="merchant-empty-mini"><b>Nenhum vídeo publicado</b><span>Use o formulário acima para publicar o primeiro.</span></div>`}
+      </div>
+    </section>
+    ${merchantNav('dashboard')}
+  </main>`;
+  bind();
+
+  document.getElementById('merchantVideoForm')?.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const msg=document.getElementById('merchantVideoMsg');
+    const file=document.getElementById('merchantVideoFile')?.files?.[0];
+    if(!file){msg.innerHTML='<div class="notice error">Selecione o vídeo antes de publicar.</div>';return;}
+    if(file.size>50*1024*1024){msg.innerHTML='<div class="notice error">O vídeo deve ter no máximo 50 MB.</div>';return;}
+    if(!window.ACCloud?.enabled){msg.innerHTML='<div class="notice error">A publicação de vídeos precisa do sistema online conectado.</div>';return;}
+    const submit=e.currentTarget.querySelector('button[type="submit"]');
+    submit.disabled=true;msg.innerHTML='<div class="notice">Enviando vídeo...</div>';
+    const session=await window.ACCloud.getSession();
+    const result=await window.ACCloud.createStoreVideo({
+      storeId:m.id,userId:session?.user?.id||m.ownerId,
+      title:document.getElementById('merchantVideoTitle').value,
+      caption:document.getElementById('merchantVideoCaption').value,
+      productId:document.getElementById('merchantVideoProduct').value||null,
+      file
+    });
+    submit.disabled=false;
+    if(!result?.ok){msg.innerHTML=`<div class="notice error">${esc(result?.message||'Não foi possível publicar o vídeo.')}</div>`;return;}
+    db.videos=(db.videos||[]).filter(v=>v.id!==result.video.id);
+    db.videos.unshift(result.video);saveDb();
+    merchantVideos();
+  });
+
+  document.querySelectorAll('[data-toggle-video]').forEach(btn=>btn.onclick=async()=>{
+    if(!window.ACCloud?.enabled)return;
+    btn.disabled=true;
+    const active=btn.dataset.nextActive==='1';
+    const result=await window.ACCloud.setStoreVideoActive(btn.dataset.toggleVideo,active);
+    if(!result?.ok){btn.disabled=false;alert(result?.message||'Não foi possível alterar o vídeo.');return;}
+    db.videos=(db.videos||[]).map(v=>v.id===result.video.id?result.video:v);saveDb();merchantVideos();
+  });
+
+  document.querySelectorAll('[data-delete-video]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este vídeo da sua loja?'))return;
+    if(!window.ACCloud?.enabled)return;
+    btn.disabled=true;
+    const result=await window.ACCloud.deleteStoreVideo(btn.dataset.deleteVideo);
+    if(!result?.ok){btn.disabled=false;alert(result?.message||'Não foi possível excluir o vídeo.');return;}
+    db.videos=(db.videos||[]).filter(v=>v.id!==btn.dataset.deleteVideo);saveDb();merchantVideos();
+  });
 }
 
 function merchantOffers() {
@@ -3680,7 +3829,7 @@ function bind() {
   applyMerchantDeviceMode();
   document.querySelectorAll('[data-go]').forEach(el => el.onclick = () => {
     const go = el.dataset.go;
-    ({ home, search, product, store, profile, categories, shoppingList, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, adminSettings, fav: favorites }[go] || home)();
+    ({ home, search, product, store, profile, categories, videos, shoppingList, clientLogin, clientRegister, clientEditProfile, clientForgot, recentSearches, notifications, clientSettings, passwordResetConfirm, merchantLogin, merchantRegister, merchantPlanOnboarding, merchantSubmitted, plansPreview, merchant, merchantProducts, merchantVideos, merchantOffers, merchantStore, productForm, offerForm, stats, plans, adminLogin, admin, adminStores, adminPlans, adminBanners, adminCatalog, adminReports, adminSettings, fav: favorites }[go] || home)();
   });
   document.querySelectorAll('[data-product-id]').forEach(el => el.onclick = () => product(el.dataset.productId));
   document.querySelectorAll('[data-store-id]').forEach(el => el.onclick = () => store(el.dataset.storeId));
