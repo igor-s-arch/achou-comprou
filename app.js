@@ -3228,6 +3228,44 @@ async function stats() {
   const contactMax=Math.max(1,...contactProducts.map(x=>x.n));
   const recentContacts=contacts.slice(0,12);
 
+  const saleChoicesFor=product=>{
+    if(!product)return [];
+    const live=(Array.isArray(product.variants)?product.variants:[])
+      .filter(v=>v && v.available!==false && Number(v.qty??1)>0 && (v.option||v.color));
+    if(live.length){
+      return live.map(v=>({
+        value:`v:${v.id}`,
+        label:[v.option,v.color].filter(Boolean).join(' · ') || 'Variação',
+        variantId:v.id,
+        option:v.option||'',
+        color:v.color||''
+      }));
+    }
+    const meta=normalizedProduct(product);
+    const values=product.type==='calcado'?meta.numbers:meta.sizes;
+    return [...new Set((values||[]).filter(Boolean))].map(option=>({
+      value:`o:${option}`,
+      label:String(option),
+      variantId:'',
+      option:String(option),
+      color:''
+    }));
+  };
+
+  const saleColorsFor=product=>{
+    if(!product)return [];
+    return [...new Set((normalizedProduct(product).colors||[]).filter(Boolean))];
+  };
+
+  const saleOptionTitle=product=>{
+    if(!product)return 'Tamanho / numeração';
+    if(product.type==='calcado')return 'Numeração vendida';
+    if(['roupa','pizza'].includes(product.type))return 'Tamanho vendido';
+    return 'Variação vendida';
+  };
+
+  const saleProductOptions=(selected='')=>products.map(prod=>`<option value="${prod.id}" ${prod.id===selected?'selected':''}>${esc(prod.name)}</option>`).join('');
+
   app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-stats-page">
     <div class="page-head"><button class="back" data-go="merchant" aria-label="Voltar">${icon('arrowLeft')}</button><b>Resultados da loja</b></div>
 
@@ -3262,6 +3300,10 @@ async function stats() {
       <div class="merchant-contact-list">
         ${recentContacts.length?recentContacts.map(contact=>{
           const p=contact.productId?db.products.find(x=>x.id===contact.productId):null;
+          const selectedProductId=contact.saleProductId||contact.productId||'';
+          const selectedProduct=selectedProductId?products.find(x=>x.id===selectedProductId):null;
+          const choices=saleChoicesFor(selectedProduct);
+          const colors=saleColorsFor(selectedProduct);
           const isShoppingList=contact.metadata?.source==='minha_lista';
           const listItems=Number(contact.metadata?.cart_item_count||0);
           const listQty=Number(contact.metadata?.cart_quantity||0);
@@ -3269,18 +3311,44 @@ async function stats() {
           const contactSubtitle=isShoppingList?`${listQty} unidade${listQty===1?'':'s'} enviadas pelo WhatsApp`:'Cliente veio pelo Achou, Comprou';
           const date=contact.clickedAt?new Date(contact.clickedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
           const statusLabel=contact.status==='venda'?'Venda confirmada':contact.status==='nao_venda'?'Não virou venda':'Aguardando';
+          const soldProduct=contact.saleProductId?products.find(x=>x.id===contact.saleProductId):p;
+          const soldDetails=contact.status==='venda'
+            ? [soldProduct?.name,contact.saleOption?(soldProduct?.type==='calcado'?`Nº ${contact.saleOption}`:`Tam. ${contact.saleOption}`):'',contact.saleColor].filter(Boolean).join(' · ')
+            : '';
           return `<article class="merchant-contact-card ${contact.status}">
             <div class="merchant-contact-main">
               <span class="merchant-contact-icon">${icon(contact.status==='venda'?'check':contact.status==='nao_venda'?'arrowLeft':isShoppingList?'cart':'whatsapp')}</span>
               <div><b>${esc(contactTitle)}</b><small>${esc(contactSubtitle)} · ${esc(date)}</small></div>
               <em class="${contact.status}">${statusLabel}</em>
             </div>
-            ${contact.status==='pendente'?`<div class="merchant-sale-actions">
-              <label>Valor da venda <input inputmode="decimal" data-sale-value="${contact.id}" placeholder="Ex.: 129,90"></label>
+            ${contact.status==='pendente'?`<div class="merchant-sale-detail-fields">
+              <label>Produto vendido
+                <select data-sale-product="${contact.id}">
+                  <option value="">Selecione o produto</option>
+                  ${saleProductOptions(selectedProductId)}
+                </select>
+              </label>
+              <label data-sale-option-wrap="${contact.id}">${saleOptionTitle(selectedProduct)}
+                <select data-sale-option="${contact.id}" ${choices.length?'':'disabled'}>
+                  <option value="">${choices.length?'Selecione':'Sem tamanho/numeração'}</option>
+                  ${choices.map(choice=>`<option value="${esc(choice.value)}">${esc(choice.label)}</option>`).join('')}
+                </select>
+              </label>
+              <label data-sale-color-wrap="${contact.id}">Cor vendida
+                <select data-sale-color="${contact.id}" ${colors.length?'':'disabled'}>
+                  <option value="">${colors.length?'Selecione (opcional)':'Sem cor cadastrada'}</option>
+                  ${colors.map(color=>`<option value="${esc(color)}">${esc(color)}</option>`).join('')}
+                </select>
+              </label>
+              <label>Valor da venda
+                <input inputmode="decimal" data-sale-value="${contact.id}" placeholder="Ex.: 129,90">
+              </label>
+            </div>
+            <div class="merchant-sale-actions">
               <button class="sale-yes" data-sale-confirm="${contact.id}">${icon('check')} Virou venda</button>
               <button class="sale-no" data-sale-no="${contact.id}">Não virou venda</button>
             </div>`:`<div class="merchant-contact-result">
-              <span>${contact.status==='venda'?`Valor confirmado: <b>${brlNumber(contact.value||0)}</b>`:'Contato encerrado sem venda.'}</span>
+              <span>${contact.status==='venda'?`<b>Vendido:</b> ${esc(soldDetails||'Produto não informado')} · <b>${brlNumber(contact.value||0)}</b>`:'Contato encerrado sem venda.'}</span>
               <button data-sale-reset="${contact.id}">Corrigir resultado</button>
             </div>`}
           </article>`;
@@ -3297,10 +3365,33 @@ async function stats() {
 
   bind();
 
-  const updateContact=async(id,status,value=null)=>{
+  const refreshSaleSelectors=(id,productId)=>{
+    const product=products.find(x=>x.id===productId);
+    const optionSelect=document.querySelector(`[data-sale-option="${id}"]`);
+    const optionWrap=document.querySelector(`[data-sale-option-wrap="${id}"]`);
+    const colorSelect=document.querySelector(`[data-sale-color="${id}"]`);
+    const choices=saleChoicesFor(product);
+    const colors=saleColorsFor(product);
+    if(optionWrap)optionWrap.firstChild.textContent=saleOptionTitle(product)+' ';
+    if(optionSelect){
+      optionSelect.disabled=!choices.length;
+      optionSelect.innerHTML=`<option value="">${choices.length?'Selecione':'Sem tamanho/numeração'}</option>${choices.map(choice=>`<option value="${esc(choice.value)}">${esc(choice.label)}</option>`).join('')}`;
+    }
+    if(colorSelect){
+      colorSelect.disabled=!colors.length;
+      colorSelect.innerHTML=`<option value="">${colors.length?'Selecione (opcional)':'Sem cor cadastrada'}</option>${colors.map(color=>`<option value="${esc(color)}">${esc(color)}</option>`).join('')}`;
+    }
+  };
+
+  document.querySelectorAll('[data-sale-product]').forEach(select=>select.onchange=()=>{
+    refreshSaleSelectors(select.dataset.saleProduct,select.value);
+  });
+
+  const updateContact=async(id,status,value=null,sale={})=>{
     if(!window.ACCloud?.enabled){alert('Esse recurso precisa do sistema online.');return;}
-    const result=await window.ACCloud.updateWhatsappContact(id,status,value);
+    const result=await window.ACCloud.updateWhatsappContact(id,status,value,'',sale);
     if(!result.ok){alert(result.message||'Não foi possível atualizar o contato.');return;}
+    await syncCloudMerchantCatalog(m.id);
     stats();
   };
 
@@ -3309,11 +3400,30 @@ async function stats() {
     const raw=document.querySelector(`[data-sale-value="${id}"]`)?.value||'';
     const value=Number(String(raw).replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,''));
     if(!value||value<=0){alert('Informe o valor da venda para confirmar.');return;}
-    updateContact(id,'venda',value);
+
+    const productId=document.querySelector(`[data-sale-product="${id}"]`)?.value||'';
+    if(!productId){alert('Selecione qual produto foi vendido.');return;}
+    const product=products.find(x=>x.id===productId);
+    const choices=saleChoicesFor(product);
+    const selected=document.querySelector(`[data-sale-option="${id}"]`)?.value||'';
+    if(choices.length&&!selected){alert(`${saleOptionTitle(product)}: selecione a opção que foi vendida.`);return;}
+
+    let variantId='',option='';
+    if(selected.startsWith('v:')){
+      variantId=selected.slice(2);
+      const choice=choices.find(x=>x.variantId===variantId);
+      option=choice?.option||'';
+    }else if(selected.startsWith('o:')){
+      option=selected.slice(2);
+    }
+    const color=document.querySelector(`[data-sale-color="${id}"]`)?.value||'';
+
+    updateContact(id,'venda',value,{productId,variantId,option,color});
   });
+
   document.querySelectorAll('[data-sale-no]').forEach(btn=>btn.onclick=()=>updateContact(btn.dataset.saleNo,'nao_venda'));
   document.querySelectorAll('[data-sale-reset]').forEach(btn=>btn.onclick=()=>{
-    if(confirm('Deseja corrigir esse resultado? O contato voltará para aguardando confirmação.'))updateContact(btn.dataset.saleReset,'pendente');
+    if(confirm('Deseja corrigir esse resultado? O estoque/tamanho vendido será restaurado e o contato voltará para aguardando confirmação.'))updateContact(btn.dataset.saleReset,'pendente');
   });
 }
 
