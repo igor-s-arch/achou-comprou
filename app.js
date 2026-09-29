@@ -1464,6 +1464,155 @@ function home() {
   restartBannerTimer();
 }
 
+
+function renderMobileSearchResults(results,storeMatches,badges){
+  const productCards=results.length?results.map(p=>{
+    const m=storeById(p.storeId);
+    const price=currentPrice(p);
+    const old=originalPrice(p);
+    const avail=availabilitySummary(p);
+    const favorite=isFavorite(p.id);
+    return `<article class="msp-product-card" data-product-id="${p.id}">
+      <div class="msp-product-media">
+        ${productMedia(p,true)}
+        <button type="button" class="msp-favorite ${favorite?'active':''}" data-msp-fav="${p.id}" aria-label="Favoritar">${icon('heart')}</button>
+      </div>
+      <div class="msp-product-body">
+        <span class="msp-available"><i></i>Disponível</span>
+        <h3>${esc(p.name)}</h3>
+        <strong class="msp-price">${money(price)}</strong>
+        ${price!==old?`<del class="msp-old-price">${money(old)}</del>`:''}
+        ${avail.length?`<p class="msp-variants">${avail.slice(0,2).map(esc).join(' · ')}</p>`:''}
+        <div class="msp-store-line">
+          <b>${icon('store')} ${esc(m?.name||'Loja')}</b>
+          <span>${icon('pin')} ${esc(m?.dist||'—')} de você</span>
+        </div>
+        <div class="msp-actions">
+          <button type="button" class="msp-add" data-msp-cart="${p.id}">${icon('cart')}<span>Adicionar</span></button>
+          <button type="button" class="msp-view" data-product-id="${p.id}">Ver produto</button>
+        </div>
+      </div>
+    </article>`;
+  }).join(''):`<div class="msp-empty"><b>Nenhum produto compatível.</b><span>Tente retirar um filtro ou pesquisar de outra forma.</span></div>`;
+
+  const storeCards=storeMatches.length?storeMatches.map(m=>`<button type="button" class="msp-store-card" data-store-id="${m.id}">
+    <span class="msp-store-card-logo">${m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:`${icon('store')}`}</span>
+    <span><b>${esc(m.name)}</b><small>${esc(m.category||'Comércio local')}</small></span>
+    ${icon('arrowRight')}
+  </button>`).join(''):`<div class="msp-empty"><b>Nenhuma loja encontrada.</b><span>Tente pesquisar outro termo.</span></div>`;
+
+  app.innerHTML=`<main class="app-shell mobile-search-pro">
+    <header class="msp-top">
+      <div class="msp-searchbar">
+        <button type="button" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button>
+        <input id="mspSearchQuery" value="${esc(publicState.query)}" placeholder="O que você está procurando?">
+        <button type="button" id="mspRepeatSearch" aria-label="Buscar">${icon('search')}</button>
+      </div>
+    </header>
+
+    <section class="msp-content">
+      <div class="msp-summary">
+        <div>
+          <h1>${results.length} produto${results.length===1?'':'s'} compatível${results.length===1?'':'is'}</h1>
+          <p>A busca considera produto, tamanho, numeração, cor, preço e disponibilidade.</p>
+        </div>
+        <button type="button" class="msp-filter-button" id="mspToggleFilters">${icon('sliders')}<span>Filtros</span></button>
+      </div>
+
+      ${badges.length?`<div class="msp-smart-badges">${badges.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:''}
+
+      <div class="msp-filter-panel hidden" id="mspFilterPanel">
+        <label>Categoria<select id="mspFilterCategory"><option value="">Todas</option><option value="roupa">Moda</option><option value="calcado">Calçados</option><option value="pizza">Alimentação</option><option value="beleza">Beleza</option><option value="celular">Tecnologia</option><option value="escolar">Material escolar</option></select></label>
+        <label>Tamanho / nº<input id="mspFilterOption" placeholder="Ex.: M ou 28" value="${esc(publicState.filters.option)}"></label>
+        <label>Cor<input id="mspFilterColor" placeholder="Ex.: Preto" value="${esc(publicState.filters.color)}"></label>
+        <label>Preço máximo<input id="mspFilterMax" inputmode="decimal" placeholder="Ex.: 100" value="${esc(publicState.filters.maxPrice)}"></label>
+        <div class="msp-filter-actions">
+          <button type="button" id="mspClearFilters">Limpar</button>
+          <button type="button" id="mspApplyFilters">Aplicar filtros</button>
+        </div>
+      </div>
+
+      <div class="msp-tabs">
+        <button type="button" class="active" data-msp-tab="all">Todos (${results.length+storeMatches.length})</button>
+        <button type="button" data-msp-tab="products">Produtos (${results.length})</button>
+        <button type="button" data-msp-tab="stores">Lojas (${storeMatches.length})</button>
+      </div>
+
+      <div id="mspProductsSection" class="msp-products-grid">${productCards}</div>
+
+      <section id="mspStoresSection" class="msp-stores-section">
+        <div class="msp-section-title"><h2>Lojas encontradas</h2></div>
+        <div class="msp-store-grid">${storeCards}</div>
+      </section>
+    </section>
+
+    <nav class="msp-bottom-nav">
+      <button type="button" data-go="home">${icon('home')}<span>Início</span></button>
+      <button type="button" class="active" id="mspBottomSearch">${icon('search')}<span>Buscar</span></button>
+      <button type="button" data-go="categories">${icon('grid')}<span>Categorias</span></button>
+      <button type="button" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
+      <button type="button" data-go="profile">${icon('user')}<span>Perfil</span></button>
+    </nav>
+  </main>`;
+
+  bind();
+
+  const input=document.getElementById('mspSearchQuery');
+  const cat=document.getElementById('mspFilterCategory');
+  if(cat)cat.value=publicState.filters.category||'';
+  const run=()=>search(input?.value||'');
+  document.getElementById('mspRepeatSearch')?.addEventListener('click',run);
+  document.getElementById('mspBottomSearch')?.addEventListener('click',()=>input?.focus());
+  input?.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+
+  document.getElementById('mspToggleFilters')?.addEventListener('click',()=>{
+    document.getElementById('mspFilterPanel')?.classList.toggle('hidden');
+  });
+  document.getElementById('mspApplyFilters')?.addEventListener('click',()=>{
+    publicState.filters={
+      category:cat?.value||'',
+      option:document.getElementById('mspFilterOption')?.value.trim()||'',
+      color:document.getElementById('mspFilterColor')?.value.trim()||'',
+      maxPrice:document.getElementById('mspFilterMax')?.value.trim()||''
+    };
+    run();
+  });
+  document.getElementById('mspClearFilters')?.addEventListener('click',()=>{
+    publicState.filters={category:'',option:'',color:'',maxPrice:''};
+    run();
+  });
+
+  document.querySelectorAll('[data-msp-tab]').forEach(btn=>btn.onclick=()=>{
+    const tab=btn.dataset.mspTab;
+    document.querySelectorAll('[data-msp-tab]').forEach(x=>x.classList.toggle('active',x===btn));
+    const products=document.getElementById('mspProductsSection');
+    const stores=document.getElementById('mspStoresSection');
+    if(products)products.hidden=tab==='stores';
+    if(stores)stores.hidden=tab==='products';
+  });
+
+  document.querySelectorAll('[data-msp-cart]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const result=addToCart(btn.dataset.mspCart,1);
+    if(!result.ok){alert(result.message);return;}
+    btn.classList.add('added');
+    btn.innerHTML=icon('check')+'<span>Adicionado</span>';
+    btn.disabled=true;
+  });
+
+  document.querySelectorAll('[data-msp-fav]').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const productId=btn.dataset.mspFav;
+    if(!currentClient()){
+      publicState.afterLogin={screen:'product',productId,favoriteId:productId};
+      clientLogin();
+      return;
+    }
+    const ok=await setFavorite(productId,!isFavorite(productId));
+    if(ok)search(publicState.query);
+  });
+}
+
 function search(q = '') {
   publicState.query = q ?? publicState.query ?? '';
   const cleanQuery = String(publicState.query || '').trim();
@@ -1486,6 +1635,10 @@ function search(q = '') {
     }).catch(()=>{});
   }
   const badges = searchBadges(publicState.query, publicState.filters);
+  if(window.matchMedia && window.matchMedia('(max-width:899px)').matches){
+    renderMobileSearchResults(results,storeMatches,badges);
+    return;
+  }
   app.innerHTML = `<main class="app-shell search-results-page">
     <header class="topbar search-page-top"><div class="search"><button data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><input id="searchQuery" value="${esc(publicState.query)}" placeholder="O que você está procurando?"><button id="repeatSearch" aria-label="Buscar">${icon('search')}</button></div></header>
     <section class="content">
