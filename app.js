@@ -1065,9 +1065,9 @@ function approvedMobileHome() {
 
     <nav class="acm-bottom-nav">
       <button type="button" class="active" data-go="home">${icon('home')}<span>Início</span></button>
-      <button type="button" data-go="search">${icon('search')}<span>Buscar</span></button>
+      <button type="button" data-go="categories">${icon('grid')}<span>Categorias</span></button>
+      <button type="button" data-go="videos">${icon('video')}<span>Vídeos</span></button>
       <button type="button" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
-      <button type="button" data-go="shoppingList">${icon('tag')}<span>Interesses</span></button>
       <button type="button" data-go="profile">${icon('user')}<span>Conta</span></button>
     </nav>
   </main>`;
