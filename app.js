@@ -2613,6 +2613,7 @@ function merchantNav(active = 'dashboard') {
     ['merchant','home','Painel','dashboard'],
     ['merchantProducts','package','Produtos','products'],
     ['merchantOffers','flame','Ofertas','offers'],
+    ['merchantVideos','video','Vídeos','videos'],
     ['merchantStore','store','Minha loja','store'],
     ['plans','star','Plano','plan']
   ];
