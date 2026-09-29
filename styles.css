@@ -10908,3 +10908,94 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     font-size:7.5px!important;
   }
 }
+
+
+/* ===== V100 — CTA DE PUBLICAR VÍDEO NO PAINEL DO LOJISTA ===== */
+.merchant-video-quick-cta{
+  margin:16px 0 18px;
+  padding:16px;
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr) auto;
+  align-items:center;
+  gap:13px;
+  border:1px solid #26292f;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 0% 0%,rgba(255,208,0,.16),transparent 34%),
+    #111317;
+  color:#fff;
+  box-shadow:0 8px 22px rgba(17,24,39,.08);
+}
+.merchant-video-quick-cta.locked{
+  opacity:.92;
+}
+.merchant-video-quick-icon{
+  width:52px;
+  height:52px;
+  display:grid;
+  place-items:center;
+  border-radius:15px;
+  background:#ffd000;
+  color:#111;
+}
+.merchant-video-quick-icon .ui-icon{
+  width:27px;
+  height:27px;
+}
+.merchant-video-quick-copy{
+  min-width:0;
+}
+.merchant-video-quick-copy small{
+  display:block;
+  color:#ffd000;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.1em;
+}
+.merchant-video-quick-copy h3{
+  margin:4px 0 0;
+  color:#fff;
+  font-size:16px;
+  line-height:1.15;
+}
+.merchant-video-quick-copy p{
+  margin:5px 0 0;
+  color:#aeb2b8;
+  font-size:9px;
+  line-height:1.4;
+}
+.merchant-video-quick-cta>button{
+  min-height:42px;
+  padding:0 14px;
+  border:0;
+  border-radius:12px;
+  background:#ffd000;
+  color:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  font-size:9px;
+  font-weight:950;
+  white-space:nowrap;
+}
+.merchant-video-quick-cta>button .ui-icon{
+  width:17px;
+  height:17px;
+}
+
+@media(max-width:620px){
+  .merchant-video-quick-cta{
+    grid-template-columns:48px minmax(0,1fr);
+    padding:14px;
+  }
+  .merchant-video-quick-icon{
+    width:48px;
+    height:48px;
+  }
+  .merchant-video-quick-cta>button{
+    grid-column:1/-1;
+    width:100%;
+    min-height:44px;
+  }
+}
