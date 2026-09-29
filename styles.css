@@ -9977,3 +9977,55 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     min-width:150px!important;
   }
 }
+
+
+/* ===== V91 — BANNERS MOBILE + PRODUTOS EM GERAL ===== */
+@media(max-width:899px){
+  .approved-mobile-home .acm-banner{
+    display:block!important;
+    height:clamp(140px,36vw,176px)!important;
+    min-height:140px!important;
+    aspect-ratio:auto!important;
+    background:#090909!important;
+  }
+  .approved-mobile-home .acm-banner-track,
+  .approved-mobile-home .acm-banner-slide{
+    min-height:140px!important;
+  }
+  .approved-mobile-home .acm-banner-image-slide{
+    background-size:contain!important;
+    background-repeat:no-repeat!important;
+    background-position:center center!important;
+  }
+  .approved-mobile-home .acm-banner-image-slide img{
+    position:absolute!important;
+    inset:0!important;
+    z-index:1!important;
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:transparent!important;
+  }
+  .approved-mobile-home .acm-banner-slide video{
+    position:absolute!important;
+    inset:0!important;
+    z-index:1!important;
+  }
+  .approved-mobile-home .acm-banner-hit{
+    z-index:4!important;
+  }
+  .approved-mobile-home .acm-general-title{
+    margin-top:22px!important;
+  }
+  .approved-mobile-home .acm-general-products{
+    padding-bottom:14px!important;
+  }
+}
+
+@media(max-width:390px){
+  .approved-mobile-home .acm-banner{
+    height:140px!important;
+    min-height:140px!important;
+  }
+}
