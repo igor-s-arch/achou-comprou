@@ -1,11 +1,11 @@
-const CACHE='achou-comprou-v93';
+const CACHE='achou-comprou-v94';
 const APP=[
   './',
   './index.html',
-  './styles.css?v=93',
-  './app.js?v=93',
+  './styles.css?v=94',
+  './app.js?v=94',
   './supabase-config.js',
-  './supabase-adapter.js?v=93',
+  './supabase-adapter.js?v=94',
   './manifest.webmanifest',
   './assets/logo-achou-comprou.png',
   './Imagem%20ChatGPT%2028_09_2026,%2016_35_24.png',
