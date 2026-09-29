@@ -10142,3 +10142,87 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     height:31px!important;
   }
 }
+
+
+/* ===== V96 — DEGRADÊ ATÉ O BANNER + BANNER SEM FAIXA PRETA ===== */
+@media(max-width:899px){
+  /* prolonga visualmente o degradê até envolver o banner */
+  .approved-mobile-home .acm-main{
+    margin-top:0!important;
+    padding:10px 18px 30px!important;
+    background:
+      linear-gradient(
+        180deg,
+        #8d8d8d 0px,
+        #a9a9a9 28px,
+        #d8d8d8 72px,
+        #f4f4f4 118px,
+        #ffffff 170px,
+        #ffffff 100%
+      )!important;
+  }
+
+  /* proporção real usada pelos banners do Achou, Comprou */
+  .approved-mobile-home .acm-banner{
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    aspect-ratio:2048 / 682!important;
+    margin:0!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:17px!important;
+    background:transparent!important;
+    box-shadow:0 7px 20px rgba(0,0,0,.08)!important;
+  }
+
+  .approved-mobile-home .acm-banner-track,
+  .approved-mobile-home .acm-banner-slide{
+    height:100%!important;
+    min-height:0!important;
+    background:transparent!important;
+  }
+
+  .approved-mobile-home .acm-banner-image-slide{
+    background:transparent!important;
+  }
+
+  .approved-mobile-home .acm-banner-slide img{
+    width:100%!important;
+    height:100%!important;
+    display:block!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:transparent!important;
+  }
+
+  .approved-mobile-home .acm-banner-slide video{
+    width:100%!important;
+    height:100%!important;
+    display:block!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    background:transparent!important;
+  }
+
+  /* remove qualquer sobra visual escura nas bordas */
+  .approved-mobile-home .acm-banner::before,
+  .approved-mobile-home .acm-banner::after{
+    content:none!important;
+    display:none!important;
+  }
+}
+
+@media(max-width:390px){
+  .approved-mobile-home .acm-main{
+    padding-left:14px!important;
+    padding-right:14px!important;
+    padding-top:9px!important;
+  }
+
+  .approved-mobile-home .acm-banner{
+    height:auto!important;
+    min-height:0!important;
+    aspect-ratio:2048 / 682!important;
+  }
+}
