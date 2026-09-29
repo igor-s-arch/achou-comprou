@@ -3834,7 +3834,10 @@ function bind() {
   });
   document.querySelectorAll('[data-product-id]').forEach(el => el.onclick = () => product(el.dataset.productId));
   document.querySelectorAll('[data-store-id]').forEach(el => el.onclick = () => store(el.dataset.storeId));
-  document.querySelectorAll('[data-search-term]').forEach(el => el.onclick = () => search(el.dataset.searchTerm || ''));
+  document.querySelectorAll('[data-search-term]').forEach(el => el.onclick = () => {
+    publicState.filters={category:'',option:'',color:'',maxPrice:''};
+    search(el.dataset.searchTerm || '');
+  });
   document.querySelectorAll('[data-password-toggle]').forEach(btn=>{
     btn.onclick=()=>{
       const input=document.getElementById(btn.dataset.passwordToggle);
