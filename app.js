@@ -936,6 +936,14 @@ function home() {
     ['book','Material escolar','material escolar','Tudo para os estudos'],
     ['grid','Mais','','Mais categorias']
   ];
+  const mobileCats = [
+    ['shirt','Moda','moda'],
+    ['bag','Calçados','calcado'],
+    ['beauty','Beleza','beleza'],
+    ['food','Alimentação','alimentacao'],
+    ['phone','Tecnologia','celular'],
+    ['grid','Ver todas','']
+  ];
 
   app.innerHTML = `<main class="app-shell home-professional home-marketplace">
     <header class="topbar home-topbar marketplace-topbar">
@@ -960,7 +968,19 @@ function home() {
         <div class="market-quick-scroll">${quickSearches.map(term=>`<button data-search-term="${esc(term)}">${esc(term)}</button>`).join('')}</div>
       </div>
 
-      <div class="market-category-row">
+      <div class="market-category-head-mobile">
+        <h2>Categorias</h2>
+        <button type="button" data-go="categories">Ver todas ${icon('arrowRight')}</button>
+      </div>
+
+      <div class="market-category-row market-category-row-mobile">
+        ${mobileCats.map(([ico,label,term])=>term
+          ? `<button data-search-term="${term}"><i>${icon(ico)}</i><span>${label}</span></button>`
+          : `<button data-go="categories"><i>${icon(ico)}</i><span>${label}</span></button>`
+        ).join('')}
+      </div>
+
+      <div class="market-category-row market-category-row-desktop">
         ${cats.map(([ico,label,term,subtitle])=>term
           ? `<button data-search-term="${term}"><i>${icon(ico)}</i><span>${label}</span><small>${subtitle}</small>${icon('arrowRight','market-category-arrow')}</button>`
           : `<button data-go="categories"><i>${icon(ico)}</i><span>${label}</span><small>${subtitle}</small>${icon('arrowRight','market-category-arrow')}</button>`
@@ -1033,8 +1053,8 @@ function home() {
 
       <div class="market-section-title offers-title all-products-title">
         <div class="market-section-icon">${icon('package')}</div>
-        <div><h3>Todos os produtos</h3><p>Ordenados por plano, pontuação e cliques no WhatsApp</p></div>
-        <button data-search-term="">Ver todos ${icon('arrowRight')}</button>
+        <div><h3><span class="mobile-offers-title">Ofertas para você</span><span class="desktop-products-title">Todos os produtos</span></h3><p>Ordenados por plano, pontuação e cliques no WhatsApp</p></div>
+        <button data-search-term="">Ver todas ${icon('arrowRight')}</button>
       </div>
 
       <div class="market-offer-grid market-product-grid">
