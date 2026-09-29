@@ -167,6 +167,11 @@
     confirmedAt:p.confirmado_em||'', periodStart:p.periodo_inicio||'',
     periodEnd:p.periodo_fim||'', durationMonths:Number(p.duracao_meses||1), createdAt:p.created_at||''
   });
+  const localVideo = v => ({
+    id:v.id, storeId:v.loja_id, productId:v.produto_id||null,
+    title:v.titulo||'', caption:v.legenda||'', videoUrl:v.video_url||'',
+    active:v.ativo!==false, createdAt:v.created_at||'', updatedAt:v.updated_at||''
+  });
 
   async function dataUrlToBlob(dataUrl){
     const response = await fetch(dataUrl);
@@ -191,6 +196,21 @@
     } catch(err){
       return {ok:false,message:errorMessage(err)};
     }
+  }
+
+  async function uploadStoreVideoFile(file,userId){
+    if(!client||!file)return {ok:false,message:'Selecione um vídeo.'};
+    const type=String(file.type||'').toLowerCase();
+    const allowed=['video/mp4','video/webm','video/quicktime'];
+    if(!allowed.includes(type))return {ok:false,message:'Envie um vídeo MP4, WEBM ou MOV.'};
+    if(Number(file.size||0)>50*1024*1024)return {ok:false,message:'O vídeo deve ter no máximo 50 MB.'};
+    const extMap={'video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'};
+    const ext=extMap[type]||'mp4';
+    const path=`${userId}/video-${Date.now()}-${Math.random().toString(16).slice(2,8)}.${ext}`;
+    const {error}=await client.storage.from('videos-lojas').upload(path,file,{contentType:type,upsert:false});
+    if(error)return {ok:false,message:errorMessage(error)};
+    const {data}=client.storage.from('videos-lojas').getPublicUrl(path);
+    return {ok:true,url:data?.publicUrl||'',path};
   }
 
   async function uploadBannerFile(file,userId){
@@ -238,6 +258,7 @@
     localOffer,
     localBanner,
     localPayment,
+    localVideo,
 
     async getSession(){
       if(!client) return null;
@@ -776,16 +797,17 @@
 
     async loadAdminData(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
-      const [stores,products,variants,offers,banners]=await Promise.all([
+      const [stores,products,variants,offers,banners,videos]=await Promise.all([
         client.from('lojas').select('*').order('created_at',{ascending:true}),
         client.from('produtos').select('*').order('created_at',{ascending:true}),
         client.from('produto_variacoes').select('*'),
         client.from('ofertas').select('*').order('created_at',{ascending:true}),
-        client.from('banners').select('*').order('created_at',{ascending:true})
+        client.from('banners').select('*').order('created_at',{ascending:true}),
+        client.from('videos_lojas').select('*').order('created_at',{ascending:false})
       ]);
-      const error=stores.error||products.error||variants.error||offers.error||banners.error;
+      const error=stores.error||products.error||variants.error||offers.error||banners.error||videos.error;
       if(error)return {ok:false,message:errorMessage(error)};
-      return {ok:true,stores:(stores.data||[]).map(localStore),products:(products.data||[]).map(p=>localProduct(p,variants.data||[])),offers:(offers.data||[]).map(localOffer),banners:(banners.data||[]).map(localBanner)};
+      return {ok:true,stores:(stores.data||[]).map(localStore),products:(products.data||[]).map(p=>localProduct(p,variants.data||[])),offers:(offers.data||[]).map(localOffer),banners:(banners.data||[]).map(localBanner),videos:(videos.data||[]).map(localVideo)};
     },
 
     async updateStoreAdmin(storeId,patch){
@@ -861,15 +883,16 @@
 
     async loadPublicCatalog(){
       if(!client)return {ok:false};
-      const [stores,products,variants,offers,banners,ranking]=await Promise.all([
+      const [stores,products,variants,offers,banners,videos,ranking]=await Promise.all([
         client.from('lojas').select('*').eq('status','aprovada'),
         client.from('produtos').select('*').eq('ativo',true).eq('disponivel',true),
         client.from('produto_variacoes').select('*').eq('disponivel',true),
         client.from('ofertas').select('*').eq('ativa',true),
         client.from('banners').select('*').eq('ativo',true),
+        client.from('videos_lojas').select('*').eq('ativo',true).order('created_at',{ascending:false}),
         client.from('ranking_lojas').select('loja_id,whatsapp_clicks,visitas_loja')
       ]);
-      const error=stores.error||products.error||variants.error||offers.error||banners.error||ranking.error;
+      const error=stores.error||products.error||variants.error||offers.error||banners.error||videos.error||ranking.error;
       if(error)return {ok:false,message:errorMessage(error)};
       const rankingByStore=Object.fromEntries((ranking.data||[]).map(r=>[r.loja_id,{
         whatsappClicks:Number(r.whatsapp_clicks||0),
@@ -884,7 +907,8 @@
         })),
         products:(products.data||[]).map(p=>localProduct(p,variants.data||[])),
         offers:(offers.data||[]).map(localOffer),
-        banners:(banners.data||[]).map(localBanner)
+        banners:(banners.data||[]).map(localBanner),
+        videos:(videos.data||[]).map(localVideo)
       };
     },
 
@@ -895,13 +919,74 @@
       const ids=(products.data||[]).map(p=>p.id);
       let variants={data:[],error:null};
       if(ids.length) variants=await client.from('produto_variacoes').select('*').in('produto_id',ids);
-      const offers=await client.from('ofertas').select('*').eq('loja_id',storeId).order('created_at',{ascending:true});
-      const error=variants.error||offers.error;
+      const [offers,videos]=await Promise.all([
+        client.from('ofertas').select('*').eq('loja_id',storeId).order('created_at',{ascending:true}),
+        client.from('videos_lojas').select('*').eq('loja_id',storeId).order('created_at',{ascending:false})
+      ]);
+      const error=variants.error||offers.error||videos.error;
       return error?{ok:false,message:errorMessage(error)}:{
         ok:true,
         products:(products.data||[]).map(p=>localProduct(p,variants.data||[])),
-        offers:(offers.data||[]).map(localOffer)
+        offers:(offers.data||[]).map(localOffer),
+        videos:(videos.data||[]).map(localVideo)
       };
+    },
+
+    async createStoreVideo({storeId,userId,title,caption='',productId=null,file}){
+      if(!client||!storeId||!userId)return {ok:false,message:'Backend não configurado.'};
+      const cleanTitle=String(title||'').trim();
+      if(!cleanTitle)return {ok:false,message:'Informe um título para o vídeo.'};
+      if(!file)return {ok:false,message:'Selecione um vídeo.'};
+      const storeCheck=await client.from('lojas').select('id,owner_id,status,plano_id,plano_ativo_ate').eq('id',storeId).maybeSingle();
+      if(storeCheck.error)return {ok:false,message:errorMessage(storeCheck.error)};
+      const s=storeCheck.data;
+      const activeUntil=s?.plano_ativo_ate?new Date(s.plano_ativo_ate).getTime():0;
+      if(!s || s.owner_id!==userId || s.status!=='aprovada' || s.plano_id!=='premium_banner' || !activeUntil || activeUntil<=Date.now()){
+        return {ok:false,message:'Publicação de vídeos é exclusiva do plano Premium + Banner ativo.'};
+      }
+      if(productId){
+        const product=await client.from('produtos').select('id,loja_id').eq('id',productId).maybeSingle();
+        if(product.error)return {ok:false,message:errorMessage(product.error)};
+        if(!product.data || product.data.loja_id!==storeId)return {ok:false,message:'O produto selecionado não pertence à sua loja.'};
+      }
+      const uploaded=await uploadStoreVideoFile(file,userId);
+      if(!uploaded.ok)return uploaded;
+      const payload={
+        loja_id:storeId,
+        produto_id:productId||null,
+        titulo:cleanTitle.slice(0,90),
+        legenda:String(caption||'').trim().slice(0,220)||null,
+        video_url:uploaded.url,
+        ativo:true
+      };
+      const {data,error}=await client.from('videos_lojas').insert(payload).select('*').single();
+      if(error){
+        if(uploaded.path)await client.storage.from('videos-lojas').remove([uploaded.path]).catch(()=>{});
+        return {ok:false,message:errorMessage(error)};
+      }
+      return {ok:true,video:localVideo(data)};
+    },
+
+    async setStoreVideoActive(videoId,active){
+      if(!client||!videoId)return {ok:false,message:'Vídeo inválido.'};
+      const {data,error}=await client.from('videos_lojas').update({ativo:!!active,updated_at:new Date().toISOString()}).eq('id',videoId).select('*').single();
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,video:localVideo(data)};
+    },
+
+    async deleteStoreVideo(videoId){
+      if(!client||!videoId)return {ok:false,message:'Vídeo inválido.'};
+      const existing=await client.from('videos_lojas').select('id,video_url').eq('id',videoId).maybeSingle();
+      if(existing.error)return {ok:false,message:errorMessage(existing.error)};
+      const {error}=await client.from('videos_lojas').delete().eq('id',videoId);
+      if(error)return {ok:false,message:errorMessage(error)};
+      const url=String(existing.data?.video_url||'');
+      const marker='/storage/v1/object/public/videos-lojas/';
+      const idx=url.indexOf(marker);
+      if(idx>=0){
+        const path=decodeURIComponent(url.slice(idx+marker.length));
+        if(path)await client.storage.from('videos-lojas').remove([path]).catch(()=>{});
+      }
+      return {ok:true};
     },
 
     async createProduct({storeId,userId,type,name,brand,price,promo,details,stock,imageData,images=[],sizes=[],numbers=[],colors=[],variants=[]}){
