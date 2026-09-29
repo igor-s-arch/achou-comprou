@@ -710,6 +710,7 @@ const icons = {
   pin: '<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
   sliders: '<path d="M4 6h10M18 6h2M10 12h10M4 12h2M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/>',
   shirt: '<path d="M8 4 4 6l2 5 2-1v10h8V10l2 1 2-5-4-2c-.8 1.4-2.2 2-4 2S8.8 5.4 8 4Z"/>',
+  shoe: '<path d="M3 15c4.2.8 7.5-.4 10.2-3.5l2.2 1.8c1.4 1.2 3 2 4.8 2.4.8.2 1.3.8 1.3 1.6 0 1-.8 1.7-2 1.7H6c-2.2 0-3.5-1-3.5-2.4 0-.6.2-1.1.5-1.6Z"/><path d="M6 18h13"/><path d="m12 12 2 2m-1-3 2 2"/>',
   food: '<path d="M7 3v7M4 3v4a3 3 0 0 0 6 0V3M7 10v11M16 3v18M16 3c3 2 3 7 0 9"/>',
   beauty: '<path d="M9 3h6v5H9zM8 8h8l1 13H7L8 8Z"/><path d="M10 3V1h4v2"/>',
   health: '<path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/><path d="M12 10v5M9.5 12.5h5"/>',
@@ -726,6 +727,7 @@ const icons = {
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   package: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>',
   card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',
+  tag: '<path d="M20 13 13 20 4 11V4h7l9 9Z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   video: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
@@ -896,7 +898,209 @@ function splash() {
   window.__achouSplashTimer = setTimeout(go, 1250);
 }
 
+
+function approvedMobileHome() {
+  const premiumBanners = publicPremiumBanners();
+  const bannerItems = [
+    {
+      id:'default-banner',
+      storeId:null,
+      title:'Achou o que precisa, comprou aqui!',
+      message:'Produtos, ofertas e lojas locais de Grajaú - MA, tudo em um só lugar.',
+      imageData:'./Imagem%20ChatGPT%2028_09_2026,%2016_35_24.png',
+      videoData:'',
+      active:true,
+      isPlatform:true
+    },
+    {
+      id:'default-banner-second',
+      storeId:null,
+      title:'Achou, Comprou',
+      message:'Encontre ofertas e lojas da sua cidade.',
+      imageData:'./Imagem%20ChatGPT%2028_09_2026,%2017_16_39.png',
+      videoData:'',
+      active:true,
+      isPlatform:true
+    },
+    ...premiumBanners
+  ];
+  const products = rankedPublicProducts();
+  const shops = approvedStores().filter(m=>m.plan!=='gratis');
+  const unreadNotifications = (db.notifications || []).filter(n=>!n.read).length;
+  const categories = [
+    ['shirt','Moda','moda'],
+    ['shoe','Calçados','calcado'],
+    ['beauty','Beleza','beleza'],
+    ['food','Alimentação','alimentacao'],
+    ['phone','Tecnologia','celular'],
+    ['grid','Ver todas','']
+  ];
+
+  const productCards = products.length ? products.slice(0,10).map(({product:p,store:m})=>{
+    const price=currentPrice(p);
+    const old=originalPrice(p);
+    const discount=discountFor(p);
+    const hasDiscount=priceNumber(price)<priceNumber(old);
+    return `<article class="acm-product-card" data-product-id="${p.id}">
+      <div class="acm-product-media">
+        ${productMedia(p,true)}
+        <span class="acm-discount">${discount?esc(discount):'Oferta'}</span>
+        <button type="button" class="acm-heart ${isFavorite(p.id)?'active':''}" data-acm-fav="${p.id}" aria-label="Favoritar">${icon('heart')}</button>
+      </div>
+      <div class="acm-product-body">
+        <h3>${esc(p.name)}</h3>
+        <strong>${money(price)}</strong>
+        ${hasDiscount?`<del>${money(old)}</del>`:''}
+        <div class="acm-product-footer">
+          <span>${icon('store')} ${esc(m?.name||'Loja')}</span>
+          <button type="button" data-acm-cart="${p.id}" aria-label="Adicionar à lista">${icon('cart')}</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('') : `<div class="acm-empty">Nenhum produto ativo no momento.</div>`;
+
+  const storeCards = shops.length ? shops.slice(0,10).map(m=>`
+    <button type="button" class="acm-store-card" data-store-id="${m.id}">
+      <span class="acm-store-logo">${m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:`<b>${esc((m.name||'Loja').slice(0,2).toUpperCase())}</b>`}</span>
+      <span class="acm-store-info">
+        <b>${esc(m.name)}</b>
+        <small>${esc(m.category||'Comércio local')}</small>
+      </span>
+    </button>`).join('') : `<div class="acm-empty">Nenhuma loja em destaque ainda.</div>`;
+
+  app.innerHTML=`<main class="approved-mobile-home">
+    <section class="acm-top">
+      <div class="acm-brand-row">
+        ${logo()}
+        <button type="button" class="acm-location">${icon('pin')}<span>Grajaú - MA</span><b>⌄</b></button>
+        <button type="button" class="acm-bell" data-go="notifications" aria-label="Notificações">${icon('bell')}${unreadNotifications?'<i></i>':''}</button>
+      </div>
+
+      <div class="acm-search">
+        ${icon('search')}
+        <input id="acmSearchInput" placeholder="O que você está procurando?">
+        <button type="button" id="acmSearchBtn" aria-label="Filtros">${icon('sliders')}</button>
+      </div>
+
+      <div class="acm-category-title">
+        <h2>Categorias</h2>
+        <button type="button" data-go="categories">Ver todas ${icon('arrowRight')}</button>
+      </div>
+
+      <div class="acm-categories">
+        ${categories.map(([ico,label,term])=>term
+          ? `<button type="button" data-search-term="${term}"><span>${icon(ico)}</span><b>${label}</b></button>`
+          : `<button type="button" data-go="categories"><span>${icon(ico)}</span><b>${label}</b></button>`
+        ).join('')}
+      </div>
+    </section>
+
+    <section class="acm-main">
+      <div class="acm-banner" id="acmBanner">
+        <div class="acm-banner-track" id="acmBannerTrack">
+          ${bannerItems.map((banner,index)=>{
+            const bannerStore=storeById(banner.storeId);
+            if(banner.videoData){
+              return `<article class="acm-banner-slide" data-banner-index="${index}">
+                <video autoplay muted loop playsinline preload="metadata" src="${esc(banner.videoData)}"></video>
+                ${bannerStore?`<button type="button" class="acm-banner-hit" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>`:''}
+              </article>`;
+            }
+            if(banner.imageData){
+              return `<article class="acm-banner-slide" data-banner-index="${index}">
+                <img src="${esc(banner.imageData)}" alt="Destaque Achou, Comprou">
+                ${bannerStore?`<button type="button" class="acm-banner-hit" data-store-id="${bannerStore.id}" aria-label="Abrir ${esc(bannerStore.name)}"></button>`:`<button type="button" class="acm-banner-hit" data-search-term="" aria-label="Ver ofertas"></button>`}
+              </article>`;
+            }
+            return `<article class="acm-banner-slide acm-banner-fallback">
+              <div><h2>${esc(banner.title)}</h2><p>${esc(banner.message)}</p><button type="button" data-search-term="">Ver ofertas →</button></div>
+            </article>`;
+          }).join('')}
+        </div>
+        ${bannerItems.length>1?`<div class="acm-banner-dots">${bannerItems.map((_,i)=>`<button type="button" class="${i===0?'active':''}" data-acm-dot="${i}" aria-label="Banner ${i+1}"></button>`).join('')}</div>`:''}
+      </div>
+
+      <div class="acm-section-title">
+        <h2>Ofertas para você</h2>
+        <button type="button" data-search-term="">Ver todas ${icon('arrowRight')}</button>
+      </div>
+      <div class="acm-products">${productCards}</div>
+
+      <div class="acm-section-title acm-stores-title">
+        <h2>Lojas em destaque</h2>
+        <button type="button" data-search-term="">Ver todas ${icon('arrowRight')}</button>
+      </div>
+      <div class="acm-stores">${storeCards}</div>
+    </section>
+
+    <nav class="acm-bottom-nav">
+      <button type="button" class="active" data-go="home">${icon('home')}<span>Início</span></button>
+      <button type="button" data-go="search">${icon('search')}<span>Buscar</span></button>
+      <button type="button" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
+      <button type="button" data-go="shoppingList">${icon('tag')}<span>Interesses</span></button>
+      <button type="button" data-go="profile">${icon('user')}<span>Conta</span></button>
+    </nav>
+  </main>`;
+
+  bind();
+
+  const input=document.getElementById('acmSearchInput');
+  const runSearch=()=>{ publicState.filters={category:'',option:'',color:'',maxPrice:''}; search(input?.value||''); };
+  document.getElementById('acmSearchBtn')?.addEventListener('click',runSearch);
+  input?.addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+
+  document.querySelectorAll('[data-acm-cart]').forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    const result=addToCart(btn.dataset.acmCart,1);
+    if(!result.ok){alert(result.message);return;}
+    btn.classList.add('added');
+    btn.innerHTML=icon('check');
+  });
+
+  document.querySelectorAll('[data-acm-fav]').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const productId=btn.dataset.acmFav;
+    if(!currentClient()){
+      publicState.afterLogin={screen:'product',productId,favoriteId:productId};
+      clientLogin();
+      return;
+    }
+    const ok=await setFavorite(productId,!isFavorite(productId));
+    if(ok)approvedMobileHome();
+  });
+
+  clearInterval(window.__achouBannerTimer);
+  const track=document.getElementById('acmBannerTrack');
+  const carousel=document.getElementById('acmBanner');
+  const dots=[...document.querySelectorAll('[data-acm-dot]')];
+  let current=0,startX=null;
+  const show=next=>{
+    if(!track)return;
+    current=(next+bannerItems.length)%bannerItems.length;
+    track.style.transform=`translateX(-${current*100}%)`;
+    dots.forEach((dot,i)=>dot.classList.toggle('active',i===current));
+  };
+  const restart=()=>{
+    clearInterval(window.__achouBannerTimer);
+    if(bannerItems.length<2)return;
+    window.__achouBannerTimer=setInterval(()=>{
+      if(!document.body.contains(track)){clearInterval(window.__achouBannerTimer);return;}
+      show(current+1);
+    },4800);
+  };
+  dots.forEach(dot=>dot.onclick=()=>{show(Number(dot.dataset.acmDot));restart();});
+  carousel?.addEventListener('touchstart',e=>{startX=e.touches?.[0]?.clientX??null;},{passive:true});
+  carousel?.addEventListener('touchend',e=>{
+    if(startX===null)return;
+    const end=e.changedTouches?.[0]?.clientX??startX;
+    const delta=end-startX;startX=null;
+    if(Math.abs(delta)>40){show(current+(delta<0?1:-1));restart();}
+  },{passive:true});
+  restart();
+}
+
 function home() {
+  if (window.matchMedia && window.matchMedia('(max-width:899px)').matches) return approvedMobileHome();
   const premiumBanners = publicPremiumBanners();
   const defaultBanner = {
     id:'default-banner',
