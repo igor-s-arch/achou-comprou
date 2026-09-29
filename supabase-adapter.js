@@ -1298,7 +1298,7 @@
     async merchantContacts(storeId){
       if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.from('contatos_whatsapp')
-        .select('id,evento_id,loja_id,produto_id,status,valor,observacao,clicado_em,confirmado_em,created_at,updated_at')
+        .select('id,evento_id,loja_id,produto_id,status,valor,observacao,clicado_em,confirmado_em,created_at,updated_at,venda_produto_id,venda_variacao_id,venda_opcao,venda_cor,venda_quantidade')
         .eq('loja_id',storeId)
         .order('clicado_em',{ascending:false})
         .limit(100);
@@ -1314,31 +1314,38 @@
         status:r.status||'pendente',value:r.valor==null?null:Number(r.valor),
         note:r.observacao||'',clickedAt:r.clicado_em||r.created_at||'',
         confirmedAt:r.confirmado_em||'',updatedAt:r.updated_at||'',
+        saleProductId:r.venda_produto_id||'',saleVariantId:r.venda_variacao_id||'',
+        saleOption:r.venda_opcao||'',saleColor:r.venda_cor||'',
+        saleQuantity:Number(r.venda_quantidade||0),
         metadata:eventMap.get(r.evento_id)||{}
       }));
       return {ok:true,contacts:rows};
     },
 
-    async updateWhatsappContact(contactId,status,value=null,note=''){
+    async updateWhatsappContact(contactId,status,value=null,note='',sale={}){
       if(!client||!contactId)return {ok:false,message:'Contato inválido.'};
       if(!['pendente','venda','nao_venda'].includes(status))return {ok:false,message:'Status inválido.'};
-      const payload={
-        status,
-        valor:status==='venda'?Math.max(0,Number(value||0)):null,
-        observacao:String(note||'').trim()||null,
-        confirmado_em:status==='pendente'?null:new Date().toISOString()
+      const args={
+        p_contato_id:contactId,
+        p_status:status,
+        p_valor:status==='venda'?Math.max(0,Number(value||0)):null,
+        p_produto_id:status==='venda'?(sale?.productId||null):null,
+        p_variacao_id:status==='venda'?(sale?.variantId||null):null,
+        p_opcao:status==='venda'?(sale?.option||null):null,
+        p_cor:status==='venda'?(sale?.color||null):null
       };
-      const {data,error}=await client.from('contatos_whatsapp')
-        .update(payload)
-        .eq('id',contactId)
-        .select('id,evento_id,loja_id,produto_id,status,valor,observacao,clicado_em,confirmado_em,created_at,updated_at')
-        .single();
-      if(error)return {ok:false,message:errorMessage(error)};
+      const rpc=await client.rpc('atualizar_contato_whatsapp_venda',args);
+      if(rpc.error)return {ok:false,message:errorMessage(rpc.error)};
+      const data=Array.isArray(rpc.data)?rpc.data[0]:rpc.data;
+      if(!data)return {ok:false,message:'Não foi possível atualizar o contato.'};
       return {ok:true,contact:{
         id:data.id,eventId:data.evento_id,storeId:data.loja_id,productId:data.produto_id||'',
         status:data.status||'pendente',value:data.valor==null?null:Number(data.valor),
-        note:data.observacao||'',clickedAt:data.clicado_em||data.created_at||'',
-        confirmedAt:data.confirmado_em||'',updatedAt:data.updated_at||''
+        note:data.observacao||note||'',clickedAt:data.clicado_em||data.created_at||'',
+        confirmedAt:data.confirmado_em||'',updatedAt:data.updated_at||'',
+        saleProductId:data.venda_produto_id||'',saleVariantId:data.venda_variacao_id||'',
+        saleOption:data.venda_opcao||'',saleColor:data.venda_cor||'',
+        saleQuantity:Number(data.venda_quantidade||0)
       }};
     },
 
