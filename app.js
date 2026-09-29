@@ -2639,6 +2639,7 @@ async function merchant() {
   const dashPending=dashContacts.filter(x=>x.status==='pendente').length;
   const dashConversion=dashContacts30.length?Math.round(dashSales30.length/dashContacts30.length*100):0;
   const dashViews30=(dashCounts30.visualizacao_loja||0)+(dashCounts30.visualizacao_produto||0);
+  const dashFavorites30=dashCounts30.favorito||0;
 
   const products = merchantProductsFor(m.id);
   const activeProducts = products.filter(p => p.status === 'ativo');
@@ -2650,81 +2651,63 @@ async function merchant() {
   const lastOffer = offers.slice(-1)[0];
   const pending = m.status !== 'aprovada' ? `<div class="merchant-alert">${icon('clock')}<div><b>${statusText}</b><span>Você pode revisar os dados da loja. Produtos, ofertas e estatísticas são liberados após a aprovação e ativação de um plano.</span></div></div>` : '';
   const planRequired = m.status==='aprovada' && !merchantHasActivePlan(m) ? `<div class="merchant-plan-required">${icon('star')}<div><b>Ative um plano para começar</b><span>Seu cadastro está aprovado. Escolha um plano para cadastrar produtos, criar ofertas e acessar os recursos comerciais.</span></div><button data-go="plans">Ver planos</button></div>` : '';
-  const heroCover=m.coverData?`<img class="merchant-dash-cover" src="${esc(m.coverData)}" alt="">`:'';
   const shopLogo=m.logoData?`<img src="${esc(m.logoData)}" alt="Logo ${esc(m.name)}">`:icon('store');
 
-  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-dashboard-pro">
-    <header class="merchant-dash-hero ${m.coverData?'has-cover':''}">
-      ${heroCover}<div class="merchant-dash-overlay"></div>
-      <div class="merchant-dash-brand">
-        <div><span>PAINEL DO LOJISTA</span><b>Achou, Comprou</b></div>
-        <div class="merchant-dash-tools">
-          <span class="merchant-device-chip">${icon('grid')} <b data-merchant-device-label>${merchantDeviceLabel()}</b></span>
-          <button class="merchant-ghost-icon" data-store-id="${m.id}" aria-label="Ver loja pública">${icon('eye')}</button>
-        </div>
-      </div>
-      <div class="merchant-shop-main">
-        <div class="merchant-shop-avatar ${m.logoData?'with-logo':''}">${shopLogo}</div>
-        <div class="merchant-shop-copy"><h1>${esc(m.name)}</h1><p>${esc(m.category)}</p><div class="merchant-status ${statusClass}"><i></i>${statusText}</div></div>
-      </div>
-      <div class="merchant-plan-strip"><div><small>PLANO ATUAL</small><strong>${planText}</strong>${m.requestedPlan ? `<span>${planLabel(m.requestedPlan)} solicitado</span>` : ''}</div><button data-go="plans">Gerenciar ${icon('arrowRight')}</button></div>
+  app.innerHTML = `<main class="app-shell merchant ${merchantDeviceClass()} merchant-dashboard-pro merchant-approved-ui">
+    <header class="merchant-approved-top">
+      <div class="merchant-approved-brand"><span class="merchant-approved-menu">${icon('grid')}</span><b>Achou,<br>Comprou</b></div>
+      <button class="merchant-approved-bell" data-go="notifications">${icon('bell')}</button>
     </header>
+    <section class="merchant-approved-body">
+      <article class="merchant-approved-store-card">
+        <div class="merchant-approved-avatar ${m.logoData?'with-logo':''}">${shopLogo}</div>
+        <div class="merchant-approved-store-copy"><h1>${esc(m.name)}</h1><p>${esc(m.category)}</p><span class="merchant-approved-rating">★ ${Number(m.rating||5).toFixed(1)} <small>Loja ativa</small></span></div>
+        <button data-go="merchantStore" class="merchant-approved-edit">${icon('edit')}</button>
+      </article>
 
-    <section class="merchant-dashboard-body">
-      ${pending}
-      ${planRequired}
-      <div class="merchant-section-heading"><div><span>VISÃO GERAL</span><h2>Resumo da loja</h2></div><small>${window.ACCloud?.enabled ? 'Dados online' : 'Dados locais'}</small></div>
-      <div class="merchant-kpi-grid">
-        <article class="merchant-kpi"><span>${icon('eye')}</span><small>Visualizações 30d</small><strong>${dashViews30}</strong><em>Loja + produtos</em></article>
-        <article class="merchant-kpi"><span>${icon('whatsapp')}</span><small>WhatsApp 30d</small><strong>${dashContacts30.length||dashCounts30.clique_whatsapp||0}</strong><em>Interessados recebidos</em></article>
-        <article class="merchant-kpi"><span>${icon('package')}</span><small>Produtos ativos</small><strong>${activeProducts.length}</strong><em>${products.length} no total</em></article>
-        <article class="merchant-kpi"><span>${icon('flame')}</span><small>Ofertas ativas</small><strong>${offers.length}</strong><em>${merchantHasActivePlan(m) ? 'Ilimitadas' : 'Plano necessário'}</em></article>
+      <article class="merchant-approved-plan">
+        <div><small>SEU PLANO ATUAL</small><strong>${planText}</strong><span>${merchantHasActivePlan(m)?'Plano ativo':'Ativação necessária'}</span></div>
+        <button data-go="plans">Ver planos</button>
+      </article>
+
+      ${pending}${planRequired}
+
+      <div class="merchant-approved-title"><h2>Resumo de hoje</h2><span>Últimos 30 dias</span></div>
+      <div class="merchant-approved-kpis">
+        <button data-go="stats" class="blue"><i>${icon('eye')}</i><strong>${dashViews30}</strong><span>Visualizações</span></button>
+        <button data-go="stats" class="green"><i>${icon('whatsapp')}</i><strong>${dashContacts30.length||dashCounts30.clique_whatsapp||0}</strong><span>Contatos no WhatsApp</span></button>
+        <button data-go="stats" class="pink"><i>${icon('heart')}</i><strong>${dashFavorites30}</strong><span>Favoritos</span></button>
+        <button data-go="stats" class="orange"><i>${icon('cart')}</i><strong>${dashSales30.length}</strong><span>Vendas confirmadas</span></button>
       </div>
 
-      <section class="merchant-result-snapshot">
-        <div class="merchant-result-snapshot-head">
-          <div><span>RESULTADOS PELO ACHOU, COMPROU</span><h3>Contatos que viraram venda</h3></div>
-          <button data-go="stats">Ver detalhes ${icon('arrowRight')}</button>
-        </div>
-        <div class="merchant-result-snapshot-grid">
-          <div><small>Vendas confirmadas</small><strong>${dashSales30.length}</strong><em>últimos 30 dias</em></div>
-          <div><small>Valor vendido</small><strong>${brlNumber(dashRevenue30)}</strong><em>informado pela loja</em></div>
-          <div><small>Conversão</small><strong>${dashConversion}%</strong><em>dos contatos</em></div>
-          <div class="${dashPending?'attention':''}"><small>Aguardando resposta</small><strong>${dashPending}</strong><em>contatos para confirmar</em></div>
+      <div class="merchant-approved-title actions"><h2>Ações rápidas</h2></div>
+      <div class="merchant-approved-actions">
+        <button data-go="productForm"><i class="yellow">${icon('plus')}</i><span>Cadastrar<br>Produto</span></button>
+        <button data-go="offerForm"><i class="red">${icon('flame')}</i><span>Criar<br>Oferta</span></button>
+        <button data-go="stats"><i class="blue">${icon('cart')}</i><span>Registrar<br>Venda</span></button>
+        <button data-go="merchantStore"><i class="dark">${icon('store')}</i><span>Editar<br>Minha Loja</span></button>
+      </div>
+
+      <section class="merchant-approved-sales">
+        <div><small>RESULTADOS PELO ACHOU, COMPROU</small><h3>Suas vendas</h3></div>
+        <div class="merchant-approved-sales-grid">
+          <button data-go="stats"><span>Vendas confirmadas</span><strong>${dashSales30.length}</strong></button>
+          <button data-go="stats"><span>Valor vendido</span><strong>${brlNumber(dashRevenue30)}</strong></button>
+          <button data-go="stats"><span>Conversão</span><strong>${dashConversion}%</strong></button>
+          <button data-go="stats"><span>Aguardando resposta</span><strong>${dashPending}</strong></button>
         </div>
       </section>
 
-      <div class="merchant-video-quick-cta ${merchantCanPostVideos(m)?'enabled':'locked'}">
-        <div class="merchant-video-quick-icon">${icon('video')}</div>
-        <div class="merchant-video-quick-copy">
-          <small>VÍDEOS DA LOJA</small>
-          <h3>${merchantCanPostVideos(m)?'Publique um vídeo agora':'Vídeos no plano R$ 59,90'}</h3>
-          <p>${merchantCanPostVideos(m)?'Mostre novidades, ofertas e produtos da sua loja em vídeo.':'Esse recurso é exclusivo do Premium + Banner.'}</p>
-        </div>
-        <button type="button" data-go="merchantVideos">${icon('plus')} ${merchantCanPostVideos(m)?'Publicar vídeo':'Ver recurso'}</button>
+      <section class="merchant-approved-products">
+        <div class="merchant-approved-section-head"><h3>Seus produtos</h3><button data-go="merchantProducts">Ver todos</button></div>
+        <div class="merchant-approved-product-list">${lastProducts.length?lastProducts.map(p=>`<button data-product-id="${p.id}"><div>${productMedia(p,true)}</div><span><b>${esc(p.name)}</b><small>${availabilitySummary(p).slice(0,2).map(esc).join(' · ')||'Disponível'} · ${money(p.promo||p.price)}</small></span><em class="${p.status==='ativo'?'on':''}">${p.status==='ativo'?'Ativo':'Pausado'}</em></button>`).join(''):'<p class="merchant-approved-empty">Nenhum produto cadastrado ainda.</p>'}</div>
+      </section>
+
+      <div class="merchant-approved-more">
+        <button data-go="merchantVideos">${icon('video')} <span>Vídeos</span></button>
+        <button data-go="merchantOffers">${icon('flame')} <span>Ofertas</span></button>
+        <button data-go="plans">${icon('star')} <span>Plano</span></button>
       </div>
-
-      <div class="merchant-section-heading quick-heading"><div><span>ATALHOS</span><h2>Ações rápidas</h2></div></div>
-      <div class="merchant-quick-grid">
-        <button class="primary" data-go="productForm"><span>${icon('plus')}</span><div><b>Novo produto</b><small>Adicionar ao catálogo</small></div>${icon('arrowRight','merchant-arrow')}</button>
-        <button data-go="offerForm"><span>${icon('flame')}</span><div><b>Nova oferta</b><small>Criar promoção</small></div>${icon('arrowRight','merchant-arrow')}</button>
-        <button data-go="merchantStore"><span>${icon('store')}</span><div><b>Minha loja</b><small>Logo, capa e informações</small></div>${icon('arrowRight','merchant-arrow')}</button>
-        <button data-go="merchantVideos"><span>${icon('video')}</span><div><b>Vídeos</b><small>${merchantCanPostVideos(m)?'Publicar novidades em vídeo':'Exclusivo do plano R$ 59,90'}</small></div>${icon('arrowRight','merchant-arrow')}</button>
-        <button data-go="stats"><span>${icon('chart')}</span><div><b>Estatísticas</b><small>Acompanhar desempenho</small></div>${icon('arrowRight','merchant-arrow')}</button>
-      </div>
-
-      <div class="merchant-dashboard-panels">
-        <section class="merchant-panel-card">
-          <div class="merchant-panel-head"><div><span>CATÁLOGO</span><h3>Produtos recentes</h3></div><button data-go="merchantProducts">Ver todos</button></div>
-          <div class="merchant-recent-list">${lastProducts.length ? lastProducts.map(p => `<button data-product-id="${p.id}"><div class="merchant-product-thumb">${productMedia(p, true)}</div><div><b>${esc(p.name)}</b><span>${categoryLabel(p.type)} · ${money(p.promo || p.price)}</span></div><i class="merchant-mini-status ${p.status === 'ativo' ? 'on' : ''}">${p.status === 'ativo' ? 'Ativo' : 'Pausado'}</i></button>`).join('') : `<div class="merchant-empty-mini"><b>Seu catálogo está vazio</b><span>Cadastre o primeiro produto para começar.</span><button data-go="productForm">Cadastrar produto</button></div>`}</div>
-        </section>
-
-        <section class="merchant-panel-card">
-          <div class="merchant-panel-head"><div><span>PROMOÇÕES</span><h3>Oferta em destaque</h3></div><button data-go="merchantOffers">Gerenciar</button></div>
-          ${lastOffer ? (() => { const p = db.products.find(x => x.id === lastOffer.productId); return `<div class="merchant-offer-highlight"><div><small>${p ? esc(p.name) : 'Produto'}</small><strong>${money(lastOffer.promo)}</strong><span>de ${money(lastOffer.normal)} · até ${lastOffer.validUntil ? new Date(lastOffer.validUntil+'T12:00:00').toLocaleDateString('pt-BR') : 'sem validade'}</span></div><div class="merchant-offer-badge">ATIVA</div></div>`; })() : `<div class="merchant-empty-line"><span>Nenhuma oferta ativa no momento.</span><button data-go="offerForm">Criar oferta</button></div>`}
-        </section>
-      </div>
-
       <button class="merchant-logout-link" id="merchantLogout">${icon('arrowLeft')} Sair da área do lojista</button>
     </section>
     ${merchantNav('dashboard')}
