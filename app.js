@@ -2871,7 +2871,7 @@ async function merchantVideos(){
         <label>Título do vídeo<input id="merchantVideoTitle" maxlength="90" required placeholder="Ex.: Novidades que chegaram hoje"></label>
         <label>Legenda <small>(opcional)</small><textarea id="merchantVideoCaption" maxlength="220" placeholder="Conte em poucas palavras o que aparece no vídeo"></textarea></label>
         <label>Produto relacionado <small>(opcional)</small><select id="merchantVideoProduct"><option value="">Nenhum produto</option>${products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
-        <label class="merchant-video-file-label">Vídeo<input id="merchantVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime" required><small>MP4, WEBM ou MOV · até 50 MB.</small></label>
+        <label class="merchant-video-file-label">Vídeo<input id="merchantVideoFile" type="file" accept="video/*,.mp4,.m4v,.mov,.webm" required><small>MP4, MOV ou WEBM · até 50 MB.</small></label>
         <button class="btn btn-yellow btn-block" type="submit">Publicar vídeo</button>
         <div id="merchantVideoMsg"></div>
       </form>
@@ -2902,8 +2902,13 @@ async function merchantVideos(){
     const submit=e.currentTarget.querySelector('button[type="submit"]');
     submit.disabled=true;msg.innerHTML='<div class="notice">Enviando vídeo...</div>';
     const session=await window.ACCloud.getSession();
+    if(!session?.user?.id){
+      submit.disabled=false;
+      msg.innerHTML='<div class="notice error">Sua sessão online expirou. Saia da área do lojista, entre novamente e tente publicar o vídeo.</div>';
+      return;
+    }
     const result=await window.ACCloud.createStoreVideo({
-      storeId:m.id,userId:session?.user?.id||m.ownerId,
+      storeId:m.id,userId:session.user.id,
       title:document.getElementById('merchantVideoTitle').value,
       caption:document.getElementById('merchantVideoCaption').value,
       productId:document.getElementById('merchantVideoProduct').value||null,
