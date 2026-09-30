@@ -964,7 +964,7 @@ function approvedMobileHome() {
     title:'Achou, Comprou',
     message:'Encontre ofertas e lojas da sua cidade.',
     imageData:'',
-    videoData:'./Preserving_banner_dimensions_in_%E2%80%A6_20260929170008.mp4',
+    videoData:'./VIDEO%2030-09.mp4',
     active:true,
     isPlatform:true
   };
@@ -1191,7 +1191,7 @@ function home() {
     title:'Achou, Comprou',
     message:'Encontre ofertas e lojas da sua cidade.',
     imageData:'',
-    videoData:'./Preserving_banner_dimensions_in_%E2%80%A6_20260929170008.mp4',
+    videoData:'./VIDEO%2030-09.mp4',
     active:true,
     isPlatform:true,
     fixedSecond:true
