@@ -100,6 +100,7 @@ function upsertCloudMerchant(store,user){
     whatsapp:store.whatsapp||'',
     instagram:store.instagram||'',
     street:store.rua||'', number:store.numero||'', neighborhood:store.bairro||'', cep:formatStoreCep(store.cep||''), complement:store.complemento||'',
+    latitude:Number.isFinite(Number(store.latitude))?Number(store.latitude):null, longitude:Number.isFinite(Number(store.longitude))?Number(store.longitude):null,
     address:storeAddressFromParts({street:store.rua,number:store.numero,neighborhood:store.bairro,cep:store.cep,complement:store.complemento,fallback:store.endereco})||'Grajaú - MA',
     hours:store.horario_funcionamento||'',
     weeklyHours:store.horarios_semanais&&typeof store.horarios_semanais==='object'?store.horarios_semanais:(existing?.weeklyHours||{}),
@@ -1995,7 +1996,7 @@ async function store(storeId = publicState.storeId) {
     btn.disabled=true;
   });
 
-  const openMap=()=>{ const exactAddress=[m.street,m.number,m.neighborhood,'Grajaú','MA',m.cep,'Brasil'].filter(Boolean).join(', '); const query=(m.name==='Maranhão Calçados'&&String(m.neighborhood||'').toLowerCase().includes('centro'))?`${m.name}, Centro, Grajaú - MA, Brasil`:(exactAddress||m.address||m.name); if(query)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,'_blank'); };
+  const openMap=()=>{ const lat=Number(m.latitude),lng=Number(m.longitude); if(Number.isFinite(lat)&&Number.isFinite(lng)){window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,'_blank');return;} const exactAddress=[m.street,m.number,m.neighborhood,'Grajaú','MA',m.cep,'Brasil'].filter(Boolean).join(', '); const query=exactAddress||m.address||m.name; if(query)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,'_blank'); };
   document.getElementById('storeWa').onclick=()=>{
     const storeCart=cartItemsForStore(m.id);
     const usingCart=storeCart.length>0;
@@ -2552,6 +2553,7 @@ function merchantRegister() {
       whatsapp:document.getElementById('regWhatsapp').value.trim(),
       instagram:document.getElementById('regInstagram').value.trim(),
       street, number, neighborhood, cep, complement, address,
+      latitude:exactLatitude, longitude:exactLongitude,
       hours:schedule.summary,
       weeklyHours:schedule.data,
       description:document.getElementById('regDescription').value.trim(),
@@ -3050,6 +3052,7 @@ function merchantStore() {
         <div class="two-cols"><label>Número<input id="storeNumber" required inputmode="numeric" value="${esc(m.number||'')}" placeholder="Ex.: 40"></label><label>Bairro<input id="storeNeighborhood" required value="${esc(m.neighborhood||'')}" placeholder="Ex.: Centro"></label></div>
         <div class="two-cols"><label>CEP<input id="storeCep" required inputmode="numeric" maxlength="9" value="${esc(formatStoreCep(m.cep||''))}" placeholder="65940-000"></label><label>Complemento <small>(opcional)</small><input id="storeComplement" value="${esc(m.complement||'')}" placeholder="Ex.: Próximo à praça"></label></div>
         <div class="field-help">Cidade: Grajaú - MA. O endereço público e o mapa serão atualizados automaticamente.</div>
+        <div class="merchant-location-exact"><button class="btn btn-outline btn-block" type="button" id="storeExactLocation">${icon('mapPin')} Marcar localização exata desta loja</button><div id="storeExactLocationStatus" class="field-help">${Number.isFinite(Number(m.latitude))&&Number.isFinite(Number(m.longitude))?'✓ Localização exata já salva.':'Use este botão estando na loja para salvar o ponto exato da porta.'}</div></div>
         <div class="merchant-form-section schedule-heading"><div><span>HORÁRIOS</span><h3>Horário de funcionamento</h3><p>Você pode alterar cada dia separadamente.</p></div></div>
         ${weeklyHoursMarkup('storeHours',m.weeklyHours&&Object.keys(m.weeklyHours).length?m.weeklyHours:defaultWeeklyHours())}
         <label>Descrição<textarea id="storeDescription" placeholder="Conte um pouco sobre a loja">${esc(m.description||'')}</textarea></label>
@@ -3068,6 +3071,14 @@ function merchantStore() {
     const d=storeCepInput.value.replace(/\D/g,'').slice(0,8);
     storeCepInput.value=d.length>5?`${d.slice(0,5)}-${d.slice(5)}`:d;
   });
+  let exactLatitude=Number.isFinite(Number(m.latitude))?Number(m.latitude):null;
+  let exactLongitude=Number.isFinite(Number(m.longitude))?Number(m.longitude):null;
+  document.getElementById('storeExactLocation').onclick=()=>{
+    const status=document.getElementById('storeExactLocationStatus');
+    if(!navigator.geolocation){status.textContent='Este aparelho não oferece localização por GPS.';return;}
+    status.textContent='Buscando sua localização exata...';
+    navigator.geolocation.getCurrentPosition(pos=>{exactLatitude=Number(pos.coords.latitude.toFixed(7));exactLongitude=Number(pos.coords.longitude.toFixed(7));status.textContent='✓ Ponto exato capturado. Agora toque em Salvar alterações.';},()=>{status.textContent='Não foi possível acessar sua localização. Libere a permissão de localização do navegador e tente novamente.';},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+  };
   document.getElementById('merchantStoreForm').onsubmit=async e=>{
     e.preventDefault();
     const msg=document.getElementById('storeSaveMsg');
