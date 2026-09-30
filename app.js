@@ -2221,35 +2221,75 @@ function categories() {
   bind(); document.querySelectorAll('[data-category-search]').forEach(btn=>btn.onclick=()=>search(btn.dataset.categorySearch));
 }
 
-async function videos(){
+async async function videos(){
   if(window.ACCloud?.enabled) await syncCloudPublicCatalog();
   const items=publicVideos();
-  app.innerHTML=`<main class="app-shell utility-page videos-page">
-    <div class="page-head"><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><b>Vídeos das lojas</b></div>
-    <section class="utility-content">
-      <div class="utility-hero video-utility-hero"><span>${icon('video')}</span><div><small>NOVIDADES EM VÍDEO</small><h1>Veja o que chegou nas lojas</h1><p>Vídeos publicados pelos lojistas do Achou, Comprou. Sem feed infinito: escolha o que quer assistir.</p></div></div>
-      <div class="store-video-grid">
-        ${items.length?items.map(v=>{
-          const m=storeById(v.storeId);
-          const p=v.productId?db.products.find(x=>x.id===v.productId):null;
-          return `<article class="store-video-card">
-            <div class="store-video-media"><video controls playsinline preload="metadata" src="${esc(v.videoUrl)}"></video></div>
-            <div class="store-video-body">
-              <div class="store-video-store"><span class="store-video-logo">${storeLogoMedia(m)}</span><div><b>${esc(m?.name||'Loja')}</b><small>${esc(m?.category||'Comércio local')}</small></div></div>
+  let social={likes:{},comments:{},mine:[]};
+  if(window.ACCloud?.enabled && items.length){
+    const result=await window.ACCloud.getVideoSocial(items.map(v=>v.id));
+    if(result?.ok)social=result;
+  }
+  const renderComments=v=>{
+    const list=social.comments?.[v.id]||[];
+    return list.length?list.slice(-3).map(c=>`<div class="reel-comment"><b>${esc(c.author||'Cliente')}</b><span>${esc(c.text)}</span></div>`).join(''):'<small class="reel-no-comments">Seja o primeiro a comentar.</small>';
+  };
+  app.innerHTML=`<main class="app-shell videos-page reels-page">
+    <header class="reels-head"><button class="back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button><b>Vídeos</b><span>Novidades das lojas</span></header>
+    <section class="reels-feed">
+      ${items.length?items.map((v,index)=>{
+        const m=storeById(v.storeId); const p=v.productId?db.products.find(x=>x.id===v.productId):null;
+        const liked=(social.mine||[]).includes(v.id); const likes=social.likes?.[v.id]||0; const comments=social.comments?.[v.id]||[];
+        return `<article class="reel-card" data-reel="${v.id}">
+          <div class="reel-video-wrap">
+            <video class="reel-video" muted loop playsinline preload="${index<2?'auto':'metadata'}" src="${esc(v.videoUrl)}"></video>
+            <button class="reel-sound" type="button" aria-label="Ativar som">${icon('volume')}</button>
+            <div class="reel-gradient"></div>
+            <div class="reel-info">
+              <button class="reel-store" type="button" ${m?`data-store-id="${m.id}"`:''}><span>${storeLogoMedia(m)}</span><b>${esc(m?.name||'Loja')}</b></button>
               <h3>${esc(v.title||'Novidade da loja')}</h3>
               ${v.caption?`<p>${esc(v.caption)}</p>`:''}
-              <div class="store-video-actions">
-                ${p?`<button class="btn btn-yellow" data-product-id="${p.id}">Ver produto</button>`:''}
-                ${m?`<button class="btn btn-secondary" data-store-id="${m.id}">Ver loja</button>`:''}
-              </div>
+              ${p?`<button class="reel-product" type="button" data-product-id="${p.id}">${icon('bag')} Ver produto</button>`:''}
             </div>
-          </article>`;
-        }).join(''):`<div class="professional-empty video-empty"><span>${icon('video')}</span><h3>Ainda não há vídeos publicados</h3><p>Quando as lojas do plano Premium + Banner publicarem novidades, elas aparecerão aqui.</p></div>`}
-      </div>
+            <aside class="reel-actions">
+              <button class="reel-like ${liked?'active':''}" type="button" data-video-like="${v.id}">${icon('heart')}<span>${likes}</span></button>
+              <button type="button" data-video-comments="${v.id}">${icon('message')}<span>${comments.length}</span></button>
+              ${m?`<button type="button" data-store-id="${m.id}">${icon('store')}<span>Loja</span></button>`:''}
+            </aside>
+          </div>
+          <div class="reel-comments" id="comments-${v.id}">
+            <div class="reel-comments-list">${renderComments(v)}</div>
+            <form class="reel-comment-form" data-comment-form="${v.id}"><input maxlength="280" placeholder="Escreva um comentário..." aria-label="Comentário"><button type="submit">Enviar</button></form>
+          </div>
+        </article>`;
+      }).join(''):`<div class="professional-empty video-empty"><span>${icon('video')}</span><h3>Ainda não há vídeos publicados</h3><p>Os vídeos das lojas aparecem aqui por 24 horas.</p></div>`}
     </section>
     ${nav('videos')}
   </main>`;
   bind();
+  const reelVideos=[...document.querySelectorAll('.reel-video')];
+  const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
+    const video=entry.target;
+    if(entry.isIntersecting && entry.intersectionRatio>=.65){reelVideos.forEach(v=>{if(v!==video)v.pause();});video.play().catch(()=>{});}
+    else video.pause();
+  }),{threshold:[0,.65,1]});
+  reelVideos.forEach(v=>observer.observe(v));
+  document.querySelectorAll('.reel-sound').forEach(btn=>btn.onclick=()=>{
+    const video=btn.closest('.reel-video-wrap')?.querySelector('video');if(!video)return;
+    video.muted=!video.muted;btn.classList.toggle('on',!video.muted);video.play().catch(()=>{});
+  });
+  document.querySelectorAll('[data-video-comments]').forEach(btn=>btn.onclick=()=>document.getElementById('comments-'+btn.dataset.videoComments)?.classList.toggle('open'));
+  document.querySelectorAll('[data-video-like]').forEach(btn=>btn.onclick=async()=>{
+    if(!window.ACCloud?.enabled)return;
+    const result=await window.ACCloud.toggleVideoLike(btn.dataset.videoLike);
+    if(!result.ok){if(result.login)clientLogin();else alert(result.message);return;}
+    btn.classList.toggle('active',result.liked);const count=btn.querySelector('span');count.textContent=Math.max(0,Number(count.textContent||0)+(result.liked?1:-1));
+  });
+  document.querySelectorAll('[data-comment-form]').forEach(form=>form.onsubmit=async e=>{
+    e.preventDefault();const input=form.querySelector('input');if(!window.ACCloud?.enabled)return;
+    const result=await window.ACCloud.addVideoComment(form.dataset.commentForm,input.value);
+    if(!result.ok){if(result.login)clientLogin();else alert(result.message);return;}
+    input.value=''; await videos();
+  });
 }
 
 function clientEditProfile(){
