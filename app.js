@@ -1995,7 +1995,7 @@ async function store(storeId = publicState.storeId) {
     btn.disabled=true;
   });
 
-  const openMap=()=>{if(m.address)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address)}`,'_blank');};
+  const openMap=()=>{ const exactAddress=[m.street,m.number,m.neighborhood,'Grajaú','MA',m.cep,'Brasil'].filter(Boolean).join(', '); const query=(m.name==='Maranhão Calçados'&&String(m.neighborhood||'').toLowerCase().includes('centro'))?`${m.name}, Centro, Grajaú - MA, Brasil`:(exactAddress||m.address||m.name); if(query)window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,'_blank'); };
   document.getElementById('storeWa').onclick=()=>{
     const storeCart=cartItemsForStore(m.id);
     const usingCart=storeCart.length>0;
