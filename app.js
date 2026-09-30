@@ -970,7 +970,7 @@ function approvedMobileHome() {
     active:true,
     isPlatform:true
   };
-  const bannerItems = [defaultBanner, ...premiumBanners, secondPlatformBanner];
+  const bannerItems = [defaultBanner, secondPlatformBanner, ...premiumBanners];
   const products = rankedPublicProducts();
   const offerProducts = products
     .filter(({product,offer})=>offer || priceNumber(currentPrice(product)) < priceNumber(originalPrice(product)))
