@@ -874,11 +874,13 @@ function nav(active = 'home') {
     <button class="nav-item ${active === 'fav' ? 'active' : ''}" data-go="fav">${icon('heart')}<span>Favoritos</span></button>
     <button class="nav-item ${active === 'profile' ? 'active' : ''}" data-go="profile">${icon('user')}<span class="mobile-account-label">Conta</span><span class="desktop-profile-label">Perfil</span></button>
     <div class="desktop-site-actions">
+      ${currentMerchant()?`<button type="button" data-go="merchant" class="merchant-return-desktop" aria-label="Voltar para área do empresário">${icon('store')}<span>Área do empresário</span></button>`:'' }
       <button class="desktop-location" type="button">${icon('pin')}<span>Grajaú - MA</span><span>⌄</span></button>
       <button type="button" data-go="notifications" aria-label="Notificações">${icon('bell')}${unread?'<i></i>':''}</button>
       <button type="button" data-go="shoppingList" aria-label="Minha lista">${icon('cart')}${cartBadge()}</button>
       <button type="button" data-go="profile" class="desktop-profile-avatar ${client?.avatar?'has-photo':''}" aria-label="Perfil">${client?.avatar?`<img src="${esc(client.avatar)}" alt="Foto de perfil">`:icon('user')}</button>
     </div>
+    ${currentMerchant()?`<button type="button" class="merchant-return-mobile" data-go="merchant">${icon('arrowLeft')}<span>Voltar para área do empresário</span></button>`:'' }
   </nav>`;
 }
 function logo() {
