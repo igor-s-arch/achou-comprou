@@ -2269,14 +2269,27 @@ async function videos(){
   const reelVideos=[...document.querySelectorAll('.reel-video')];
   const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
     const video=entry.target;
-    if(entry.isIntersecting && entry.intersectionRatio>=.65){reelVideos.forEach(v=>{if(v!==video)v.pause();});video.play().catch(()=>{});}
+    if(entry.isIntersecting && entry.intersectionRatio>=.65){reelVideos.forEach(v=>{if(v!==video){v.pause();v.muted=true;}});if(reelsSoundEnabled){video.muted=false;video.volume=1;}video.play().catch(()=>{});}
     else video.pause();
   }),{threshold:[0,.65,1]});
   reelVideos.forEach(v=>observer.observe(v));
+  let reelsSoundEnabled=false;
+  const applyReelsSound=activeVideo=>{
+    reelsSoundEnabled=true;
+    reelVideos.forEach(v=>{v.muted=v!==activeVideo;});
+    document.querySelectorAll('.reel-sound').forEach(b=>b.classList.toggle('on',b.closest('.reel-video-wrap')?.querySelector('video')===activeVideo));
+    activeVideo.volume=1;
+    activeVideo.play().catch(()=>{});
+  };
   document.querySelectorAll('.reel-sound').forEach(btn=>btn.onclick=()=>{
     const video=btn.closest('.reel-video-wrap')?.querySelector('video');if(!video)return;
-    video.muted=!video.muted;btn.classList.toggle('on',!video.muted);video.play().catch(()=>{});
+    if(!video.muted){video.muted=true;reelsSoundEnabled=false;btn.classList.remove('on');return;}
+    applyReelsSound(video);
   });
+  document.querySelectorAll('.reel-video-wrap').forEach(wrap=>wrap.addEventListener('click',e=>{
+    if(e.target.closest('button,input,form'))return;
+    const video=wrap.querySelector('.reel-video');if(video)applyReelsSound(video);
+  }));
   document.querySelectorAll('[data-video-comments]').forEach(btn=>btn.onclick=()=>document.getElementById('comments-'+btn.dataset.videoComments)?.classList.toggle('open'));
   document.querySelectorAll('[data-video-like]').forEach(btn=>btn.onclick=async()=>{
     if(!window.ACCloud?.enabled)return;
