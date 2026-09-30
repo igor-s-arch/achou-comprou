@@ -200,17 +200,29 @@
 
   async function uploadStoreVideoFile(file,userId){
     if(!client||!file)return {ok:false,message:'Selecione um vídeo.'};
-    const type=String(file.type||'').toLowerCase();
-    const allowed=['video/mp4','video/webm','video/quicktime'];
-    if(!allowed.includes(type))return {ok:false,message:'Envie um vídeo MP4, WEBM ou MOV.'};
+    const rawType=String(file.type||'').toLowerCase().trim();
+    const name=String(file.name||'').toLowerCase();
+    const extFromName=(name.match(/\.([a-z0-9]+)$/i)||[])[1]||'';
+    const extAliases={mp4:'mp4',m4v:'mp4',mov:'mov',qt:'mov',webm:'webm'};
+    const mimeAliases={
+      'video/mp4':'mp4','video/x-m4v':'mp4','application/mp4':'mp4',
+      'video/quicktime':'mov','video/mov':'mov','video/x-quicktime':'mov',
+      'video/webm':'webm'
+    };
+    const ext=mimeAliases[rawType]||extAliases[extFromName]||'';
+    if(!ext)return {ok:false,message:'Formato de vídeo não reconhecido. Use MP4, MOV ou WEBM.'};
     if(Number(file.size||0)>50*1024*1024)return {ok:false,message:'O vídeo deve ter no máximo 50 MB.'};
-    const extMap={'video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'};
-    const ext=extMap[type]||'mp4';
+    const contentType=ext==='mov'?'video/quicktime':ext==='webm'?'video/webm':'video/mp4';
     const path=`${userId}/video-${Date.now()}-${Math.random().toString(16).slice(2,8)}.${ext}`;
-    const {error}=await client.storage.from('videos-lojas').upload(path,file,{contentType:type,upsert:false});
-    if(error)return {ok:false,message:errorMessage(error)};
+    const {error}=await client.storage.from('videos-lojas').upload(path,file,{contentType,upsert:false});
+    if(error)return {ok:false,message:'Erro ao enviar o vídeo: '+errorMessage(error)};
     const {data}=client.storage.from('videos-lojas').getPublicUrl(path);
-    return {ok:true,url:data?.publicUrl||'',path};
+    const url=data?.publicUrl||'';
+    if(!url){
+      await client.storage.from('videos-lojas').remove([path]).catch(()=>{});
+      return {ok:false,message:'O vídeo foi enviado, mas não foi possível gerar o endereço público.'};
+    }
+    return {ok:true,url,path};
   }
 
   async function uploadBannerFile(file,userId){
