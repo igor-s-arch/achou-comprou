@@ -2590,8 +2590,9 @@ function metric(iconName, label, value, small = '') {
 
 function merchantDeviceClass(){
   const width=window.innerWidth || document.documentElement.clientWidth || 390;
-  const coarse=window.matchMedia?.('(pointer: coarse)')?.matches || false;
-  if(width>=1024 && !coarse)return 'merchant-desktop';
+  // Em telas largas, sempre usa o layout de computador. Alguns PCs/monitores touch
+  // reportam pointer:coarse e antes eram classificados incorretamente como tablet.
+  if(width>=1024)return 'merchant-desktop';
   if(width>=700)return 'merchant-tablet';
   return 'merchant-mobile';
 }
