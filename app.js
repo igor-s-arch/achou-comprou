@@ -2682,6 +2682,16 @@ async function merchant() {
         <button data-go="stats" class="orange"><i>${icon('cart')}</i><strong>${dashSales30.length}</strong><span>Vendas confirmadas</span></button>
       </div>
 
+      <section class="merchant-direct-access">
+        <div class="merchant-approved-title actions"><h2>Ir direto para</h2><span>Acesse rapidamente o que você precisa</span></div>
+        <div class="merchant-direct-access-grid">
+          <button type="button" data-merchant-public-store="${m.id}"><i>${icon('eye')}</i><span><b>Ver minha loja</b><small>Veja sua loja como o cliente vê</small></span>${icon('arrowRight')}</button>
+          <button type="button" data-merchant-public-products="${m.id}"><i>${icon('package')}</i><span><b>Ver meus produtos no app</b><small>Confira o que está publicado para os clientes</small></span>${icon('arrowRight')}</button>
+          <button type="button" data-go="merchantStore"><i>${icon('store')}</i><span><b>Perfil da loja</b><small>Edite logo, capa, endereço e informações</small></span>${icon('arrowRight')}</button>
+          <button type="button" data-go="merchantProducts"><i>${icon('grid')}</i><span><b>Gerenciar produtos</b><small>Edite, pause ou cadastre produtos</small></span>${icon('arrowRight')}</button>
+        </div>
+      </section>
+
       <div class="merchant-approved-title actions"><h2>Ações rápidas</h2></div>
       <div class="merchant-approved-actions">
         <button data-go="productForm"><i class="yellow">${icon('plus')}</i><span>Cadastrar<br>Produto</span></button>
@@ -2715,7 +2725,10 @@ async function merchant() {
     </section>
     ${merchantNav('dashboard')}
   </main>`;
-  bind(); document.getElementById('merchantLogout').onclick = async () => { if(window.ACCloud?.enabled) await window.ACCloud.signOut(); db.session.merchantId = null; saveDb(); profile(); };
+  bind();
+  document.querySelector('[data-merchant-public-store]')?.addEventListener('click',()=>store(m.id));
+  document.querySelector('[data-merchant-public-products]')?.addEventListener('click',()=>{ publicState.storeId=m.id; store(m.id); });
+  document.getElementById('merchantLogout').onclick = async () => { if(window.ACCloud?.enabled) await window.ACCloud.signOut(); db.session.merchantId = null; saveDb(); profile(); };
 }
 
 function merchantProducts() {
