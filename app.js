@@ -1933,7 +1933,9 @@ async function store(storeId = publicState.storeId) {
     ? `<div class="store-rating-card"><div><span>AVALIAÇÃO</span><h3>Como foi sua experiência?</h3><p>Sua nota ajuda outros clientes e mostra o resultado da loja.</p></div><div class="store-rating-stars">${[1,2,3,4,5].map(n=>`<button class="${myRating>=n?'active':''}" data-store-rating="${n}" aria-label="${n} estrelas">${icon('star')}</button>`).join('')}</div><small id="storeRatingMsg">${myRating ? `Sua avaliação atual: ${myRating} estrela${myRating===1?'':'s'}.` : 'Toque nas estrelas para avaliar.'}</small></div>`
     : `<div class="store-rating-card compact"><div><span>AVALIAÇÃO</span><h3>Avalie esta loja</h3><p>Entre como cliente para registrar sua satisfação.</p></div><button class="btn btn-outline" data-go="clientLogin">Entrar para avaliar</button></div>`;
 
-  app.innerHTML = `<main class="app-shell store-premium-page">
+  const merchantViewingOwnStore=!!currentMerchant() && currentMerchant().id===m.id;
+  app.innerHTML = `<main class="app-shell store-premium-page ${merchantViewingOwnStore?'merchant-public-preview':''}">
+    ${merchantViewingOwnStore?`<div class="merchant-preview-bar"><div>${icon('eye')}<span><b>Você está vendo sua loja como cliente</b><small>Esta é a visualização pública dos seus produtos.</small></span></div><button type="button" data-go="merchant">${icon('arrowLeft')} Voltar para área do empresário</button></div>`:''}
     <section class="store-premium-hero ${m.coverData?'has-cover':''}" ${m.coverData?`style="--store-cover:url('${m.coverData}')"`:''}>
       <div class="store-premium-overlay"></div>
       <button class="store-premium-back" data-go="home" aria-label="Voltar">${icon('arrowLeft')}</button>
