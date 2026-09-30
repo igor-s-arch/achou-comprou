@@ -11581,3 +11581,15 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
 
 /* ===== V115 — FAIXA VISÍVEL AO EMPRESÁRIO NA LOJA PÚBLICA ===== */
 .merchant-preview-bar{position:sticky;top:0;z-index:500;width:100%;background:#111317;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:3px solid #ffd400;box-shadow:0 4px 16px rgba(0,0,0,.18)}.merchant-preview-bar>div{display:flex;align-items:center;gap:10px}.merchant-preview-bar>div>.ui-icon{color:#ffd400;width:23px;height:23px}.merchant-preview-bar span{display:flex;flex-direction:column;gap:2px}.merchant-preview-bar b{font-size:13px}.merchant-preview-bar small{font-size:10px;color:#c8c8c8}.merchant-preview-bar button{border:0;border-radius:11px;background:#ffd400;color:#111;min-height:38px;padding:0 14px;font-weight:900;display:flex;align-items:center;gap:7px;white-space:nowrap}.merchant-preview-bar button .ui-icon{width:16px;height:16px}@media(max-width:699px){.merchant-preview-bar{position:sticky;padding:9px 10px;align-items:stretch;flex-direction:column}.merchant-preview-bar>div{justify-content:center}.merchant-preview-bar span{text-align:left}.merchant-preview-bar button{width:100%;justify-content:center;min-height:42px}}
+
+
+/* ===== V116 — VÍDEO INSTITUCIONAL PREENCHENDO O 2º BANNER NO CELULAR ===== */
+@media(max-width:899px){
+  .approved-mobile-home .acm-banner-slide video{
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+    object-position:center center!important;
+    background:transparent!important;
+  }
+}
