@@ -2221,7 +2221,7 @@ function categories() {
   bind(); document.querySelectorAll('[data-category-search]').forEach(btn=>btn.onclick=()=>search(btn.dataset.categorySearch));
 }
 
-async async async function videos(){
+async function videos(){
   if(window.ACCloud?.enabled) await syncCloudPublicCatalog();
   const items=publicVideos();
   let social={likes:{},comments:{},mine:[]};
