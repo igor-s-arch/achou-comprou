@@ -901,7 +901,7 @@
         client.from('produto_variacoes').select('*').eq('disponivel',true),
         client.from('ofertas').select('*').eq('ativa',true),
         client.from('banners').select('*').eq('ativo',true),
-        client.from('videos_lojas').select('*').eq('ativo',true).order('created_at',{ascending:false}),
+        client.from('videos_lojas').select('*').eq('ativo',true).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}),
         client.from('ranking_lojas').select('loja_id,whatsapp_clicks,visitas_loja')
       ]);
       const error=stores.error||products.error||variants.error||offers.error||banners.error||videos.error||ranking.error;
