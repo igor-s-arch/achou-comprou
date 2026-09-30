@@ -11552,3 +11552,20 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
     width:100%!important;max-width:1200px!important;margin:0 auto!important;
   }
 }
+
+
+/* ===== V112 — SEGUNDO BANNER EM VÍDEO PREENCHENDO A ÁREA NO PC ===== */
+@media(min-width:900px){
+  .home-marketplace .platform-second-banner{
+    background:#090909!important;
+    overflow:hidden!important;
+  }
+  .home-marketplace .platform-second-banner .market-home-banner-video{
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+    object-position:center center!important;
+    display:block!important;
+    background:#090909!important;
+  }
+}
