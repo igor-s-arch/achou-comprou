@@ -944,6 +944,51 @@
       };
     },
 
+    async getVideoSocial(videoIds=[]){
+      if(!client||!videoIds.length)return {ok:true,likes:{},comments:{},mine:[]};
+      const session=await api.getSession();
+      const [likesRes,commentsRes]=await Promise.all([
+        client.from('video_curtidas').select('video_id,user_id').in('video_id',videoIds),
+        client.from('video_comentarios').select('id,video_id,user_id,comentario,created_at').in('video_id',videoIds).order('created_at',{ascending:true})
+      ]);
+      if(likesRes.error||commentsRes.error)return {ok:false,message:errorMessage(likesRes.error||commentsRes.error)};
+      const likes={},comments={}; videoIds.forEach(id=>{likes[id]=0;comments[id]=[];});
+      (likesRes.data||[]).forEach(x=>{likes[x.video_id]=(likes[x.video_id]||0)+1;});
+      const userIds=[...new Set((commentsRes.data||[]).map(x=>x.user_id).filter(Boolean))];
+      let names={};
+      if(userIds.length){
+        const p=await client.from('perfis').select('user_id,nome').in('user_id',userIds);
+        if(!p.error) names=Object.fromEntries((p.data||[]).map(x=>[x.user_id,x.nome||'Cliente']));
+      }
+      (commentsRes.data||[]).forEach(x=>(comments[x.video_id]||(comments[x.video_id]=[])).push({id:x.id,userId:x.user_id,text:x.comentario,createdAt:x.created_at,author:names[x.user_id]||'Cliente'}));
+      const mine=(likesRes.data||[]).filter(x=>x.user_id===session?.user?.id).map(x=>x.video_id);
+      return {ok:true,likes,comments,mine};
+    },
+
+    async toggleVideoLike(videoId){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const session=await api.getSession(); const userId=session?.user?.id;
+      if(!userId)return {ok:false,login:true,message:'Entre na sua conta para curtir.'};
+      const existing=await client.from('video_curtidas').select('video_id').eq('video_id',videoId).eq('user_id',userId).maybeSingle();
+      if(existing.error)return {ok:false,message:errorMessage(existing.error)};
+      if(existing.data){
+        const {error}=await client.from('video_curtidas').delete().eq('video_id',videoId).eq('user_id',userId);
+        return error?{ok:false,message:errorMessage(error)}:{ok:true,liked:false};
+      }
+      const {error}=await client.from('video_curtidas').insert({video_id:videoId,user_id:userId});
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,liked:true};
+    },
+
+    async addVideoComment(videoId,text){
+      if(!client)return {ok:false,message:'Backend não configurado.'};
+      const session=await api.getSession(); const userId=session?.user?.id;
+      if(!userId)return {ok:false,login:true,message:'Entre na sua conta para comentar.'};
+      const clean=String(text||'').trim().slice(0,280);
+      if(!clean)return {ok:false,message:'Digite um comentário.'};
+      const {error}=await client.from('video_comentarios').insert({video_id:videoId,user_id:userId,comentario:clean});
+      return error?{ok:false,message:errorMessage(error)}:{ok:true};
+    },
+
     async createStoreVideo({storeId,userId,title,caption='',productId=null,file}){
       if(!client||!storeId||!userId)return {ok:false,message:'Backend não configurado.'};
       const cleanTitle=String(title||'').trim();
