@@ -11502,3 +11502,53 @@ linear-gradient(135deg,#090a0c 0%,#15171b 100%);border-bottom:1px solid #27292e}
  .merchant-bottom-nav button{font-size:7px!important;}
  .merchant-bottom-nav button .ui-icon{width:18px!important;height:18px!important;}
 }
+
+
+/* ===== V107 — CORREÇÃO GLOBAL DAS TELAS INTERNAS DO LOJISTA NO PC ===== */
+@media(min-width:1100px){
+  .merchant.merchant-desktop{
+    max-width:none!important;width:100%!important;min-height:100vh!important;
+    margin:0!important;padding-left:238px!important;overflow:visible!important;background:#f4f6f8!important;
+  }
+  .merchant.merchant-desktop .merchant-bottom-nav{
+    position:fixed!important;left:0!important;right:auto!important;top:0!important;bottom:0!important;
+    transform:none!important;width:238px!important;height:100vh!important;min-height:100vh!important;
+    padding:112px 14px 24px!important;display:flex!important;flex-direction:column!important;
+    grid-template-columns:none!important;gap:7px!important;border:0!important;border-right:1px solid #25282d!important;
+    border-radius:0!important;background:linear-gradient(180deg,#0b0c0f,#15171b)!important;
+    box-shadow:none!important;z-index:100!important;
+  }
+  .merchant.merchant-desktop .merchant-bottom-nav::before{
+    display:block!important;content:"ACHOU, COMPROU"!important;position:absolute!important;
+    top:31px!important;left:23px!important;color:#fff!important;font-size:16px!important;font-weight:950!important;
+  }
+  .merchant.merchant-desktop .merchant-bottom-nav::after{
+    display:block!important;content:"PAINEL DO LOJISTA"!important;position:absolute!important;
+    top:58px!important;left:23px!important;color:#ffd000!important;font-size:8px!important;
+    font-weight:950!important;letter-spacing:.12em!important;
+  }
+  .merchant.merchant-desktop .merchant-bottom-nav button{
+    width:100%!important;height:48px!important;min-height:48px!important;padding:0 15px!important;
+    display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;
+    gap:13px!important;border:0!important;border-radius:11px!important;background:transparent!important;
+    color:#aeb3bc!important;font-size:10px!important;text-align:left!important;
+  }
+  .merchant.merchant-desktop .merchant-bottom-nav button:hover{background:#202329!important;color:#fff!important;}
+  .merchant.merchant-desktop .merchant-bottom-nav button.active{background:#ffd000!important;color:#111!important;}
+  .merchant.merchant-desktop .merchant-bottom-nav button .ui-icon{width:20px!important;height:20px!important;}
+
+  .merchant.merchant-desktop .merchant-sub-head{
+    position:sticky!important;top:0!important;z-index:50!important;width:100%!important;
+    min-height:74px!important;padding:14px 34px!important;background:#fff!important;
+    border-bottom:1px solid #e1e4e8!important;box-shadow:0 2px 10px rgba(17,24,39,.035)!important;
+  }
+  .merchant.merchant-desktop .merchant-sub-body{
+    width:100%!important;max-width:1380px!important;margin:0 auto!important;
+    padding:28px 34px 70px!important;background:#f4f6f8!important;
+  }
+  .merchant.merchant-desktop .merchant-video-shell,
+  .merchant.merchant-desktop .merchant-video-page,
+  .merchant.merchant-desktop .merchant-videos-page{
+    width:100%!important;max-width:1200px!important;margin:0 auto!important;
+  }
+}
