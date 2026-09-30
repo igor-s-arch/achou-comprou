@@ -101,6 +101,8 @@
     neighborhood: store.bairro || '',
     cep: normalizeCep(store.cep || ''),
     complement: store.complemento || '',
+    latitude: Number.isFinite(Number(store.latitude)) ? Number(store.latitude) : null,
+    longitude: Number.isFinite(Number(store.longitude)) ? Number(store.longitude) : null,
     address: composeStoreAddress({
       street:store.rua,number:store.numero,neighborhood:store.bairro,cep:store.cep,complement:store.complemento,address:store.endereco
     }) || 'Grajaú - MA',
@@ -559,7 +561,7 @@
     async updateMerchantStore(storeId,patch){
       if(!client||!storeId)return {ok:false,message:'Backend não configurado.'};
       const allowed={};
-      const map={name:'nome',category:'categoria_texto',whatsapp:'whatsapp',instagram:'instagram',address:'endereco',street:'rua',number:'numero',neighborhood:'bairro',cep:'cep',complement:'complemento',hours:'horario_funcionamento',weeklyHours:'horarios_semanais',description:'descricao',logoUrl:'logo_url',coverUrl:'capa_url'};
+      const map={name:'nome',category:'categoria_texto',whatsapp:'whatsapp',instagram:'instagram',address:'endereco',street:'rua',number:'numero',neighborhood:'bairro',cep:'cep',complement:'complemento',latitude:'latitude',longitude:'longitude',hours:'horario_funcionamento',weeklyHours:'horarios_semanais',description:'descricao',logoUrl:'logo_url',coverUrl:'capa_url'};
       for(const [key,column] of Object.entries(map)) if(Object.prototype.hasOwnProperty.call(patch,key)) allowed[column]=patch[key]||null;
       const {data,error}=await client.from('lojas').update(allowed).eq('id',storeId).select('*').single();
       return error?{ok:false,message:errorMessage(error)}:{ok:true,store:data};
