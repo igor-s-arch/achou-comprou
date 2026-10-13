@@ -47,7 +47,7 @@ const DEFAULT_DB = {
   banners: [{ id:'b1', storeId:'loja-maranhao', title:'Compre no comércio local', message:'Ofertas especiais perto de você', active:true }],
   videos: [],
   payments: [],
-  paymentConfig: { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' },
+  paymentConfig: { pixKey:'60489369316', pixName:'ACHOU COMPROU', pixCity:'Grajaú - MA', instruction:'Faça o PIX pelo QR Code ou copie e cole. Após pagar, envie o comprovante para análise. Dúvidas: igor-s@hotmail.com' },
   clients: [{ id:'cliente-demo', name:'Cliente Demo', email:'cliente@exemplo.com', password:'123456', phone:'(99) 99999-0000', city:'Grajaú - MA', favorites:['p1'] }],
   recentSearches: ['tênis infantil número 28','vestido tamanho M'],
   notifications: [
@@ -59,7 +59,7 @@ const DEFAULT_DB = {
   session: { clientId: null, merchantId: null, admin: false }
 };
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
-function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.videos = Array.isArray(saved.videos) ? saved.videos : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = saved.paymentConfig || { pixKey:'', pixName:'', pixCity:'Grajaú - MA', instruction:'Após fazer o PIX, envie o comprovante para análise.' }; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.cart = saved.cart && typeof saved.cart==='object' ? saved.cart : {storeId:null,items:[],note:''}; saved.cart.items = Array.isArray(saved.cart.items) ? saved.cart.items.filter(x=>x&&x.productId).map(x=>({productId:String(x.productId),qty:Math.max(1,Math.min(99,Number(x.qty)||1))})) : []; saved.cart.note=String(saved.cart.note||''); if(!saved.cart.items.length)saved.cart.storeId=null; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
+function loadDb() { try { const raw = localStorage.getItem(DB_KEY) || localStorage.getItem('achou_comprou_mvp_v16'); const saved = JSON.parse(raw); if (saved && saved.merchants && saved.products && saved.offers) { saved.clients = Array.isArray(saved.clients) ? saved.clients.map(c => ({...c, favorites:Array.isArray(c.favorites)?c.favorites:[], phone:c.phone||'', city:c.city||'Grajaú - MA'})) : []; saved.merchants = Array.isArray(saved.merchants) ? saved.merchants.map(m => ({...m, logoData:m.logoData||'', coverData:m.coverData||''})) : []; saved.products = Array.isArray(saved.products) ? saved.products.map(p => ({...p, imageData:p.imageData||'', images:Array.isArray(p.images)&&p.images.length?p.images.filter(Boolean):(p.imageData?[p.imageData]:[])})) : []; saved.videos = Array.isArray(saved.videos) ? saved.videos : []; saved.payments = Array.isArray(saved.payments) ? saved.payments : []; saved.paymentConfig = {...{ pixKey:'60489369316', pixName:'ACHOU COMPROU', pixCity:'Grajaú - MA', instruction:'Faça o PIX pelo QR Code ou copie e cole. Após pagar, envie o comprovante para análise. Dúvidas: igor-s@hotmail.com' }, ...(saved.paymentConfig||{}), pixKey:(saved.paymentConfig?.pixKey||'60489369316'), pixName:(saved.paymentConfig?.pixName||'ACHOU COMPROU'), pixCity:(saved.paymentConfig?.pixCity||'Grajaú - MA'), instruction:(saved.paymentConfig?.instruction||'Faça o PIX pelo QR Code ou copie e cole. Após pagar, envie o comprovante para análise. Dúvidas: igor-s@hotmail.com')}; saved.recentSearches = Array.isArray(saved.recentSearches) ? saved.recentSearches : []; saved.notifications = Array.isArray(saved.notifications) ? saved.notifications : []; saved.clientSettings = saved.clientSettings || { offers:true, favorites:true, local:true }; saved.cart = saved.cart && typeof saved.cart==='object' ? saved.cart : {storeId:null,items:[],note:''}; saved.cart.items = Array.isArray(saved.cart.items) ? saved.cart.items.filter(x=>x&&x.productId).map(x=>({productId:String(x.productId),qty:Math.max(1,Math.min(99,Number(x.qty)||1))})) : []; saved.cart.note=String(saved.cart.note||''); if(!saved.cart.items.length)saved.cart.storeId=null; saved.session = saved.session || {}; saved.session.clientId = saved.session.clientId || null; saved.session.merchantId = saved.session.merchantId || null; saved.session.admin = !!saved.session.admin; return saved; } } catch (_) {} return clone(DEFAULT_DB); }
 let db = loadDb();
 let adminBranding={
   name:'Igor',
@@ -3565,7 +3565,8 @@ async function merchantPayment(paymentId) {
             <div class="pix-copy-card"><small>PIX COPIA E COLA</small><textarea id="pixCopyPaste" readonly aria-label="PIX copia e cola"></textarea><button type="button" id="copyPixPayload">Copiar código PIX</button></div>
           </div>
           <div class="pix-key-box"><small>CHAVE PIX</small><strong id="pixKeyText">${esc(cfg.pixKey)}</strong><button type="button" id="copyPixKey">Copiar chave</button></div>
-          <div class="pix-owner"><b>${esc(cfg.pixName||'Beneficiário não informado')}</b><span>${esc(cfg.pixCity||'Grajaú - MA')}</span></div>
+          <div class="pix-owner"><b>${esc(cfg.pixName||'ACHOU COMPROU')}</b><span>${esc(cfg.pixCity||'Grajaú - MA')}</span></div>
+          <p class="payment-bank-check">Antes de confirmar, confira o nome do recebedor exibido pelo aplicativo do seu banco.</p>
         `:'<div class="notice error">A chave PIX ainda não foi configurada pelo administrador.</div>'}
         ${cfg.instruction?`<p class="payment-instruction">${esc(cfg.instruction)}</p>`:''}
       </section>
@@ -3578,6 +3579,7 @@ async function merchantPayment(paymentId) {
           <div id="paymentProofMsg"></div>
         `}
       </section>
+      <div class="payment-support">Dúvidas sobre o pagamento? <a href="mailto:igor-s@hotmail.com">igor-s@hotmail.com</a></div>
       <div class="payment-security-note">O plano não é ativado apenas pelo envio do comprovante. A liberação acontece após a conferência no painel administrativo.</div>
     `}
     ${merchantNav('plan')}
@@ -4186,6 +4188,10 @@ async function adminPlans() {
   if(window.ACCloud?.enabled){
     await syncAdminPayments();
     await syncCloudAdminData();
+    if(db.paymentConfig && !db.paymentConfig.configured && db.paymentConfig.pixKey){
+      const seeded=await window.ACCloud.savePaymentConfig(db.paymentConfig);
+      if(seeded.ok){db.paymentConfig=seeded.config;saveDb();}
+    }
   }
   const payments=db.payments||[];
   const config=db.paymentConfig||{};
