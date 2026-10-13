@@ -587,19 +587,30 @@
     async getPaymentConfig(){
       if(!client)return {ok:false,message:'Backend não configurado.'};
       const {data,error}=await client.from('configuracao_pagamentos').select('*').eq('id',1).maybeSingle();
-      return error?{ok:false,message:errorMessage(error)}:{ok:true,config:{
-        pixKey:data?.pix_chave||'',pixName:data?.pix_nome||'',pixCity:data?.pix_cidade||'Grajaú - MA',
-        instruction:data?.instrucao||'Após fazer o PIX, envie o comprovante para análise.'
+      if(error)return {ok:false,message:errorMessage(error)};
+      const key=String(data?.pix_chave||'').trim();
+      return {ok:true,config:{
+        pixKey:key||'60489369316',
+        pixName:data?.pix_nome||'ACHOU COMPROU',
+        pixCity:data?.pix_cidade||'Grajaú - MA',
+        instruction:data?.instrucao||'Faça o PIX pelo QR Code ou copie e cole. Após pagar, envie o comprovante para análise. Dúvidas: igor-s@hotmail.com',
+        configured:!!key
       }};
     },
 
     async savePaymentConfig({pixKey,pixName,pixCity,instruction}){
       if(!client)return {ok:false,message:'Backend não configurado.'};
+      const key=String(pixKey||'').trim();
+      if(!key)return {ok:false,message:'Informe a chave PIX.'};
       const {data,error}=await client.from('configuracao_pagamentos').update({
-        pix_chave:pixKey||null,pix_nome:pixName||null,pix_cidade:pixCity||null,
-        instrucao:instruction||null,updated_at:new Date().toISOString()
+        pix_chave:key,pix_nome:pixName||'ACHOU COMPROU',pix_cidade:pixCity||'Grajaú - MA',
+        instrucao:instruction||'Faça o PIX pelo QR Code ou copie e cole. Após pagar, envie o comprovante para análise. Dúvidas: igor-s@hotmail.com',
+        updated_at:new Date().toISOString()
       }).eq('id',1).select('*').single();
-      return error?{ok:false,message:errorMessage(error)}:{ok:true,config:data};
+      return error?{ok:false,message:errorMessage(error)}:{ok:true,config:{
+        pixKey:data.pix_chave||key,pixName:data.pix_nome||'ACHOU COMPROU',pixCity:data.pix_cidade||'Grajaú - MA',
+        instruction:data.instrucao||'',configured:true
+      }};
     },
 
     async requestPlanPayment(storeId,plan,months=1){
