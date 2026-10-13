@@ -590,7 +590,7 @@
       if(error)return {ok:false,message:errorMessage(error)};
       const key=String(data?.pix_chave||'').trim();
       return {ok:true,config:{
-        pixKey:key||'60489369316',
+        pixKey:key||'',
         pixName:data?.pix_nome||'ACHOU COMPROU',
         pixCity:data?.pix_cidade||'Grajaú - MA',
         instruction:data?.instrucao||'Faça o PIX pelo QR Code ou copie e cole. Após pagar, envie o comprovante para análise. Dúvidas: igor-s@hotmail.com',
