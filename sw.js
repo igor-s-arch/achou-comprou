@@ -1,15 +1,13 @@
-const CACHE='achou-comprou-v126';
+const CACHE='achou-comprou-v127';
+
+// Mantém no pré-cache apenas o essencial para abrir o app.
+// Arquivos grandes e dados do Supabase são carregados sob demanda.
 const APP=[
   './',
   './index.html',
   './styles.css?v=126',
-  './app.js?v=126',
-  './supabase-config.js',
-  './supabase-adapter.js?v=126',
   './manifest.webmanifest',
-  './assets/logo-achou-comprou.png',
-  './Imagem%20ChatGPT%2028_09_2026,%2016_35_24.png',
-  './Imagem%20ChatGPT%2028_09_2026,%2017_16_39.png'
+  './assets/logo-achou-comprou.png'
 ];
 
 self.addEventListener('install',event=>{
@@ -26,11 +24,20 @@ self.addEventListener('activate',event=>{
 
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
+
+  const url=new URL(event.request.url);
+
+  // Não guarda chamadas de API/Supabase no cache do PWA.
+  if(url.hostname.includes('supabase.co'))return;
+
+  // Navegação e arquivos do app: rede primeiro, cache como fallback.
   event.respondWith(
     fetch(event.request)
       .then(response=>{
-        const copy=response.clone();
-        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        if(response && response.ok && url.origin===self.location.origin){
+          const copy=response.clone();
+          caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        }
         return response;
       })
       .catch(()=>caches.match(event.request))
